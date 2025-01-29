@@ -49,7 +49,7 @@ export default function Dashboard() {
 
     setUpdating(true);
     try {
-      // Check if user exists in profiles table
+      // First check if the user exists in profiles
       const { data: userData, error: userError } = await supabase
         .from('profiles')
         .select('*')
@@ -61,27 +61,62 @@ export default function Dashboard() {
         throw new Error('Error checking user profile');
       }
 
+      // Start a batch of operations
+      const updates = [];
+
+      // Update or create profile
       if (!userData) {
-        // If user doesn't exist in profiles, create them
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert([
-            {
+        updates.push(
+          supabase
+            .from('profiles')
+            .insert([{
               id: userId,
               role: 'driver',
               created_at: new Date().toISOString()
-            }
-          ]);
-
-        if (insertError) throw insertError;
+            }])
+        );
       } else {
-        // Update existing user's role
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ role: 'driver' })
-          .eq('id', userId);
+        updates.push(
+          supabase
+            .from('profiles')
+            .update({ role: 'driver' })
+            .eq('id', userId)
+        );
+      }
 
-        if (updateError) throw updateError;
+      // Add entry to staff_roles table
+      updates.push(
+        supabase
+          .from('staff_roles')
+          .upsert({
+            user_id: userId,
+            role: 'driver',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+      );
+
+      // Create entry in drivers table
+      updates.push(
+        supabase
+          .from('drivers')
+          .insert([{
+            id: userId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: 'active',
+            documents_verified: false
+          }])
+      );
+
+      // Execute all updates
+      const results = await Promise.all(updates);
+
+      // Check for errors in any of the operations
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        console.error('Errors during updates:', errors);
+        throw new Error('Failed to update user role completely');
       }
 
       toast.success('User role updated successfully');
