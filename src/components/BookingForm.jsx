@@ -151,17 +151,27 @@ export default function BookingForm() {
   };
 
   const generateTimeSlots = () => {
-    const slots = [];
-    for (let hour = 6; hour <= 22; hour++) {
-      const timeString = `${hour.toString().padStart(2, '0')}:00`;
-      const isPeak = isPeakHour(timeString);
-      slots.push({
-        time: timeString,
+    // Define fixed time slots
+    const fixedTimeSlots = [
+      '05:00', // Early Morning
+      '07:30', // Morning
+      '10:30', // Morning
+      '13:30', // Afternoon
+      '15:30', // Afternoon
+      '17:30', // Evening
+      '19:30'  // Evening
+    ];
+
+    return fixedTimeSlots.map(time => {
+      const [hours] = time.split(':');
+      const hour = parseInt(hours);
+      const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
+      return {
+        time,
         isPeak,
-        label: `${timeString} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
-      });
-    }
-    return slots;
+        label: `${time} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
+      };
+    });
   };
 
   const calculatePrice = () => {
