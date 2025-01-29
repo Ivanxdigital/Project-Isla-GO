@@ -676,11 +676,13 @@ export default function BookingForm() {
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={`appearance-none rounded-md relative block w-full px-3 py-2 border ${
+                onChange={handleEmailChange}
+                className={`w-full px-4 py-2 border ${
                   validationErrors.email ? 'border-red-500' : 'border-gray-300'
-                } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
-                placeholder="Email address"
+                } rounded-md focus:ring-2 ${
+                  validationErrors.email ? 'focus:ring-red-500' : 'focus:ring-blue-500'
+                }`}
+                placeholder="your@email.com"
               />
               {validationErrors.email && (
                 <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
@@ -755,6 +757,55 @@ export default function BookingForm() {
   };
 
   const timeSlots = generateTimeSlots();
+
+  // Add these validation handler functions after the validation functions
+  const handleEmailChange = (e) => {
+    const value = e.target.value;
+    setEmail(value);
+    if (value && !validateEmail(value)) {
+      setValidationErrors(prev => ({
+        ...prev,
+        email: 'Please enter a valid email address'
+      }));
+    } else {
+      setValidationErrors(prev => ({
+        ...prev,
+        email: ''
+      }));
+    }
+  };
+
+  const handlePhoneNumberChange = (e) => {
+    const value = e.target.value;
+    setMobileNumber(value);
+    if (value && !validatePhoneNumber(value)) {
+      setValidationErrors(prev => ({
+        ...prev,
+        mobileNumber: 'Please enter a valid Philippine mobile number (e.g., 9123456789)'
+      }));
+    } else {
+      setValidationErrors(prev => ({
+        ...prev,
+        mobileNumber: ''
+      }));
+    }
+  };
+
+  const handleMessengerChange = (e) => {
+    const value = e.target.value;
+    setMessenger(value);
+    if (value && !validateMessenger(value, messengerType)) {
+      setValidationErrors(prev => ({
+        ...prev,
+        messenger: `Please enter a valid ${messengerType === 'whatsapp' ? 'phone number' : 'username'}`
+      }));
+    } else {
+      setValidationErrors(prev => ({
+        ...prev,
+        messenger: ''
+      }));
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1173,7 +1224,7 @@ export default function BookingForm() {
                           type="tel"
                           required
                           value={mobileNumber}
-                          onChange={(e) => setMobileNumber(e.target.value)}
+                          onChange={handlePhoneNumberChange}
                           className={`w-full px-4 py-2 border ${
                             validationErrors.mobileNumber ? 'border-red-500' : 'border-gray-300'
                           } rounded-r-md focus:ring-2 ${
@@ -1205,7 +1256,7 @@ export default function BookingForm() {
                         <input
                           type="text"
                           value={messenger}
-                          onChange={(e) => setMessenger(e.target.value)}
+                          onChange={handleMessengerChange}
                           placeholder={t('form.messengerPlaceholder', { type: messengerType })}
                           className={`w-full px-4 py-2 border ${
                             validationErrors.messenger ? 'border-red-500' : 'border-gray-300'
