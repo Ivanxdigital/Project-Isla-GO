@@ -108,6 +108,33 @@ const ProgressSteps = ({ currentStep }) => {
   );
 };
 
+// Add these validation functions near the top of the component
+const validateEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+const validatePhoneNumber = (number) => {
+  // Philippines mobile number format (9XXXXXXXXX)
+  const phoneRegex = /^9\d{9}$/;
+  return phoneRegex.test(number);
+};
+
+const validateMessenger = (contact, type) => {
+  if (!contact) return false;
+  
+  switch (type) {
+    case 'whatsapp':
+      // WhatsApp format without country code
+      return /^\d{10,}$/.test(contact.replace(/\D/g, ''));
+    case 'telegram':
+      // Telegram username format (at least 5 characters, letters, numbers, and underscores)
+      return /^[a-zA-Z0-9_]{5,}$/.test(contact);
+    default:
+      return false;
+  }
+};
+
 export default function BookingForm() {
   const { t } = useTranslation();
   const { user, setUser } = useAuth();
@@ -137,6 +164,13 @@ export default function BookingForm() {
   const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
   const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Add new state for validation errors
+  const [validationErrors, setValidationErrors] = useState({
+    email: '',
+    mobileNumber: '',
+    messenger: ''
+  });
 
   const locations = ['Puerto Princesa', 'El Nido', 'San Vicente'];
   const basePrice = {
@@ -345,6 +379,40 @@ export default function BookingForm() {
       e.preventDefault();
     }
     
+    // Reset validation errors
+    setValidationErrors({
+      email: '',
+      mobileNumber: '',
+      messenger: ''
+    });
+
+    // Validate email
+    if (!validateEmail(email)) {
+      setValidationErrors(prev => ({
+        ...prev,
+        email: 'Please enter a valid email address'
+      }));
+      return;
+    }
+
+    // Validate phone number
+    if (!validatePhoneNumber(mobileNumber)) {
+      setValidationErrors(prev => ({
+        ...prev,
+        mobileNumber: 'Please enter a valid Philippine mobile number (e.g., 9123456789)'
+      }));
+      return;
+    }
+
+    // Validate messenger contact if provided
+    if (messenger && !validateMessenger(messenger, messengerType)) {
+      setValidationErrors(prev => ({
+        ...prev,
+        messenger: `Please enter a valid ${messengerType === 'whatsapp' ? 'phone number' : 'username'}`
+      }));
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
     
@@ -609,9 +677,14 @@ export default function BookingForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className={`appearance-none rounded-md relative block w-full px-3 py-2 border ${
+                  validationErrors.email ? 'border-red-500' : 'border-gray-300'
+                } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
                 placeholder="Email address"
               />
+              {validationErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+              )}
             </div>
             <div>
               <label htmlFor="password" className="sr-only">Password</label>
@@ -1095,14 +1168,23 @@ export default function BookingForm() {
                           </option>
                         ))}
                       </select>
-                      <input
-                        type="tel"
-                        required
-                        value={mobileNumber}
-                        onChange={(e) => setMobileNumber(e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-r-md focus:ring-2 focus:ring-blue-500"
-                        placeholder="9123456789"
-                      />
+                      <div className="flex-1">
+                        <input
+                          type="tel"
+                          required
+                          value={mobileNumber}
+                          onChange={(e) => setMobileNumber(e.target.value)}
+                          className={`w-full px-4 py-2 border ${
+                            validationErrors.mobileNumber ? 'border-red-500' : 'border-gray-300'
+                          } rounded-r-md focus:ring-2 ${
+                            validationErrors.mobileNumber ? 'focus:ring-red-500' : 'focus:ring-blue-500'
+                          }`}
+                          placeholder="9123456789"
+                        />
+                        {validationErrors.mobileNumber && (
+                          <p className="mt-1 text-sm text-red-600">{validationErrors.mobileNumber}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1119,13 +1201,22 @@ export default function BookingForm() {
                         <option value="whatsapp">WhatsApp</option>
                         <option value="telegram">Telegram</option>
                       </select>
-                      <input
-                        type="text"
-                        value={messenger}
-                        onChange={(e) => setMessenger(e.target.value)}
-                        placeholder={t('form.messengerPlaceholder', { type: messengerType })}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                      />
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={messenger}
+                          onChange={(e) => setMessenger(e.target.value)}
+                          placeholder={t('form.messengerPlaceholder', { type: messengerType })}
+                          className={`w-full px-4 py-2 border ${
+                            validationErrors.messenger ? 'border-red-500' : 'border-gray-300'
+                          } rounded-md focus:ring-2 ${
+                            validationErrors.messenger ? 'focus:ring-red-500' : 'focus:ring-blue-500'
+                          }`}
+                        />
+                        {validationErrors.messenger && (
+                          <p className="mt-1 text-sm text-red-600">{validationErrors.messenger}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
