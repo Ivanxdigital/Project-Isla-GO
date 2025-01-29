@@ -383,74 +383,40 @@ export default function BookingForm() {
     if (e) {
       e.preventDefault();
     }
-    
-    // Reset validation errors
-    setValidationErrors({
-      email: '',
-      mobileNumber: '',
-      messenger: ''
-    });
 
-    // Validate email
-    if (!validateEmail(email)) {
-      setValidationErrors(prev => ({
-        ...prev,
-        email: 'Please enter a valid email address'
-      }));
+    // Validate form fields first
+    if (!validateFormFields()) {
       return;
     }
 
-    // Validate phone number
-    if (!validatePhoneNumber(mobileNumber)) {
-      setValidationErrors(prev => ({
-        ...prev,
-        mobileNumber: 'Please enter a valid Philippine mobile number (e.g., 9123456789)'
-      }));
-      return;
-    }
-
-    // Validate messenger contact if provided
-    if (messenger && !validateMessenger(messenger, messengerType)) {
-      setValidationErrors(prev => ({
-        ...prev,
-        messenger: `Please enter a valid ${messengerType === 'whatsapp' ? 'phone number' : 'username'}`
-      }));
-      return;
-    }
-
-    // Check if user is authenticated
-    const { data: { user: currentAuthUser } } = await supabase.auth.getUser();
-    
-    if (!skipUserCheck && !currentAuthUser) {
-      setShowAuthModal(true);
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError('');
-    
-    // Use either the passed currentUser or the user from context
-    const userToUse = currentUser || currentAuthUser;
-    
-    console.log('Starting booking submission with user:', userToUse);
-    
     try {
+      // Check if user is authenticated
+      const { data: { user: currentAuthUser } } = await supabase.auth.getUser();
+      
+      if (!skipUserCheck && !currentAuthUser) {
+        console.log('No authenticated user found, showing auth modal');
+        setShowAuthModal(true);
+        return;
+      }
+
+      setIsSubmitting(true);
       setIsProcessingPayment(true);
       
-      // Create customer record first
-      const customerData = {
+      // Use either the passed currentUser or the authenticated user
+      const userToUse = currentUser || currentAuthUser;
+      
+      console.log('Processing booking with user:', userToUse);
+
+      // Create customer record
+      const customer = await createCustomer({
         first_name: firstName,
         last_name: lastName,
         mobile_number: `${selectedCountryCode}${mobileNumber}`,
         messenger_type: messengerType,
         messenger_contact: messenger,
         user_id: userToUse.id
-      };
-      
-      console.log('Creating customer with data:', customerData);
-      const customer = await createCustomer(customerData);
-      console.log('Customer created:', customer);
-      
+      });
+
       // Create booking record
       const bookingData = {
         customer_id: customer.id,
@@ -528,8 +494,32 @@ export default function BookingForm() {
     } catch (error) {
       console.error('Error in submission:', error);
       toast.error(error.message || 'An error occurred during submission');
+    } finally {
+      setIsSubmitting(false);
       setIsProcessingPayment(false);
     }
+  };
+
+  // Add a form validation helper
+  const validateFormFields = () => {
+    const errors = {};
+
+    if (!firstName.trim()) errors.firstName = 'First name is required';
+    if (!lastName.trim()) errors.lastName = 'Last name is required';
+    if (!validatePhoneNumber(mobileNumber)) {
+      errors.mobileNumber = 'Please enter a valid Philippine mobile number';
+    }
+    if (messenger && !validateMessenger(messenger, messengerType)) {
+      errors.messenger = `Please enter a valid ${messengerType} contact`;
+    }
+    if (!paymentMethod) errors.paymentMethod = 'Please select a payment method';
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return false;
+    }
+
+    return true;
   };
 
   const handleRegister = async (e) => {
@@ -620,7 +610,6 @@ export default function BookingForm() {
     setIsLoginSubmitting(true);
 
     try {
-      console.log('Attempting login...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -628,12 +617,16 @@ export default function BookingForm() {
 
       if (error) throw error;
 
-      console.log('Login successful:', data);
-      // Directly call handleLoginSuccess instead of relying on useEffect
-      await handleLoginSuccess();
+      // Set the user in context
+      setUser(data.user);
+      
+      // Close modal and continue with booking
+      setShowAuthModal(false);
+      handleSubmit(null, true, data.user);
     } catch (error) {
       console.error('Login error:', error);
       setAuthError(error.message);
+    } finally {
       setIsLoginSubmitting(false);
     }
   };
@@ -644,20 +637,46 @@ export default function BookingForm() {
     setIsRegisterSubmitting(true);
 
     try {
-      console.log('Attempting signup...');
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            phone: mobileNumber
+          }
+        }
       });
 
       if (error) throw error;
 
-      console.log('Signup successful:', data);
-      // The useEffect will handle the rest
+      if (data.user) {
+        // Create profile record
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: data.user.id,
+            full_name: `${firstName} ${lastName}`,
+            mobile_number: mobileNumber,
+            created_at: new Date().toISOString()
+          }]);
+
+        if (profileError) throw profileError;
+
+        // Set the user in context
+        setUser(data.user);
+        
+        // Show success message
+        toast.success('Account created successfully!');
+        
+        // Close modal and continue with booking
+        setShowAuthModal(false);
+        handleSubmit(null, true, data.user);
+      }
     } catch (error) {
       console.error('Signup error:', error);
       setAuthError(error.message);
-      setIsRegisterSubmitting(false);
     } finally {
       setIsRegisterSubmitting(false);
     }
@@ -668,7 +687,10 @@ export default function BookingForm() {
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div className="mt-3">
           <button
-            onClick={() => setShowAuthModal(false)}
+            onClick={() => {
+              setShowAuthModal(false);
+              toast.error('Authentication required to complete booking');
+            }}
             className="absolute top-3 right-3 text-gray-400 hover:text-gray-500"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -840,15 +862,19 @@ export default function BookingForm() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser && showAuthModal) {
-        // Close the modal and continue with form submission
-        setShowAuthModal(false);
-        handleSubmit(null, true, currentUser);
+      if (currentUser) {
+        setUser(currentUser); // Make sure to update the auth context
+        
+        if (showAuthModal) {
+          // Close the modal and continue with form submission
+          setShowAuthModal(false);
+          handleSubmit(null, true, currentUser);
+        }
       }
     };
 
     checkAuth();
-  }, [user]); // Add user to dependency array to trigger when auth state changes
+  }, [user, showAuthModal]); // Add showAuthModal to dependencies
 
   return (
     <div className="min-h-screen bg-gray-50">
