@@ -17,6 +17,7 @@ import { supabase } from '../utils/supabase';
 import { Listbox, Transition } from '@headlessui/react';
 import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 const drivers = [
   {
@@ -172,6 +173,9 @@ export default function BookingForm() {
     mobileNumber: '',
     messenger: ''
   });
+
+  // Add new state
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const locations = ['Puerto Princesa', 'El Nido', 'San Vicente'];
   const basePrice = {
@@ -414,23 +418,25 @@ export default function BookingForm() {
       return;
     }
 
+    // Check if user is authenticated
+    const { data: { user: currentAuthUser } } = await supabase.auth.getUser();
+    
+    if (!skipUserCheck && !currentAuthUser) {
+      setShowAuthModal(true);
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
     
     // Use either the passed currentUser or the user from context
-    const userToUse = currentUser || user;
-    
-    // Use the user from the auth context instead of fetching again
-    if (!skipUserCheck && !userToUse) {
-      console.log('No user found, showing auth modal');
-      setShowAuthModal(true);
-      setIsSubmitting(false);
-      return;
-    }
+    const userToUse = currentUser || currentAuthUser;
     
     console.log('Starting booking submission with user:', userToUse);
     
     try {
+      setIsProcessingPayment(true);
+      
       // Create customer record first
       const customerData = {
         first_name: firstName,
@@ -468,62 +474,61 @@ export default function BookingForm() {
       console.log('Booking created:', booking);
       
       if (paymentMethod.toLowerCase() === 'online') {
-        try {
-          console.log('Starting payment process...');
-          
-          // Create PayMongo session with amount in cents
-          const totalAmount = calculatePrice() * 100;
-          console.log('Creating payment session for amount:', totalAmount);
-          
-          const session = await createPaymentSession(
-            totalAmount,
-            `Booking #${booking.id} - ${fromLocation} to ${toLocation}`
-          ).catch(error => {
-            console.error('PayMongo session creation failed:', error);
-            throw new Error('Failed to create payment session: ' + error.message);
-          });
-          
-          console.log('Payment session created successfully:', session);
-          
-          if (!session?.attributes?.checkout_url) {
-            throw new Error('Invalid payment session: Missing checkout URL');
-          }
-          
-          // Store booking ID in sessionStorage instead of localStorage
-          sessionStorage.setItem('lastBookingId', booking.id);
-          
-          // Update booking with payment session ID
-          const { error: updateError } = await supabase
-            .from('bookings')
-            .update({ 
-              payment_session_id: session.id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', booking.id);
-
-          if (updateError) {
-            throw new Error('Failed to update booking with payment session');
-          }
-          
-          // Redirect to checkout
-          const checkoutUrl = session.attributes.checkout_url;
-          console.log('Redirecting to checkout URL:', checkoutUrl);
-          
-          window.location.href = checkoutUrl;
-          return;
-        } catch (error) {
-          console.error('Payment processing error:', error);
-          setError(error.message || 'Failed to process payment. Please try again.');
-          setIsSubmitting(false);
+        toast.loading('Setting up payment...', { id: 'payment-setup' });
+        
+        const totalAmount = calculatePrice() * 100;
+        console.log('Creating payment session for amount:', totalAmount);
+        
+        const session = await createPaymentSession(
+          totalAmount,
+          `Booking #${booking.id} - ${fromLocation} to ${toLocation}`
+        ).catch(error => {
+          console.error('PayMongo session creation failed:', error);
+          throw new Error('Failed to create payment session: ' + error.message);
+        });
+        
+        console.log('Payment session created successfully:', session);
+        
+        if (!session?.attributes?.checkout_url) {
+          throw new Error('Invalid payment session: Missing checkout URL');
         }
+        
+        // Store booking ID in sessionStorage instead of localStorage
+        sessionStorage.setItem('lastBookingId', booking.id);
+        
+        // Update booking with payment session ID
+        const { error: updateError } = await supabase
+          .from('bookings')
+          .update({ 
+            payment_session_id: session.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', booking.id);
+
+        if (updateError) {
+          throw new Error('Failed to update booking with payment session');
+        }
+        
+        // Redirect to checkout
+        const checkoutUrl = session.attributes.checkout_url;
+        console.log('Redirecting to checkout URL:', checkoutUrl);
+        
+        toast.success('Redirecting to payment...', { id: 'payment-setup' });
+        
+        // Short delay to show the success message
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        window.location.href = checkoutUrl;
+        return;
       } else {
         // Handle cash payment
+        toast.success('Booking completed successfully!');
         navigate('/booking/success');
       }
     } catch (error) {
-      console.error('Booking submission error:', error);
-      setError(error.message || 'Failed to process booking. Please try again.');
-      setIsSubmitting(false);
+      console.error('Error in submission:', error);
+      toast.error(error.message || 'An error occurred during submission');
+      setIsProcessingPayment(false);
     }
   };
 
@@ -661,16 +666,36 @@ export default function BookingForm() {
   const renderAuthModal = () => (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div className="mt-3 text-center">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Create an Account or Sign In</h3>
-          <div className="mt-2 px-7 py-3">
-            <p className="text-sm text-gray-500">
-              Please create an account or sign in to complete your booking.
+        <div className="mt-3">
+          <button
+            onClick={() => setShowAuthModal(false)}
+            className="absolute top-3 right-3 text-gray-400 hover:text-gray-500"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <div className="bg-blue-50 border border-blue-100 rounded-md p-4 mb-6">
+            <h4 className="text-sm font-medium text-blue-800 mb-1">Why create an account?</h4>
+            <p className="text-sm text-blue-600">
+              Creating an account allows us to:
             </p>
+            <ul className="text-sm text-blue-600 list-disc list-inside mt-2">
+              <li>Store and manage your bookings</li>
+              <li>Send you booking confirmations</li>
+              <li>Provide easy access to your travel history</li>
+              <li>Keep you updated about your trip</li>
+            </ul>
           </div>
-          <form className="mt-4 space-y-6">
+
+          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Create an Account or Sign In</h3>
+          
+          <form className="space-y-4">
             <div>
-              <label htmlFor="email" className="sr-only">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
               <input
                 id="email"
                 name="email"
@@ -690,7 +715,9 @@ export default function BookingForm() {
               )}
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
               <input
                 id="password"
                 name="password"
@@ -698,36 +725,37 @@ export default function BookingForm() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter your password"
               />
             </div>
             {authError && (
-              <div className="text-red-500 text-sm">{authError}</div>
+              <div className="text-red-500 text-sm bg-red-50 p-2 rounded">{authError}</div>
             )}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleSignUp}
                 disabled={isRegisterSubmitting || isLoginSubmitting}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
-                {isRegisterSubmitting ? 'Processing...' : 'Register'}
+                {isRegisterSubmitting ? 'Creating Account...' : 'Create Account'}
               </button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">or</span>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={handleLogin}
                 disabled={isLoginSubmitting || isRegisterSubmitting}
-                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
-                {isLoginSubmitting ? 'Processing...' : 'Sign In'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAuthModal(false)}
-                className="text-sm text-gray-600 hover:text-gray-800"
-              >
-                Cancel
+                {isLoginSubmitting ? 'Signing In...' : 'Sign In'}
               </button>
             </div>
           </form>
@@ -807,6 +835,20 @@ export default function BookingForm() {
       }));
     }
   };
+
+  // Add this useEffect to handle successful authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser && showAuthModal) {
+        // Close the modal and continue with form submission
+        setShowAuthModal(false);
+        handleSubmit(null, true, currentUser);
+      }
+    };
+
+    checkAuth();
+  }, [user]); // Add user to dependency array to trigger when auth state changes
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1170,9 +1212,22 @@ export default function BookingForm() {
 
                   <button
                     type="submit"
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    disabled={isSubmitting || isProcessingPayment}
+                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
                   >
-                    {t('form.continue')}
+                    {isProcessingPayment ? (
+                      <div className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing Payment...
+                      </div>
+                    ) : isSubmitting ? (
+                      'Processing...'
+                    ) : (
+                      t('form.complete')
+                    )}
                   </button>
                 </form>
               ) : (
@@ -1373,14 +1428,19 @@ export default function BookingForm() {
                     </button>
                     <button
                       type="submit"
-                      disabled={isSubmitting}
-                      className="flex-1 bg-blue-600 text-white py-3 px-4 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      disabled={isSubmitting || isProcessingPayment}
+                      className="flex-1 bg-blue-600 text-white py-3 px-4 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
                     >
-                      {isSubmitting ? (
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
+                      {isProcessingPayment ? (
+                        <div className="flex items-center justify-center">
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Processing Payment...
+                        </div>
+                      ) : isSubmitting ? (
+                        'Processing...'
                       ) : (
                         t('form.complete')
                       )}
