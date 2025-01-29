@@ -98,7 +98,8 @@ const ProgressSteps = ({ currentStep }) => {
               </span>
               <div className="mt-3 text-center">
                 <span className="text-sm font-medium text-gray-900">{step.title}</span>
-                <p className="mt-1 text-xs text-gray-500 hidden md:block">{step.description}</p>
+                <p className="mt-1 text-xs text-gray-500 hidden sm:block">{step.description}</p>
+                <p className="mt-1 text-xs text-gray-500 sm:hidden">{step.shortDescription}</p>
               </div>
             </div>
           </div>
@@ -306,7 +307,7 @@ export default function BookingForm() {
   };
 
   const renderPaymentOptions = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {[
         { id: 'online', name: 'Online Payment', iconPlaceholder: '💳', description: 'Pay with GCash or Credit Card' },
         { id: 'cash', name: 'Cash', iconPlaceholder: '💵', description: '₱300 deposit required' }
@@ -314,7 +315,7 @@ export default function BookingForm() {
         <label
           key={method.id}
           className={`
-            relative border rounded-lg p-4 cursor-pointer flex items-center space-x-3
+            relative border rounded-lg p-5 sm:p-4 cursor-pointer flex items-center space-x-3
             ${paymentMethod === method.id ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
           `}
         >
@@ -1028,10 +1029,10 @@ export default function BookingForm() {
                   {/* Service Type Selection */}
                   <div className="mb-8">
                     <h3 className="text-lg font-semibold mb-4">Select Your Service Type</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className={`p-4 rounded-lg border-2 cursor-pointer ${
+                        className={`p-5 sm:p-4 rounded-lg border-2 cursor-pointer ${
                           serviceType === 'shared'
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-blue-200'
@@ -1054,7 +1055,7 @@ export default function BookingForm() {
 
                       <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className={`p-4 rounded-lg border-2 cursor-pointer ${
+                        className={`p-5 sm:p-4 rounded-lg border-2 cursor-pointer ${
                           serviceType === 'private15'
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-blue-200'
@@ -1077,7 +1078,7 @@ export default function BookingForm() {
 
                       <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className={`p-4 rounded-lg border-2 cursor-pointer ${
+                        className={`p-5 sm:p-4 rounded-lg border-2 cursor-pointer ${
                           serviceType === 'private10'
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-blue-200'
@@ -1186,7 +1187,7 @@ export default function BookingForm() {
                         required
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 sm:py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <div>
@@ -1198,7 +1199,7 @@ export default function BookingForm() {
                         required
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 sm:py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
@@ -1207,11 +1208,11 @@ export default function BookingForm() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       {t('form.mobileNumber')}
                     </label>
-                    <div className="flex">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
                       <select
                         value={selectedCountryCode}
                         onChange={(e) => setSelectedCountryCode(e.target.value)}
-                        className="w-48 px-4 py-2 border border-gray-300 rounded-l-md focus:ring-2 focus:ring-blue-500"
+                        className="w-full sm:w-48 px-4 py-3 sm:py-2 border border-gray-300 rounded-md sm:rounded-l-md sm:rounded-r-none focus:ring-2 focus:ring-blue-500"
                       >
                         {countryCodes.map((country) => (
                           <option key={country.code + country.country} value={country.code}>
@@ -1219,23 +1220,14 @@ export default function BookingForm() {
                           </option>
                         ))}
                       </select>
-                      <div className="flex-1">
-                        <input
-                          type="tel"
-                          required
-                          value={mobileNumber}
-                          onChange={handlePhoneNumberChange}
-                          className={`w-full px-4 py-2 border ${
-                            validationErrors.mobileNumber ? 'border-red-500' : 'border-gray-300'
-                          } rounded-r-md focus:ring-2 ${
-                            validationErrors.mobileNumber ? 'focus:ring-red-500' : 'focus:ring-blue-500'
-                          }`}
-                          placeholder="9123456789"
-                        />
-                        {validationErrors.mobileNumber && (
-                          <p className="mt-1 text-sm text-red-600">{validationErrors.mobileNumber}</p>
-                        )}
-                      </div>
+                      <input
+                        type="tel"
+                        required
+                        value={mobileNumber}
+                        onChange={handlePhoneNumberChange}
+                        className="w-full px-4 py-3 sm:py-2 border border-gray-300 rounded-md sm:rounded-l-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="9123456789"
+                      />
                     </div>
                   </div>
 
@@ -1311,9 +1303,9 @@ export default function BookingForm() {
                   </div>
 
                   {/* Payment Breakdown Section */}
-                  <div className="mt-6 bg-gray-50 rounded-lg p-4">
+                  <div className="mt-6 bg-gray-50 rounded-lg p-4 sm:p-6">
                     <h4 className="text-lg font-semibold mb-3">Payment Breakdown</h4>
-                    <div className="space-y-2">
+                    <div className="space-y-3 sm:space-y-2">
                       {getPriceBreakdown() && (
                         <>
                           <div className="flex justify-between text-sm">
