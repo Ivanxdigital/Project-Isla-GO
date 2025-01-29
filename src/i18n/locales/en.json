@@ -1,0 +1,59 @@
+{
+  "title": "IslaGo",
+  "subtitle": "Book your private van transfer in Palawan",
+  "form": {
+    "from": "From",
+    "to": "To",
+    "chooseDest": "Choose destination",
+    "selectTime": "Select time",
+    "departureDate": "Departure Date",
+    "departureTime": "Departure Time",
+    "returnTrip": "Return Trip",
+    "returnDate": "Return Date",
+    "returnTime": "Return Time",
+    "serviceType": "How would you like to travel?",
+    "privateVan": "Private Van",
+    "sharedVan": "Shared Van",
+    "groupBooking": "Group Booking",
+    "groupSize": "Number of Passengers",
+    "passengers": "Number of Passengers (1-15)",
+    "continue": "Continue to Booking Details",
+    "back": "Back",
+    "complete": "Complete Booking",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "mobileNumber": "Mobile Number",
+    "messenger": "Messenger Contact (Optional)",
+    "messengerPlaceholder": "Enter your {{type}} username or number",
+    "termsAndConditions": {
+      "checkbox": "I agree to the Terms and Conditions",
+      "required": "You must accept the Terms and Conditions to continue",
+      "link": "Read Terms and Conditions"
+    }
+  },
+  "booking": {
+    "summary": "Booking Summary",
+    "peakHours": "Peak hours",
+    "offPeakHours": "Off-peak hours",
+    "total": "Total"
+  },
+  "drivers": {
+    "title": "Meet Our Professional Drivers",
+    "experience": "Experience",
+    "rating": "Rating",
+    "trips": "Completed Trips",
+    "vehicle": "Vehicle"
+  },
+  "payment": {
+    "method": "Payment Method",
+    "depositRequired": "Deposit Required",
+    "depositMessage": "A refundable deposit of ₱500 is required to secure your booking. This will be refunded on the day of your trip."
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "zh": "中文",
+    "ko": "한국어",
+    "pl": "Polski"
+  }
+}

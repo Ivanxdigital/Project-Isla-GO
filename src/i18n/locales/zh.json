@@ -1,0 +1,53 @@
+{
+  "title": "IslaGo",
+  "subtitle": "在巴拉望预订您的私人面包车接送服务",
+  "form": {
+    "from": "出发地",
+    "to": "目的地",
+    "chooseDest": "选择目的地",
+    "selectTime": "选择时间",
+    "departureDate": "出发日期",
+    "departureTime": "出发时间",
+    "returnTrip": "往返行程",
+    "returnDate": "返程日期",
+    "returnTime": "返程时间",
+    "serviceType": "服务类型",
+    "privateVan": "私人面包车租赁（最多15人）",
+    "soloTraveler": "单人旅客",
+    "groupSize": "团队人数（2-10人）",
+    "passengers": "乘客人数（1-15人）",
+    "continue": "继续填写预订详情",
+    "back": "返回",
+    "complete": "完成预订",
+    "firstName": "名字",
+    "lastName": "姓氏",
+    "mobileNumber": "手机号码",
+    "messenger": "即时通讯联系方式（可选）",
+    "messengerPlaceholder": "输入您的{{type}}用户名或号码"
+  },
+  "booking": {
+    "summary": "预订摘要",
+    "peakHours": "高峰时段",
+    "offPeakHours": "非高峰时段",
+    "total": "总计"
+  },
+  "drivers": {
+    "title": "认识我们的专业司机",
+    "experience": "经验",
+    "rating": "评分",
+    "trips": "完成行程",
+    "vehicle": "车辆"
+  },
+  "payment": {
+    "method": "支付方式",
+    "depositRequired": "需要押金",
+    "depositMessage": "需要支付₱500的可退还押金以确保您的预订。押金将在行程当天退还。"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "zh": "中文",
+    "ko": "한국어",
+    "pl": "Polski"
+  }
+}

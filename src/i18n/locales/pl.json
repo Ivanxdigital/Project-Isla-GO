@@ -1,0 +1,53 @@
+{
+  "title": "IslaGo",
+  "subtitle": "Zarezerwuj prywatny przejazd vanem na Palawanie",
+  "form": {
+    "from": "Z",
+    "to": "Do",
+    "chooseDest": "Wybierz cel podróży",
+    "selectTime": "Wybierz godzinę",
+    "departureDate": "Data wyjazdu",
+    "departureTime": "Godzina wyjazdu",
+    "returnTrip": "Podróż powrotna",
+    "returnDate": "Data powrotu",
+    "returnTime": "Godzina powrotu",
+    "serviceType": "Rodzaj usługi",
+    "privateVan": "Wynajem prywatnego vana (do 15 osób)",
+    "soloTraveler": "Podróżujący solo",
+    "groupSize": "Wielkość grupy (2-10)",
+    "passengers": "Liczba pasażerów (1-15)",
+    "continue": "Przejdź do szczegółów rezerwacji",
+    "back": "Wstecz",
+    "complete": "Zakończ rezerwację",
+    "firstName": "Imię",
+    "lastName": "Nazwisko",
+    "mobileNumber": "Numer telefonu",
+    "messenger": "Kontakt przez komunikator (Opcjonalnie)",
+    "messengerPlaceholder": "Podaj nazwę użytkownika lub numer {{type}}"
+  },
+  "booking": {
+    "summary": "Podsumowanie rezerwacji",
+    "peakHours": "Godziny szczytu",
+    "offPeakHours": "Poza godzinami szczytu",
+    "total": "Suma"
+  },
+  "drivers": {
+    "title": "Poznaj naszych profesjonalnych kierowców",
+    "experience": "Doświadczenie",
+    "rating": "Ocena",
+    "trips": "Ukończone przejazdy",
+    "vehicle": "Pojazd"
+  },
+  "payment": {
+    "method": "Metoda płatności",
+    "depositRequired": "Wymagana kaucja",
+    "depositMessage": "Wymagana jest zwrotna kaucja w wysokości ₱500 aby zabezpieczyć rezerwację. Zostanie zwrócona w dniu podróży."
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "zh": "中文",
+    "ko": "한국어",
+    "pl": "Polski"
+  }
+}

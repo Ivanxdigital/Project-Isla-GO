@@ -1,0 +1,53 @@
+{
+  "title": "IslaGo",
+  "subtitle": "팔라완에서 프라이빗 밴 이동 서비스를 예약하세요",
+  "form": {
+    "from": "출발지",
+    "to": "도착지",
+    "chooseDest": "목적지 선택",
+    "selectTime": "시간 선택",
+    "departureDate": "출발 날짜",
+    "departureTime": "출발 시간",
+    "returnTrip": "왕복 여행",
+    "returnDate": "귀환 날짜",
+    "returnTime": "귀환 시간",
+    "serviceType": "서비스 유형",
+    "privateVan": "프라이빗 밴 대여 (최대 15인)",
+    "soloTraveler": "1인 여행자",
+    "groupSize": "그룹 크기 (2-10인)",
+    "passengers": "승객 수 (1-15인)",
+    "continue": "예약 상세 정보로 계속",
+    "back": "뒤로",
+    "complete": "예약 완료",
+    "firstName": "이름",
+    "lastName": "성",
+    "mobileNumber": "휴대폰 번호",
+    "messenger": "메신저 연락처 (선택사항)",
+    "messengerPlaceholder": "{{type}} 사용자 이름 또는 번호 입력"
+  },
+  "booking": {
+    "summary": "예약 요약",
+    "peakHours": "성수기 시간",
+    "offPeakHours": "비수기 시간",
+    "total": "총액"
+  },
+  "drivers": {
+    "title": "전문 드라이버 소개",
+    "experience": "경력",
+    "rating": "평점",
+    "trips": "완료된 여행",
+    "vehicle": "차량"
+  },
+  "payment": {
+    "method": "결제 방법",
+    "depositRequired": "보증금 필요",
+    "depositMessage": "예약 확정을 위해 ₱500의 환불 가능한 보증금이 필요합니다. 여행 당일 환불됩니다."
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "zh": "中文",
+    "ko": "한국어",
+    "pl": "Polski"
+  }
+}

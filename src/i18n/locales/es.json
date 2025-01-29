@@ -1,0 +1,53 @@
+{
+  "title": "IslaGo",
+  "subtitle": "Reserve su traslado privado en van en Palawan",
+  "form": {
+    "from": "Desde",
+    "to": "Hasta",
+    "chooseDest": "Elegir destino",
+    "selectTime": "Seleccionar hora",
+    "departureDate": "Fecha de salida",
+    "departureTime": "Hora de salida",
+    "returnTrip": "Viaje de regreso",
+    "returnDate": "Fecha de regreso",
+    "returnTime": "Hora de regreso",
+    "serviceType": "Tipo de servicio",
+    "privateVan": "Alquiler de van privada (hasta 15 personas)",
+    "soloTraveler": "Viajero individual",
+    "groupSize": "Tamaño del grupo (2-10)",
+    "passengers": "Número de pasajeros (1-15)",
+    "continue": "Continuar con los detalles de la reserva",
+    "back": "Volver",
+    "complete": "Completar reserva",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "mobileNumber": "Número de móvil",
+    "messenger": "Contacto de Messenger (Opcional)",
+    "messengerPlaceholder": "Ingrese su nombre de usuario o número de {{type}}"
+  },
+  "booking": {
+    "summary": "Resumen de la reserva",
+    "peakHours": "Horas pico",
+    "offPeakHours": "Horas valle",
+    "total": "Total"
+  },
+  "drivers": {
+    "title": "Conozca a nuestros conductores profesionales",
+    "experience": "Experiencia",
+    "rating": "Calificación",
+    "trips": "Viajes completados",
+    "vehicle": "Vehículo"
+  },
+  "payment": {
+    "method": "Método de pago",
+    "depositRequired": "Depósito requerido",
+    "depositMessage": "Se requiere un depósito reembolsable de ₱500 para asegurar su reserva. Se reembolsará el día de su viaje."
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "zh": "中文",
+    "ko": "한국어",
+    "pl": "Polski"
+  }
+}
