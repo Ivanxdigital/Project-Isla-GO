@@ -380,7 +380,6 @@ export default function BookingForm() {
       e.preventDefault();
     }
     
-    // Add this console log at the very start
     console.log('Form submission started');
     console.log('Payment Method:', paymentMethod);
     console.log('Form Values:', {
@@ -400,47 +399,10 @@ export default function BookingForm() {
       totalAmount: calculatePrice()
     });
 
-    // Reset validation errors
-    setValidationErrors({
-      email: '',
-      mobileNumber: '',
-      messenger: ''
-    });
-
-    // Validate email
-    if (!validateEmail(email)) {
-      setValidationErrors(prev => ({
-        ...prev,
-        email: 'Please enter a valid email address'
-      }));
-      return;
-    }
-
-    // Validate phone number
-    if (!validatePhoneNumber(mobileNumber)) {
-      setValidationErrors(prev => ({
-        ...prev,
-        mobileNumber: 'Please enter a valid Philippine mobile number (e.g., 9123456789)'
-      }));
-      return;
-    }
-
-    // Validate messenger contact if provided
-    if (messenger && !validateMessenger(messenger, messengerType)) {
-      setValidationErrors(prev => ({
-        ...prev,
-        messenger: `Please enter a valid ${messengerType === 'whatsapp' ? 'phone number' : 'username'}`
-      }));
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError('');
-    
     // Use either the passed currentUser or the user from context
     const userToUse = currentUser || user;
     
-    // Use the user from the auth context instead of fetching again
+    // Check auth first
     if (!skipUserCheck && !userToUse) {
       console.log('No user found, showing auth modal');
       setShowAuthModal(true);
@@ -448,7 +410,8 @@ export default function BookingForm() {
       return;
     }
     
-    console.log('Starting booking submission with user:', userToUse);
+    setIsSubmitting(true);
+    setError('');
     
     try {
       // Create customer record first
@@ -678,7 +641,7 @@ export default function BookingForm() {
   };
 
   const renderAuthModal = () => (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 auth-modal-container">
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div className="mt-3 text-center">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Create an Account or Sign In</h3>
@@ -826,6 +789,11 @@ export default function BookingForm() {
       }));
     }
   };
+
+  // Near the top of the component, add this effect to monitor auth modal state
+  useEffect(() => {
+    console.log('Auth modal state changed:', showAuthModal);
+  }, [showAuthModal]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1515,7 +1483,13 @@ export default function BookingForm() {
         </div>
       )}
 
-      {showAuthModal && renderAuthModal()}
+      {/* Add debug info */}
+      <div className="hidden">
+        Debug: {showAuthModal ? 'Modal should show' : 'Modal hidden'}
+      </div>
+
+      {/* Modify modal rendering */}
+      {showAuthModal ? renderAuthModal() : null}
     </div>
   );
 }

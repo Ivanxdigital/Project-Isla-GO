@@ -76,11 +76,11 @@ export default function Settings() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
       <div className="max-w-4xl mx-auto">
         {/* Admin Role Management Section */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-8">
           <h2 className="text-xl font-semibold mb-4">Admin Role Management</h2>
           <div className="space-y-4">
             <div className="space-y-2">

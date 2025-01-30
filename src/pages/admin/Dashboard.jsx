@@ -132,24 +132,24 @@ export default function Dashboard() {
   return (
     <div className={`p-6 transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
       <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className={`bg-white p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '100ms' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '100ms' }}>
           <h2 className="text-lg font-semibold mb-2">Total Bookings</h2>
           <p className="text-3xl font-bold">0</p>
         </div>
-        <div className={`bg-white p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '200ms' }}>
+        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '200ms' }}>
           <h2 className="text-lg font-semibold mb-2">Active Drivers</h2>
           <p className="text-3xl font-bold">0</p>
         </div>
-        <div className={`bg-white p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '300ms' }}>
+        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '300ms' }}>
           <h2 className="text-lg font-semibold mb-2">Available Vehicles</h2>
           <p className="text-3xl font-bold">0</p>
         </div>
-        <div className={`bg-white p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '400ms' }}>
+        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '400ms' }}>
           <h2 className="text-lg font-semibold mb-2">Today's Revenue</h2>
           <p className="text-3xl font-bold">₱0</p>
         </div>
-        <div className={`bg-white p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '500ms' }}>
+        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '500ms' }}>
           <h2 className="text-lg font-semibold mb-2">Pending Applications</h2>
           <p className="text-3xl font-bold">{stats.pendingApplications}</p>
         </div>

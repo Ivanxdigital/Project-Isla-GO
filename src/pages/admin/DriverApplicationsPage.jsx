@@ -213,7 +213,7 @@ export default function DriverApplicationsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex flex-col space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                           {app.driver_license_url && (
                             <a
                               href={app.driver_license_url}
@@ -301,7 +301,7 @@ export default function DriverApplicationsPage() {
               </h3>
 
               {/* Application Details Sections */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Personal Information */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex items-center mb-3">
@@ -367,7 +367,7 @@ export default function DriverApplicationsPage() {
               {/* Documents Section */}
               <div className="bg-gray-50 p-4 rounded-lg mb-6">
                 <h4 className="font-medium text-gray-900 mb-3">Uploaded Documents</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   {selectedApp.driver_license_url && (
                     <a
                       href={selectedApp.driver_license_url}
