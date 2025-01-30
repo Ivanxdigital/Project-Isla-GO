@@ -380,6 +380,26 @@ export default function BookingForm() {
       e.preventDefault();
     }
     
+    // Add this console log at the very start
+    console.log('Form submission started');
+    console.log('Payment Method:', paymentMethod);
+    console.log('Form Values:', {
+      firstName,
+      lastName,
+      email,
+      mobileNumber,
+      fromLocation,
+      toLocation,
+      departureDate,
+      departureTime,
+      isReturn,
+      returnDate,
+      returnTime,
+      serviceType,
+      groupSize,
+      totalAmount: calculatePrice()
+    });
+
     // Reset validation errors
     setValidationErrors({
       email: '',
@@ -478,18 +498,15 @@ export default function BookingForm() {
           const session = await createPaymentSession(
             totalAmount,
             `Booking #${booking.id} - ${fromLocation} to ${toLocation}`
-          ).catch(error => {
-            console.error('PayMongo session creation failed:', error);
-            throw new Error('Failed to create payment session: ' + error.message);
-          });
+          );
           
-          console.log('Payment session created successfully:', session);
+          console.log('Payment session created:', session);
           
           if (!session?.attributes?.checkout_url) {
             throw new Error('Invalid payment session: Missing checkout URL');
           }
           
-          // Store booking ID in sessionStorage instead of localStorage
+          // Store booking ID in sessionStorage
           sessionStorage.setItem('lastBookingId', booking.id);
           
           // Update booking with payment session ID
@@ -502,13 +519,15 @@ export default function BookingForm() {
             .eq('id', booking.id);
 
           if (updateError) {
+            console.error('Error updating booking:', updateError);
             throw new Error('Failed to update booking with payment session');
           }
           
-          // Redirect to checkout
+          // Get the checkout URL
           const checkoutUrl = session.attributes.checkout_url;
           console.log('Redirecting to checkout URL:', checkoutUrl);
           
+          // Use window.location.href for redirection
           window.location.href = checkoutUrl;
           return;
         } catch (error) {
