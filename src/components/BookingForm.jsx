@@ -1,4 +1,4 @@
-import React, { useState, Fragment, useEffect } from 'react';
+import React, { useState, Fragment, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/20/solid';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -17,6 +17,8 @@ import { supabase } from '../utils/supabase';
 import { Listbox, Transition } from '@headlessui/react';
 import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid';
 import { useNavigate } from 'react-router-dom';
+import PaymentOptions from './PaymentOptions';
+import debounce from 'lodash.debounce';
 
 const drivers = [
   {
@@ -109,7 +111,7 @@ const ProgressSteps = ({ currentStep }) => {
   );
 };
 
-// Add these validation functions near the top of the component
+// Validation functions
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -134,6 +136,40 @@ const validateMessenger = (contact, type) => {
     default:
       return false;
   }
+};
+
+// Helper function to calculate hotel pickup time based on departure time and offset (in minutes)
+const getHotelPickupTime = (departureTime, offset = 60) => {
+  const [hour, minute] = departureTime.split(':').map(Number);
+  let pickupHour = hour - Math.floor(offset / 60);
+  let pickupMinute = minute - (offset % 60);
+  if (pickupMinute < 0) {
+    pickupMinute += 60;
+    pickupHour -= 1;
+  }
+  return `${pickupHour.toString().padStart(2, '0')}:${pickupMinute.toString().padStart(2, '0')}`;
+};
+
+const createCustomer = async (customerData) => {
+  const { data, error } = await supabase
+    .from('customers')
+    .insert([customerData])
+    .select()
+    .single();
+
+  if (error) throw new Error('Failed to create customer');
+  return data;
+};
+
+const createBooking = async (bookingData) => {
+  const { data, error } = await supabase
+    .from('bookings')
+    .insert([bookingData])
+    .select()
+    .single();
+
+  if (error) throw new Error('Failed to create booking');
+  return data;
 };
 
 export default function BookingForm() {
@@ -166,7 +202,16 @@ export default function BookingForm() {
   const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Add new state for validation errors
+  // New state for hotel pickup
+  const [pickupOption, setPickupOption] = useState('airport'); // 'airport' or 'hotel'
+  const [selectedHotel, setSelectedHotel] = useState(null);
+  const hotelOptions = [
+    { id: 1, name: 'City Centre Hotel A', pickupTimeOffset: 60 },
+    { id: 2, name: 'City Centre Hotel B', pickupTimeOffset: 60 },
+    { id: 3, name: 'City Centre Hotel C', pickupTimeOffset: 60 }
+  ];
+
+  // New state for validation errors
   const [validationErrors, setValidationErrors] = useState({
     email: '',
     mobileNumber: '',
@@ -209,6 +254,8 @@ export default function BookingForm() {
     });
   };
 
+  const timeSlots = generateTimeSlots();
+
   const calculatePrice = () => {
     if (!toLocation || !departureTime) return 0;
     
@@ -225,11 +272,11 @@ export default function BookingForm() {
         break;
       case 'private15':
         // 15-seater private van (higher price)
-        oneWayPrice = (base + peakSurcharge) * 12; // Base price for private 15-seater
+        oneWayPrice = (base + peakSurcharge) * 12;
         break;
       case 'private10':
         // 10-seater private van (slightly cheaper)
-        oneWayPrice = (base + peakSurcharge) * 8; // Base price for private 10-seater
+        oneWayPrice = (base + peakSurcharge) * 8;
         break;
       default:
         oneWayPrice = 0;
@@ -306,115 +353,38 @@ export default function BookingForm() {
     paginate(-1);
   };
 
-  const renderPaymentOptions = () => (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {[
-        { id: 'online', name: 'Online Payment', iconPlaceholder: '💳', description: 'Pay with GCash or Credit Card' },
-        { id: 'cash', name: 'Cash', iconPlaceholder: '💵', description: '₱300 deposit required' }
-      ].map((method) => (
-        <label
-          key={method.id}
-          className={`
-            relative border rounded-lg p-5 sm:p-4 cursor-pointer flex items-center space-x-3
-            ${paymentMethod === method.id ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-          `}
-        >
-          <input
-            type="radio"
-            name="payment"
-            value={method.id}
-            checked={paymentMethod === method.id}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-            className="sr-only"
-          />
-          <div className="flex-shrink-0 text-2xl">
-            {method.iconPlaceholder}
-          </div>
-          <div className="flex-1">
-            <span className="font-medium block">{method.name}</span>
-            <span className="text-sm text-gray-500">
-              {method.description}
-            </span>
-          </div>
-        </label>
-      ))}
-    </div>
-  );
-
-  const createCustomer = async (customerData) => {
-    console.log('Creating customer with data:', customerData);
-    const { data, error } = await supabase
-      .from('customers')
-      .insert([customerData])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating customer:', error);
-      throw new Error('Failed to create customer: ' + error.message);
-    }
-
-    console.log('Customer created successfully:', data);
-    return data;
-  };
-
-  const createBooking = async (bookingData) => {
-    console.log('Creating booking with data:', bookingData);
-    const { data, error } = await supabase
-      .from('bookings')
-      .insert([bookingData])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating booking:', error);
-      throw new Error('Failed to create booking: ' + error.message);
-    }
-
-    console.log('Booking created successfully:', data);
-    return data;
-  };
-
   const handleSubmit = async (e, skipUserCheck = false, currentUser = null) => {
     if (e) {
       e.preventDefault();
     }
     
-    console.log('Form submission started');
-    console.log('Payment Method:', paymentMethod);
-    console.log('Form Values:', {
-      firstName,
-      lastName,
-      email,
-      mobileNumber,
-      fromLocation,
-      toLocation,
-      departureDate,
-      departureTime,
-      isReturn,
-      returnDate,
-      returnTime,
-      serviceType,
-      groupSize,
-      totalAmount: calculatePrice()
-    });
-
-    // Use either the passed currentUser or the user from context
-    const userToUse = currentUser || user;
-    
-    // Check auth first
-    if (!skipUserCheck && !userToUse) {
-      console.log('No user found, showing auth modal');
-      setShowAuthModal(true);
-      setIsSubmitting(false);
-      return;
-    }
+    console.log('Submit handler started');
+    console.log('Current payment method:', paymentMethod);
     
     setIsSubmitting(true);
     setError('');
     
     try {
-      // Create customer record first
+      // Use either the passed currentUser or the user from context
+      const userToUse = currentUser || user;
+      console.log('User to use:', userToUse);
+      
+      // Check auth first
+      if (!skipUserCheck && !userToUse) {
+        console.log('No user found, showing auth modal');
+        setShowAuthModal(true);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate payment method
+      if (!paymentMethod) {
+        console.log('No payment method selected');
+        throw new Error('Please select a payment method');
+      }
+
+      console.log('Creating customer...');
+      // Create customer record
       const customerData = {
         first_name: firstName,
         last_name: lastName,
@@ -424,10 +394,10 @@ export default function BookingForm() {
         user_id: userToUse.id
       };
       
-      console.log('Creating customer with data:', customerData);
       const customer = await createCustomer(customerData);
       console.log('Customer created:', customer);
       
+      console.log('Creating booking...');
       // Create booking record
       const bookingData = {
         customer_id: customer.id,
@@ -440,37 +410,50 @@ export default function BookingForm() {
         return_time: isReturn ? returnTime : null,
         service_type: serviceType,
         group_size: groupSize,
+        pickup_option: pickupOption,
+        hotel_pickup: pickupOption === 'hotel' ? (selectedHotel ? selectedHotel.name : null) : null,
         payment_method: paymentMethod.toLowerCase(),
         total_amount: calculatePrice(),
         payment_status: 'pending',
         status: 'pending'
       };
       
-      console.log('Creating booking with data:', bookingData);
       const booking = await createBooking(bookingData);
       console.log('Booking created:', booking);
       
-      if (paymentMethod.toLowerCase() === 'online') {
+      // Handle payment based on selected method
+      if (paymentMethod?.toLowerCase() === 'online') {
+        console.log('Processing online payment...');
         try {
-          console.log('Starting payment process...');
-          
+          console.log('Starting payment session creation...');
           // Create PayMongo session with amount in cents
-          const totalAmount = calculatePrice() * 100;
-          console.log('Creating payment session for amount:', totalAmount);
+          const totalAmount = calculatePrice();
+          console.log('Base amount:', totalAmount);
+          const amountInCents = Math.round(totalAmount * 100);
+          console.log('Amount in cents:', amountInCents);
           
+          const description = `Booking #${booking.id} - ${fromLocation} to ${toLocation}`;
+          console.log('Payment description:', description);
+
           const session = await createPaymentSession(
-            totalAmount,
-            `Booking #${booking.id} - ${fromLocation} to ${toLocation}`
+            amountInCents,
+            description
           );
+          
+          if (!session) {
+            throw new Error('Failed to create payment session');
+          }
           
           console.log('Payment session created:', session);
           
           if (!session?.attributes?.checkout_url) {
+            console.error('Invalid session response:', session);
             throw new Error('Invalid payment session: Missing checkout URL');
           }
           
           // Store booking ID in sessionStorage
           sessionStorage.setItem('lastBookingId', booking.id);
+          console.log('Stored booking ID:', booking.id);
           
           // Update booking with payment session ID
           const { error: updateError } = await supabase
@@ -486,7 +469,6 @@ export default function BookingForm() {
             throw new Error('Failed to update booking with payment session');
           }
           
-          // Get the checkout URL
           const checkoutUrl = session.attributes.checkout_url;
           console.log('Redirecting to checkout URL:', checkoutUrl);
           
@@ -494,17 +476,25 @@ export default function BookingForm() {
           window.location.href = checkoutUrl;
           return;
         } catch (error) {
-          console.error('Payment processing error:', error);
-          setError(error.message || 'Failed to process payment. Please try again.');
-          setIsSubmitting(false);
+          console.error('Detailed payment error:', error);
+          console.error('Error stack:', error.stack);
+          if (error.response) {
+            console.error('PayMongo API response:', await error.response.json());
+          }
+          throw new Error(`Payment failed: ${error.message}`);
         }
-      } else {
+      } else if (paymentMethod?.toLowerCase() === 'cash') {
+        console.log('Processing cash payment...');
         // Handle cash payment
         navigate('/booking/success');
+      } else {
+        console.error('Invalid payment method:', paymentMethod);
+        throw new Error('Invalid payment method selected');
       }
     } catch (error) {
       console.error('Booking submission error:', error);
       setError(error.message || 'Failed to process booking. Please try again.');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -718,44 +708,37 @@ export default function BookingForm() {
     </div>
   );
 
-  const handleFromLocationChange = (e) => {
+  const handleFromLocationChange = useCallback((e) => {
     const newFrom = e.target.value;
     setFromLocation(newFrom);
-    if (newFrom !== 'Puerto Princesa') {
-      setToLocation('Puerto Princesa');
-    } else {
-      setToLocation('');
-    }
-  };
+    setToLocation(newFrom !== 'Puerto Princesa' ? 'Puerto Princesa' : '');
+  }, []);
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const minDate = tomorrow.toISOString().split('T')[0];
 
-  const getAvailableDestinations = () => {
-    if (fromLocation === 'Puerto Princesa') {
-      return ['El Nido', 'San Vicente'];
-    }
-    return ['Puerto Princesa'];
-  };
+  const availableDestinations = useMemo(() => {
+    return fromLocation === 'Puerto Princesa'
+      ? ['El Nido', 'San Vicente']
+      : ['Puerto Princesa'];
+  }, [fromLocation]);
 
-  const timeSlots = generateTimeSlots();
+  const debouncedValidateEmail = useCallback(
+    debounce((value) => {
+      if (value && !validateEmail(value)) {
+        setValidationErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+      } else {
+        setValidationErrors(prev => ({ ...prev, email: '' }));
+      }
+    }, 300),
+    []
+  );
 
-  // Add these validation handler functions after the validation functions
   const handleEmailChange = (e) => {
     const value = e.target.value;
     setEmail(value);
-    if (value && !validateEmail(value)) {
-      setValidationErrors(prev => ({
-        ...prev,
-        email: 'Please enter a valid email address'
-      }));
-    } else {
-      setValidationErrors(prev => ({
-        ...prev,
-        email: ''
-      }));
-    }
+    debouncedValidateEmail(value);
   };
 
   const handlePhoneNumberChange = (e) => {
@@ -790,7 +773,7 @@ export default function BookingForm() {
     }
   };
 
-  // Near the top of the component, add this effect to monitor auth modal state
+  // Monitor auth modal state
   useEffect(() => {
     console.log('Auth modal state changed:', showAuthModal);
   }, [showAuthModal]);
@@ -824,12 +807,13 @@ export default function BookingForm() {
             >
               {currentStep === 1 ? (
                 <form onSubmit={handleInitialSubmit} className="space-y-6">
+                  {/* From/To Selection */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         {t('form.from')}
                       </label>
-                      <Listbox value={fromLocation} onChange={setFromLocation}>
+                      <Listbox value={fromLocation} onChange={handleFromLocationChange}>
                         <div className="relative mt-1">
                           <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-3 pl-4 pr-10 text-left border focus:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-300">
                             <span className="block truncate">{fromLocation}</span>
@@ -924,6 +908,7 @@ export default function BookingForm() {
                     </div>
                   </div>
 
+                  {/* Departure Date and Time */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -959,6 +944,97 @@ export default function BookingForm() {
                     </div>
                   </div>
 
+                  {/* Pickup Option Selection */}
+                  <div className="mb-8">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pickup Option
+                    </label>
+                    <div className="flex space-x-4">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="pickupOption"
+                          value="airport"
+                          checked={pickupOption === 'airport'}
+                          onChange={(e) => setPickupOption(e.target.value)}
+                          className="form-radio"
+                        />
+                        <span className="ml-2">Airport Pickup</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="pickupOption"
+                          value="hotel"
+                          checked={pickupOption === 'hotel'}
+                          onChange={(e) => setPickupOption(e.target.value)}
+                          className="form-radio"
+                        />
+                        <span className="ml-2">Hotel Pickup</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {pickupOption === 'hotel' && (
+                    <div className="mb-8">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Your Hotel
+                      </label>
+                      <Listbox value={selectedHotel} onChange={setSelectedHotel}>
+                        <div className="relative mt-1">
+                          <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-3 pl-4 pr-10 text-left border focus:outline-none focus-visible:border-blue-500 focus-visible:ring-2">
+                            <span className="block truncate">
+                              {selectedHotel ? selectedHotel.name : 'Select a hotel'}
+                            </span>
+                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                              <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                            </span>
+                          </Listbox.Button>
+                          <Transition
+                            as={Fragment}
+                            leave="transition ease-in duration-100"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                          >
+                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg">
+                              {hotelOptions.map((hotel) => (
+                                <Listbox.Option
+                                  key={hotel.id}
+                                  value={hotel}
+                                  className={({ active }) =>
+                                    `relative cursor-pointer select-none py-2 pl-10 pr-4 ${
+                                      active ? 'bg-blue-100 text-blue-900' : 'text-gray-900'
+                                    }`
+                                  }
+                                >
+                                  {({ selected }) => (
+                                    <>
+                                      <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                                        {hotel.name}
+                                      </span>
+                                      {selected && (
+                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600">
+                                          <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                                        </span>
+                                      )}
+                                    </>
+                                  )}
+                                </Listbox.Option>
+                              ))}
+                            </Listbox.Options>
+                          </Transition>
+                        </div>
+                      </Listbox>
+
+                      {departureTime && selectedHotel && (
+                        <p className="mt-2 text-sm text-gray-600">
+                          Your pickup will be scheduled at approximately {getHotelPickupTime(departureTime, selectedHotel.pickupTimeOffset)}.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Return Trip Selection */}
                   <div className="space-y-4">
                     <label className="flex items-center">
                       <input
@@ -1130,6 +1206,7 @@ export default function BookingForm() {
                     )}
                   </div>
 
+                  {/* Summary Block */}
                   {toLocation && departureTime && (
                     <div className="bg-blue-50 p-4 rounded-md">
                       <div className="flex">
@@ -1143,9 +1220,23 @@ export default function BookingForm() {
                           <div className="mt-2 text-sm text-blue-700">
                             <p>{t('form.from')}: {fromLocation}</p>
                             <p>{t('form.to')}: {toLocation}</p>
-                            <p>{t('form.departureDate')}: {departureDate} {departureTime} ({isPeakHour(departureTime) ? t('booking.peakHours') : t('booking.offPeakHours')})</p>
-                            {isReturn && <p>{t('form.returnDate')}: {returnDate} {returnTime} ({isPeakHour(returnTime) ? t('booking.peakHours') : t('booking.offPeakHours')})</p>}
-                            <p>{serviceType === 'shared' ? `${t('form.groupSize')}: ${groupSize}` : `${t('form.serviceType')}: ${serviceType === 'private15' ? 'Private 15-Seater' : 'Private 10-Seater'}`}</p>
+                            <p>
+                              {t('form.departureDate')}: {departureDate} {departureTime} ({isPeakHour(departureTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
+                            </p>
+                            {isReturn && (
+                              <p>
+                                {t('form.returnDate')}: {returnDate} {returnTime} ({isPeakHour(returnTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
+                              </p>
+                            )}
+                            <p>
+                              {serviceType === 'shared'
+                                ? `${t('form.groupSize')}: ${groupSize}`
+                                : `${t('form.serviceType')}: ${serviceType === 'private15' ? 'Private 15-Seater' : 'Private 10-Seater'}`
+                              }
+                            </p>
+                            <p>
+                              <strong>Pickup Option:</strong> {pickupOption === 'hotel' ? `Hotel Pickup${selectedHotel ? ' from ' + selectedHotel.name : ''}` : 'Airport Pickup'}
+                            </p>
                             <p className="font-bold">
                               {t('booking.total')}: ₱{calculatePrice()}
                             </p>
@@ -1254,7 +1345,7 @@ export default function BookingForm() {
                     <label className="block text-sm font-medium text-gray-700">
                       {t('payment.method')}
                     </label>
-                    {renderPaymentOptions()}
+                    <PaymentOptions paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
                     {paymentMethod === 'Cash' && (
                       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
                         <div className="flex">
@@ -1271,6 +1362,7 @@ export default function BookingForm() {
                     )}
                   </div>
 
+                  {/* Final Summary Section */}
                   <div className="mt-6">
                     <div className="flex items-start">
                       <input
@@ -1350,6 +1442,7 @@ export default function BookingForm() {
                     </div>
                   </div>
 
+                  {/* Final Summary Display */}
                   <div className="flex gap-4">
                     <button
                       type="button"
@@ -1440,6 +1533,7 @@ export default function BookingForm() {
         </div>
       </div>
 
+      {/* Final Booking Summary Display */}
       {toLocation && departureTime && (!isReturn || (isReturn && returnTime)) && (
         <div className="bg-blue-50 p-4 rounded-md">
           <div className="flex">
@@ -1453,11 +1547,23 @@ export default function BookingForm() {
               <div className="mt-2 text-sm text-blue-700">
                 <p>{t('form.from')}: {fromLocation}</p>
                 <p>{t('form.to')}: {toLocation}</p>
-                <p>{t('form.departureDate')}: {departureDate} {departureTime} ({isPeakHour(departureTime) ? t('booking.peakHours') : t('booking.offPeakHours')})</p>
-                {isReturn && <p>{t('form.returnDate')}: {returnDate} {returnTime} ({isPeakHour(returnTime) ? t('booking.peakHours') : t('booking.offPeakHours')})</p>}
-                <p>{serviceType === 'shared' ? `${t('form.groupSize')}: ${groupSize}` : `${t('form.serviceType')}: ${serviceType === 'private15' ? 'Private 15-Seater' : 'Private 10-Seater'}`}</p>
-                
-                {/* Detailed price breakdown */}
+                <p>
+                  {t('form.departureDate')}: {departureDate} {departureTime} ({isPeakHour(departureTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
+                </p>
+                {isReturn && (
+                  <p>
+                    {t('form.returnDate')}: {returnDate} {returnTime} ({isPeakHour(returnTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
+                  </p>
+                )}
+                <p>
+                  {serviceType === 'shared'
+                    ? `${t('form.groupSize')}: ${groupSize}`
+                    : `${t('form.serviceType')}: ${serviceType === 'private15' ? 'Private 15-Seater' : 'Private 10-Seater'}`
+                  }
+                </p>
+                <p>
+                  <strong>Pickup Option:</strong> {pickupOption === 'hotel' ? `Hotel Pickup${selectedHotel ? ' from ' + selectedHotel.name : ''}` : 'Airport Pickup'}
+                </p>
                 {getPriceBreakdown() && (
                   <div className="mt-2 border-t border-blue-200 pt-2">
                     <p>Base Fare: ₱{getPriceBreakdown().basePrice}</p>
@@ -1483,12 +1589,11 @@ export default function BookingForm() {
         </div>
       )}
 
-      {/* Add debug info */}
+      {/* Debug info */}
       <div className="hidden">
         Debug: {showAuthModal ? 'Modal should show' : 'Modal hidden'}
       </div>
 
-      {/* Modify modal rendering */}
       {showAuthModal ? renderAuthModal() : null}
     </div>
   );

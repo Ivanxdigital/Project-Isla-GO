@@ -13,30 +13,70 @@ export default function Dashboard() {
     activeDrivers: 0,
     availableVehicles: 0,
     todayRevenue: 0,
-    pendingApplications: 0
+    pendingApplications: 0,
+    todayBookings: 0
   });
 
   useEffect(() => {
     fetchStats();
     // Add fade-in effect when component mounts
     setIsVisible(true);
+    // Refresh stats every 5 minutes
+    const interval = setInterval(fetchStats, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchStats = async () => {
     try {
-      // Fetch pending applications count
-      const { count: pendingCount } = await supabase
+      // Fetch total bookings count
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('id, status, total_amount, created_at', { count: 'exact' });
+
+      if (bookingsError) throw bookingsError;
+
+      // Get today's bookings and revenue
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const todayBookings = bookingsData.filter(booking => {
+        const bookingDate = new Date(booking.created_at);
+        return bookingDate >= today;
+      });
+
+      const todayRevenue = todayBookings.reduce((sum, booking) => {
+        return sum + (booking.total_amount || 0);
+      }, 0);
+
+      // Count active drivers
+      const { count: activeDriversCount, error: driversError } = await supabase
+        .from('drivers')
+        .select('*', { count: 'exact' })
+        .eq('status', 'active');
+
+      if (driversError) throw driversError;
+
+      // Count pending applications
+      const { count: pendingCount, error: applicationsError } = await supabase
         .from('driver_applications')
         .select('*', { count: 'exact' })
         .eq('status', 'pending');
 
-      // Update stats
-      setStats(prev => ({
-        ...prev,
-        pendingApplications: pendingCount
-      }));
+      if (applicationsError) throw applicationsError;
+
+      // Update stats state
+      setStats({
+        totalBookings: bookingsData.length,
+        activeDrivers: activeDriversCount || 0,
+        availableVehicles: activeDriversCount || 0, // Assuming one vehicle per active driver
+        todayRevenue: todayRevenue,
+        pendingApplications: pendingCount || 0,
+        todayBookings: todayBookings.length
+      });
+
     } catch (error) {
       console.error('Error fetching stats:', error);
+      toast.error('Failed to fetch dashboard statistics');
     }
   };
 
@@ -135,19 +175,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '100ms' }}>
           <h2 className="text-lg font-semibold mb-2">Total Bookings</h2>
-          <p className="text-3xl font-bold">0</p>
+          <p className="text-3xl font-bold">{stats.totalBookings}</p>
         </div>
         <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '200ms' }}>
-          <h2 className="text-lg font-semibold mb-2">Active Drivers</h2>
-          <p className="text-3xl font-bold">0</p>
+          <h2 className="text-lg font-semibold mb-2">Today's Bookings</h2>
+          <p className="text-3xl font-bold">{stats.todayBookings}</p>
         </div>
         <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '300ms' }}>
-          <h2 className="text-lg font-semibold mb-2">Available Vehicles</h2>
-          <p className="text-3xl font-bold">0</p>
+          <h2 className="text-lg font-semibold mb-2">Active Drivers</h2>
+          <p className="text-3xl font-bold">{stats.activeDrivers}</p>
         </div>
         <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '400ms' }}>
           <h2 className="text-lg font-semibold mb-2">Today's Revenue</h2>
-          <p className="text-3xl font-bold">₱0</p>
+          <p className="text-3xl font-bold">₱{stats.todayRevenue.toLocaleString()}</p>
         </div>
         <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '500ms' }}>
           <h2 className="text-lg font-semibold mb-2">Pending Applications</h2>

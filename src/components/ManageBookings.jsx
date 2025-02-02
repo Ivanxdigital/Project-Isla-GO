@@ -4,6 +4,32 @@ import { supabase } from '../utils/supabase';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 
+// Helper function to compute the hotel pickup time based on the departure time and an offset (default is 60 minutes)
+function getHotelPickupTime(departureTime, offset = 60) {
+  // Expect departureTime in "HH:MM" or "HH:MM:SS" format – we take the first 5 characters for consistency.
+  const timeStr = departureTime.slice(0, 5);
+  const [hour, minute] = timeStr.split(':').map(Number);
+  let computedHour = hour - Math.floor(offset / 60);
+  let computedMinute = minute - (offset % 60);
+  if (computedMinute < 0) {
+    computedMinute += 60;
+    computedHour -= 1;
+  }
+  return `${computedHour.toString().padStart(2, '0')}:${computedMinute.toString().padStart(2, '0')}`;
+}
+
+// Helper function to subtract minutes from a time string ("HH:MM") and return the result in the same format.
+function subtractMinutes(timeStr, minutesToSubtract) {
+  const [hour, minute] = timeStr.split(':').map(Number);
+  let newHour = hour;
+  let newMinute = minute - minutesToSubtract;
+  if (newMinute < 0) {
+    newMinute += 60;
+    newHour -= 1;
+  }
+  return `${newHour.toString().padStart(2, '0')}:${newMinute.toString().padStart(2, '0')}`;
+}
+
 export default function ManageBookings() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -22,7 +48,7 @@ export default function ManageBookings() {
       setLoading(true);
       setError(null);
 
-      // First, fetch the bookings
+      // Fetch the bookings for the logged-in user
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select('*')
@@ -31,7 +57,7 @@ export default function ManageBookings() {
 
       if (bookingsError) throw bookingsError;
 
-      // Then, fetch related payments if needed
+      // Fetch related payments (if any)
       const bookingIds = bookingsData.map(booking => booking.id);
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
@@ -74,13 +100,12 @@ export default function ManageBookings() {
   };
 
   const handleCancelBooking = async (bookingId) => {
-    // Show confirmation dialog
+    // Confirm cancellation
     if (!window.confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) {
       return;
     }
 
     try {
-      // Show loading state
       const loadingToast = toast.loading('Cancelling your booking...');
 
       const { error } = await supabase
@@ -94,11 +119,8 @@ export default function ManageBookings() {
 
       if (error) throw error;
 
-      // Dismiss loading toast and show success
       toast.dismiss(loadingToast);
       toast.success('Booking cancelled successfully');
-
-      // Refresh bookings after cancellation
       await fetchBookings();
     } catch (err) {
       console.error('Error cancelling booking:', err);
@@ -176,55 +198,71 @@ export default function ManageBookings() {
 
         {/* Bookings Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {bookings[activeTab].map((booking) => (
-            <div
-              key={booking.id}
-              className="bg-gray-50 rounded-lg p-6 hover:shadow-md transition-shadow duration-200"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {booking.from_location} → {booking.to_location}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {format(new Date(booking.departure_date), 'MMM d, yyyy')} at{' '}
-                    {booking.departure_time.slice(0, 5)}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Service: {booking.service_type}
-                  </p>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
-                  {booking.status}
-                </span>
-              </div>
-              
-              <div className="mt-4 text-sm text-gray-600">
-                <p>Group Size: {booking.group_size}</p>
-                <p>Amount: ₱{parseFloat(booking.total_amount).toLocaleString()}</p>
-                <p>Payment Status: {booking.payment_status}</p>
-                {booking.payment && (
-                  <p>Payment Provider: {booking.payment.provider}</p>
-                )}
-              </div>
+          {bookings[activeTab].map((booking) => {
+            // For hotel pickups, compute the pickup time (default offset: 60 minutes) 
+            // and a "ready by" time (10 minutes earlier)
+            let hotelPickupDisplay = null;
+            if (booking.pickup_option === 'hotel' && booking.departure_time) {
+              const departureTimeStr = booking.departure_time.slice(0, 5);
+              const hotelPickupTime = getHotelPickupTime(departureTimeStr, 60);
+              const readyByTime = subtractMinutes(hotelPickupTime, 10);
+              hotelPickupDisplay = (
+                <p className="mt-1">
+                  <strong>Hotel Pickup Time:</strong> {hotelPickupTime} <span className="text-xs text-gray-500">(be ready by {readyByTime})</span>
+                </p>
+              );
+            }
 
-              <div className="space-y-2 mt-4">
-                <button 
-                  className="w-full px-4 py-2 text-sm font-medium text-ai-600 bg-ai-50 rounded-md hover:bg-ai-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ai-500 transition-colors duration-200"
-                >
-                  View Details
-                </button>
-                {activeTab === 'upcoming' && booking.status !== 'cancelled' && (
+            return (
+              <div
+                key={booking.id}
+                className="bg-gray-50 rounded-lg p-6 hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {booking.from_location} → {booking.to_location}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {format(new Date(booking.departure_date), 'MMM d, yyyy')} at {booking.departure_time.slice(0, 5)}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Service: {booking.service_type}
+                    </p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
+                    {booking.status}
+                  </span>
+                </div>
+                
+                <div className="mt-4 text-sm text-gray-600">
+                  <p>Group Size: {booking.group_size}</p>
+                  <p>Amount: ₱{parseFloat(booking.total_amount).toLocaleString()}</p>
+                  <p>Payment Status: {booking.payment_status}</p>
+                  {booking.payment && (
+                    <p>Payment Provider: {booking.payment.provider}</p>
+                  )}
+                  {hotelPickupDisplay}
+                </div>
+
+                <div className="space-y-2 mt-4">
                   <button 
-                    onClick={() => handleCancelBooking(booking.id)}
-                    className="w-full px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                    className="w-full px-4 py-2 text-sm font-medium text-ai-600 bg-ai-50 rounded-md hover:bg-ai-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ai-500 transition-colors duration-200"
                   >
-                    Cancel Booking
+                    View Details
                   </button>
-                )}
+                  {activeTab === 'upcoming' && booking.status !== 'cancelled' && (
+                    <button 
+                      onClick={() => handleCancelBooking(booking.id)}
+                      className="w-full px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                    >
+                      Cancel Booking
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Empty State */}

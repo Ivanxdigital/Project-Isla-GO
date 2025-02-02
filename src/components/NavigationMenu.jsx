@@ -152,16 +152,16 @@ export default function NavigationMenu() {
             <Transition
               show={isProfileDropdownOpen}
               enter="transition-all duration-300 ease-out"
-              enterFrom="opacity-0 translate-y-[-20px]"
-              enterTo="opacity-100 translate-y-0"
+              enterFrom="transform opacity-0 scale-95 -translate-y-2"
+              enterTo="transform opacity-100 scale-100 translate-y-0"
               leave="transition-all duration-200 ease-in"
-              leaveFrom="opacity-100 translate-y-0"
-              leaveTo="opacity-0 translate-y-[-20px]"
+              leaveFrom="transform opacity-100 scale-100 translate-y-0"
+              leaveTo="transform opacity-0 scale-95 -translate-y-2"
               className="absolute right-0 w-48 mt-2 z-50"
             >
               <div 
                 id="profile-dropdown"
-                className="bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1"
+                className="bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 backdrop-blur-sm"
               >
                 <div className="px-4 py-2 border-b border-gray-100">
                   <p className="text-sm font-medium text-gray-900">
