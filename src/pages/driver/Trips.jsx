@@ -18,6 +18,23 @@ export default function DriverTrips() {
     fetchTrips();
   }, [user, filter, driverAuthLoading]);
 
+  useEffect(() => {
+    const tripSubscription = supabase
+      .channel('trips')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'trip_assignments' },
+        (payload) => {
+          // Update trips in real-time
+          fetchTrips();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      tripSubscription.unsubscribe();
+    };
+  }, []);
+
   async function fetchTrips() {
     if (!user) return;
 

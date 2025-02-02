@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { createBrowserRouter, RouterProvider, Navigate, useLocation, Outlet, Link } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate, useLocation, Outlet, Link, BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AdminAuthProvider } from './contexts/AdminAuthContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -39,6 +39,7 @@ import DriverDashboard from './pages/driver/Dashboard';
 import DriverProfile from './pages/driver/Profile';
 import DriverTrips from './pages/driver/Trips';
 import DriverAvailability from './pages/driver/Availability';
+import AuthCallback from './components/AuthCallback';
 
 function RootLayout() {
   const location = useLocation();
@@ -259,6 +260,10 @@ const routes = [
             )
           }
         ]
+      },
+      {
+        path: "/auth/callback",
+        element: <AuthCallback />
       },
       {
         path: "*",

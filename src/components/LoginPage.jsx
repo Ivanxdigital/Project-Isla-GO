@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { signIn } from '../utils/auth';
+import { supabase } from '../utils/supabase';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -32,6 +33,22 @@ export default function LoginPage() {
       console.error('Login error:', error);
       setError(error.message);
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error('Google login error:', error);
+      setError(error.message);
     }
   };
 
@@ -110,6 +127,32 @@ export default function LoginPage() {
               </Link>
             </div>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={handleGoogleSignIn}
+                type="button"
+                className="flex w-full justify-center items-center gap-3 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <img 
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                  alt="Google logo" 
+                  className="w-5 h-5"
+                />
+                Sign in with Google
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

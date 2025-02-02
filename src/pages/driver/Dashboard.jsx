@@ -15,6 +15,13 @@ export default function DriverDashboard() {
     completedTrips: 0,
     pendingTrips: 0
   });
+  const [earnings, setEarnings] = useState({
+    daily: 0,
+    weekly: 0,
+    monthly: 0,
+    totalTrips: 0,
+    rating: 0
+  });
 
   useEffect(() => {
     if (driverAuthLoading) return;
@@ -83,7 +90,43 @@ export default function DriverDashboard() {
       }
     }
 
+    const fetchEarnings = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from('trip_assignments')
+        .select(`
+          *,
+          bookings (
+            total_amount,
+            status,
+            created_at
+          )
+        `)
+        .eq('driver_id', user.id)
+        .eq('bookings.status', 'COMPLETED');
+
+      if (error) throw error;
+
+      const calculateEarnings = (trips, startDate) => {
+        return trips
+          .filter(trip => new Date(trip.bookings.created_at) >= new Date(startDate))
+          .reduce((sum, trip) => sum + (trip.bookings.total_amount * 0.8), 0); // Assuming 80% driver share
+      };
+
+      setEarnings({
+        daily: calculateEarnings(data, today),
+        weekly: calculateEarnings(data, weekAgo),
+        monthly: calculateEarnings(data, monthAgo),
+        totalTrips: data.length,
+        rating: 4.5 // You'll need to implement actual rating calculation
+      });
+    };
+
     fetchDriverData();
+    fetchEarnings();
 
     return () => {
       mounted = false;
@@ -206,6 +249,14 @@ export default function DriverDashboard() {
           ) : (
             <p className="text-gray-500">No recent trips found.</p>
           )}
+        </div>
+      </div>
+
+      {/* Earnings Section */}
+      <div className="bg-white rounded-lg shadow mt-8">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Earnings</h2>
+          {/* Add earnings content here */}
         </div>
       </div>
     </div>
