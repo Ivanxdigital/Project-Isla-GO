@@ -5,557 +5,1485 @@ This file contains the complete database schema (tables and columns), Row-Level 
 ---
 
 ## 1. Table Structures
-
-```json
+[
+  {
+    "table_name": "admin_access"
+  },
+  {
+    "table_name": "bookings"
+  },
+  {
+    "table_name": "customers"
+  },
+  {
+    "table_name": "driver_application_drafts"
+  },
+  {
+    "table_name": "driver_applications"
+  },
+  {
+    "table_name": "driver_availability"
+  },
+  {
+    "table_name": "drivers"
+  },
+  {
+    "table_name": "payments"
+  },
+  {
+    "table_name": "profiles"
+  },
+  {
+    "table_name": "routes"
+  },
+  {
+    "table_name": "staff_roles"
+  },
+  {
+    "table_name": "staff_roles_old"
+  },
+  {
+    "table_name": "trip_assignments"
+  },
+  {
+    "table_name": "users"
+  },
+  {
+    "table_name": "vehicles"
+  }
+]
+## 2. Column Information
 [
   {
     "table_name": "admin_access",
-    "columns": [
-      "user_id uuid",
-      "is_super_admin boolean",
-      "created_at timestamp with time zone"
-    ]
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "admin_access",
+    "column_name": "is_super_admin",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "admin_access",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
   },
   {
     "table_name": "bookings",
-    "columns": [
-      "return_time time without time zone",
-      "created_at timestamp with time zone",
-      "return_date date",
-      "updated_at timestamp with time zone",
-      "group_size integer",
-      "payment_session_id text",
-      "status text",
-      "payment_status text",
-      "payment_method text",
-      "from_location text",
-      "to_location text",
-      "service_type text",
-      "id uuid",
-      "customer_id uuid",
-      "departure_date date",
-      "departure_time time without time zone",
-      "total_amount numeric",
-      "user_id uuid"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "customer_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "from_location",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "to_location",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "departure_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "departure_time",
+    "data_type": "time without time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "return_date",
+    "data_type": "date",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "return_time",
+    "data_type": "time without time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "service_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "group_size",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "payment_method",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "total_amount",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "payment_status",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "status",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "payment_session_id",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "pickup_option",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'airport'::text"
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "hotel_pickup",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
   },
   {
     "table_name": "customers",
-    "columns": [
-      "first_name text",
-      "last_name text",
-      "mobile_number text",
-      "id uuid",
-      "updated_at timestamp with time zone",
-      "user_id uuid",
-      "messenger_contact text",
-      "messenger_type text",
-      "created_at timestamp with time zone"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "customers",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "customers",
+    "column_name": "first_name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "customers",
+    "column_name": "last_name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "customers",
+    "column_name": "mobile_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "customers",
+    "column_name": "messenger_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "customers",
+    "column_name": "messenger_contact",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "customers",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "customers",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
   },
   {
     "table_name": "driver_application_drafts",
-    "columns": [
-      "last_updated timestamp with time zone",
-      "current_step integer",
-      "user_id uuid",
-      "id uuid",
-      "form_data jsonb"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "driver_application_drafts",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_application_drafts",
+    "column_name": "form_data",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_application_drafts",
+    "column_name": "current_step",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_application_drafts",
+    "column_name": "last_updated",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "timezone('utc'::text, now())"
   },
   {
     "table_name": "driver_applications",
-    "columns": [
-      "mobile_number text",
-      "email text",
-      "full_name text",
-      "documents jsonb",
-      "driver_id uuid",
-      "id uuid",
-      "notes text",
-      "license_expiration date",
-      "medical_certificate_url text",
-      "nbi_clearance_url text",
-      "vehicle_rear_url text",
-      "vehicle_year integer",
-      "vehicle_side_url text",
-      "vehicle_front_url text",
-      "insurance_url text",
-      "or_cr_url text",
-      "driver_license_url text",
-      "policy_expiration date",
-      "account_holder text",
-      "account_number text",
-      "bank_name text",
-      "cpc_number text",
-      "tnvs_number text",
-      "policy_number text",
-      "insurance_provider text",
-      "vehicle_color text",
-      "or_cr_number text",
-      "plate_number text",
-      "vehicle_model text",
-      "vehicle_make text",
-      "license_type text",
-      "status USER-DEFINED",
-      "license_number text",
-      "reviewed_by uuid",
-      "reviewed_at timestamp with time zone",
-      "created_at timestamp with time zone",
-      "updated_at timestamp with time zone",
-      "address text",
-      "user_id uuid"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "driver_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "full_name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "email",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "mobile_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "address",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "license_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "license_expiration",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "license_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "vehicle_make",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "vehicle_model",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "vehicle_year",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "plate_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "or_cr_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "vehicle_color",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "insurance_provider",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "policy_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "policy_expiration",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "tnvs_number",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "cpc_number",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "bank_name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "account_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "account_holder",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "driver_license_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "or_cr_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "insurance_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "vehicle_front_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "vehicle_side_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "vehicle_rear_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "nbi_clearance_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "medical_certificate_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "status",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "YES",
+    "column_default": "'pending'::driver_application_status"
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "reviewed_by",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "reviewed_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "documents",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
   },
   {
     "table_name": "driver_availability",
-    "columns": [
-      "created_at timestamp with time zone",
-      "is_available boolean",
-      "time_slot time without time zone",
-      "location text",
-      "day_of_week integer",
-      "driver_id uuid",
-      "id uuid",
-      "updated_at timestamp with time zone"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "driver_availability",
+    "column_name": "driver_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_availability",
+    "column_name": "day_of_week",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_availability",
+    "column_name": "time_slot",
+    "data_type": "time without time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_availability",
+    "column_name": "location",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "driver_availability",
+    "column_name": "is_available",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "driver_availability",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "driver_availability",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
   },
   {
     "table_name": "drivers",
-    "columns": [
-      "id uuid",
-      "license_expiry date",
-      "created_at timestamp with time zone",
-      "updated_at timestamp with time zone",
-      "documents_verified boolean",
-      "status USER-DEFINED",
-      "name text",
-      "license_number text",
-      "contact_number text",
-      "emergency_contact text",
-      "notes text"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "license_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "contact_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "emergency_contact",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "status",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "YES",
+    "column_default": "'active'::driver_status"
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "documents_verified",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "license_expiry",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
   },
   {
     "table_name": "payments",
-    "columns": [
-      "created_at timestamp with time zone",
-      "id uuid",
-      "booking_id uuid",
-      "status text",
-      "provider text",
-      "provider_payment_id text",
-      "provider_session_id text",
-      "amount numeric",
-      "updated_at timestamp with time zone"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "payments",
+    "column_name": "booking_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "payments",
+    "column_name": "amount",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "payments",
+    "column_name": "status",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'pending'::text"
+  },
+  {
+    "table_name": "payments",
+    "column_name": "provider",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "payments",
+    "column_name": "provider_payment_id",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "payments",
+    "column_name": "provider_session_id",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "payments",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "payments",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
   },
   {
     "table_name": "profiles",
-    "columns": [
-      "created_at timestamp with time zone",
-      "date_of_birth date",
-      "id uuid",
-      "full_name text",
-      "mobile_number text",
-      "avatar_url text",
-      "role character varying",
-      "bio text"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "auth.uid()"
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "full_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "mobile_number",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "date_of_birth",
+    "data_type": "date",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "bio",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "avatar_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "role",
+    "data_type": "character varying",
+    "is_nullable": "YES",
+    "column_default": "'user'::character varying"
   },
   {
     "table_name": "routes",
-    "columns": [
-      "from_location text",
-      "created_at timestamp with time zone",
-      "status boolean",
-      "base_price numeric",
-      "estimated_duration interval",
-      "id uuid",
-      "updated_at timestamp with time zone",
-      "description text",
-      "to_location text"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "routes",
+    "column_name": "from_location",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "routes",
+    "column_name": "to_location",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "routes",
+    "column_name": "base_price",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "routes",
+    "column_name": "estimated_duration",
+    "data_type": "interval",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "routes",
+    "column_name": "status",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "routes",
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "routes",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
+  },
+  {
+    "table_name": "routes",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
   },
   {
     "table_name": "staff_roles",
-    "columns": [
-      "created_at timestamp with time zone",
-      "role text",
-      "updated_at timestamp with time zone",
-      "user_id uuid",
-      "id uuid"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "staff_roles",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "staff_roles",
+    "column_name": "role",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "staff_roles",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "staff_roles",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
   },
   {
     "table_name": "staff_roles_old",
-    "columns": [
-      "user_id uuid",
-      "role USER-DEFINED",
-      "permissions jsonb",
-      "created_at timestamp with time zone",
-      "updated_at timestamp with time zone",
-      "id uuid"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "staff_roles_old",
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "staff_roles_old",
+    "column_name": "role",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "staff_roles_old",
+    "column_name": "permissions",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "staff_roles_old",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
+  },
+  {
+    "table_name": "staff_roles_old",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
   },
   {
     "table_name": "trip_assignments",
-    "columns": [
-      "created_at timestamp with time zone",
-      "vehicle_id uuid",
-      "updated_at timestamp with time zone",
-      "booking_id uuid",
-      "id uuid",
-      "notes text",
-      "departure_time timestamp with time zone",
-      "status USER-DEFINED",
-      "driver_id uuid"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "trip_assignments",
+    "column_name": "booking_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "trip_assignments",
+    "column_name": "vehicle_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "trip_assignments",
+    "column_name": "driver_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "trip_assignments",
+    "column_name": "departure_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "trip_assignments",
+    "column_name": "status",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "YES",
+    "column_default": "'pending'::trip_status"
+  },
+  {
+    "table_name": "trip_assignments",
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "trip_assignments",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
+  },
+  {
+    "table_name": "trip_assignments",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
   },
   {
     "table_name": "users",
-    "columns": [
-      "id uuid",
-      "created_at timestamp with time zone",
-      "updated_at timestamp with time zone",
-      "phone text",
-      "role character varying",
-      "first_name text",
-      "last_name text"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "users",
+    "column_name": "first_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "users",
+    "column_name": "last_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "users",
+    "column_name": "phone",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "users",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "timezone('utc'::text, now())"
+  },
+  {
+    "table_name": "users",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "timezone('utc'::text, now())"
+  },
+  {
+    "table_name": "users",
+    "column_name": "role",
+    "data_type": "character varying",
+    "is_nullable": "YES",
+    "column_default": "'user'::character varying"
   },
   {
     "table_name": "vehicles",
-    "columns": [
-      "updated_at timestamp with time zone",
-      "created_at timestamp with time zone",
-      "capacity integer",
-      "plate_number text",
-      "status USER-DEFINED",
-      "notes text",
-      "model text",
-      "last_maintenance_date timestamp with time zone",
-      "id uuid"
-    ]
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "uuid_generate_v4()"
+  },
+  {
+    "table_name": "vehicles",
+    "column_name": "plate_number",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "vehicles",
+    "column_name": "model",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "vehicles",
+    "column_name": "capacity",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "vehicles",
+    "column_name": "status",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "YES",
+    "column_default": "'active'::vehicle_status"
+  },
+  {
+    "table_name": "vehicles",
+    "column_name": "last_maintenance_date",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "vehicles",
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "vehicles",
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
+  },
+  {
+    "table_name": "vehicles",
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "timezone('utc'::text, now())"
+  }
+]
+## 3. List Primary Key Restraints
+[
+  {
+    "table_name": "admin_access",
+    "column_name": "user_id"
+  },
+  {
+    "table_name": "bookings",
+    "column_name": "id"
+  },
+  {
+    "table_name": "customers",
+    "column_name": "id"
+  },
+  {
+    "table_name": "driver_application_drafts",
+    "column_name": "id"
+  },
+  {
+    "table_name": "driver_applications",
+    "column_name": "id"
+  },
+  {
+    "table_name": "driver_availability",
+    "column_name": "id"
+  },
+  {
+    "table_name": "drivers",
+    "column_name": "id"
+  },
+  {
+    "table_name": "payments",
+    "column_name": "id"
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "id"
+  },
+  {
+    "table_name": "routes",
+    "column_name": "id"
+  },
+  {
+    "table_name": "staff_roles",
+    "column_name": "id"
+  },
+  {
+    "table_name": "staff_roles_old",
+    "column_name": "id"
+  },
+  {
+    "table_name": "trip_assignments",
+    "column_name": "id"
+  },
+  {
+    "table_name": "users",
+    "column_name": "id"
+  },
+  {
+    "table_name": "users",
+    "column_name": "id"
+  },
+  {
+    "table_name": "vehicles",
+    "column_name": "id"
   }
 ]
 
----
-## 2. RLS Policies
+## 4. List Foreign Key Restraints
 [
   {
-    "tablename": "vehicles",
-    "policyname": "Drivers can view assigned vehicles",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "((id IN ( SELECT trip_assignments.vehicle_id\n   FROM trip_assignments\n  WHERE (trip_assignments.driver_id = auth.uid()))) AND (EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'driver'::text)))))",
-    "with_check": null
+    "table_name": "admin_access",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "profiles",
-    "policyname": "Users can insert own profile",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "INSERT",
-    "qual": null,
-    "with_check": "(auth.uid() = id)"
+    "table_name": "bookings",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "profiles",
-    "policyname": "Users can update own profile",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "UPDATE",
-    "qual": "(auth.uid() = id)",
-    "with_check": null
+    "table_name": "bookings",
+    "column_name": "customer_id",
+    "foreign_table": "customers",
+    "foreign_column": "id"
   },
   {
-    "tablename": "vehicles",
-    "policyname": "Staff can view vehicles",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "(auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old))",
-    "with_check": null
+    "table_name": "customers",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "vehicles",
-    "policyname": "Only admins can modify vehicles",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "ALL",
-    "qual": "(auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old\n  WHERE (staff_roles_old.role = 'admin'::user_role)))",
-    "with_check": "(auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old\n  WHERE (staff_roles_old.role = 'admin'::user_role)))"
+    "table_name": "driver_application_drafts",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "staff_roles",
-    "policyname": "Enable all operations for admins and self-view",
-    "permissive": "PERMISSIVE",
-    "roles": "{public}",
-    "cmd": "ALL",
-    "qual": "((auth.uid() = user_id) OR (auth.uid() = '681a7bc2-4274-4cb4-a5e8-cd2ebf0e9c27'::uuid))",
-    "with_check": null
+    "table_name": "driver_applications",
+    "column_name": "user_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "routes",
-    "policyname": "Staff can view routes",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "(auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old))",
-    "with_check": null
+    "table_name": "driver_applications",
+    "column_name": "reviewed_by",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "routes",
-    "policyname": "Only admins can modify routes",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "ALL",
-    "qual": "(auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old\n  WHERE (staff_roles_old.role = 'admin'::user_role)))",
-    "with_check": "(auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old\n  WHERE (staff_roles_old.role = 'admin'::user_role)))"
+    "table_name": "driver_applications",
+    "column_name": "driver_id",
+    "foreign_table": "drivers",
+    "foreign_column": "id"
   },
   {
-    "tablename": "trip_assignments",
-    "policyname": "Staff can view trip assignments",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "(auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old))",
-    "with_check": null
+    "table_name": "driver_applications",
+    "column_name": "reviewed_by",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "trip_assignments",
-    "policyname": "Admins can modify trip assignments",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "ALL",
-    "qual": "(auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old\n  WHERE (staff_roles_old.role = 'admin'::user_role)))",
-    "with_check": null
+    "table_name": "driver_applications",
+    "column_name": "driver_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "trip_assignments",
-    "policyname": "Support staff can update pending trips",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "UPDATE",
-    "qual": "((auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old\n  WHERE (staff_roles_old.role = 'support'::user_role))) AND (status = ANY (ARRAY['pending'::trip_status, 'confirmed'::trip_status])))",
-    "with_check": "((auth.uid() IN ( SELECT staff_roles_old.user_id\n   FROM staff_roles_old\n  WHERE (staff_roles_old.role = 'support'::user_role))) AND (status = ANY (ARRAY['pending'::trip_status, 'confirmed'::trip_status])))"
+    "table_name": "driver_availability",
+    "column_name": "driver_id",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "staff_roles_old",
-    "policyname": "Enable read access for authenticated users",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "(auth.uid() = user_id)",
-    "with_check": null
+    "table_name": "profiles",
+    "column_name": "id",
+    "foreign_table": "users",
+    "foreign_column": "id"
   },
   {
-    "tablename": "driver_applications",
-    "policyname": "driver_applications_policy",
-    "permissive": "PERMISSIVE",
-    "roles": "{public}",
-    "cmd": "ALL",
-    "qual": "((EXISTS ( SELECT 1\n   FROM admin_access\n  WHERE ((admin_access.user_id = auth.uid()) AND (admin_access.is_super_admin = true)))) OR (auth.uid() = driver_id))",
-    "with_check": null
+    "table_name": "trip_assignments",
+    "column_name": "vehicle_id",
+    "foreign_table": "vehicles",
+    "foreign_column": "id"
   },
   {
-    "tablename": "admin_access",
-    "policyname": "admin_access_policy",
-    "permissive": "PERMISSIVE",
-    "roles": "{public}",
-    "cmd": "ALL",
-    "qual": "(user_id = auth.uid())",
-    "with_check": null
+    "table_name": "trip_assignments",
+    "column_name": "driver_id",
+    "foreign_table": "drivers",
+    "foreign_column": "id"
   },
   {
-    "tablename": "staff_roles",
-    "policyname": "allow_read_own_role",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "(auth.uid() = user_id)",
-    "with_check": null
+    "table_name": "trip_assignments",
+    "column_name": "booking_id",
+    "foreign_table": "bookings",
+    "foreign_column": "id"
   },
   {
-    "tablename": "staff_roles",
-    "policyname": "Staff roles access policy",
-    "permissive": "PERMISSIVE",
-    "roles": "{public}",
-    "cmd": "ALL",
-    "qual": "((EXISTS ( SELECT 1\n   FROM admin_access\n  WHERE ((admin_access.user_id = auth.uid()) AND (admin_access.is_super_admin = true)))) OR (auth.uid() = user_id))",
-    "with_check": null
-  },
-  {
-    "tablename": "drivers",
-    "policyname": "Drivers can view their own profile",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "((id = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'driver'::text)))))",
-    "with_check": null
-  },
-  {
-    "tablename": "drivers",
-    "policyname": "Drivers can update their own status",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "UPDATE",
-    "qual": "((id = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'driver'::text)))))",
-    "with_check": "((id = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'driver'::text)))))"
-  },
-  {
-    "tablename": "profiles",
-    "policyname": "Anyone can view profiles",
-    "permissive": "PERMISSIVE",
-    "roles": "{public}",
-    "cmd": "SELECT",
-    "qual": "true",
-    "with_check": null
-  },
-  {
-    "tablename": "staff_roles",
-    "policyname": "staff_roles_access_policy",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "(auth.uid() = user_id)",
-    "with_check": null
-  },
-  {
-    "tablename": "staff_roles",
-    "policyname": "staff_roles_admin_policy",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "ALL",
-    "qual": "(EXISTS ( SELECT 1\n   FROM staff_roles staff_roles_1\n  WHERE ((staff_roles_1.user_id = auth.uid()) AND (staff_roles_1.role = 'admin'::text))))",
-    "with_check": "(EXISTS ( SELECT 1\n   FROM staff_roles staff_roles_1\n  WHERE ((staff_roles_1.user_id = auth.uid()) AND (staff_roles_1.role = 'admin'::text))))"
-  },
-  {
-    "tablename": "trip_assignments",
-    "policyname": "Drivers can view their assigned trips",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "((driver_id = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'driver'::text)))))",
-    "with_check": null
-  },
-  {
-    "tablename": "drivers",
-    "policyname": "Only admins can modify drivers",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "ALL",
-    "qual": "(EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'admin'::text))))",
-    "with_check": "(EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'admin'::text))))"
-  },
-  {
-    "tablename": "drivers",
-    "policyname": "Staff can view drivers",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "(EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = ANY (ARRAY['admin'::text, 'staff'::text])))))",
-    "with_check": null
-  },
-  {
-    "tablename": "users",
-    "policyname": "Users can view own data",
-    "permissive": "PERMISSIVE",
-    "roles": "{public}",
-    "cmd": "SELECT",
-    "qual": "(auth.uid() = id)",
-    "with_check": null
-  },
-  {
-    "tablename": "users",
-    "policyname": "Users can insert own data",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "INSERT",
-    "qual": null,
-    "with_check": "(auth.uid() = id)"
-  },
-  {
-    "tablename": "users",
-    "policyname": "Users can update own data",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "UPDATE",
-    "qual": "(auth.uid() = id)",
-    "with_check": null
-  },
-  {
-    "tablename": "staff_roles",
-    "policyname": "Enable read access for authenticated users",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "true",
-    "with_check": null
-  },
-  {
-    "tablename": "staff_roles",
-    "policyname": "Users can read own roles",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "(auth.uid() = user_id)",
-    "with_check": null
-  },
-  {
-    "tablename": "driver_availability",
-    "policyname": "Drivers can manage their own availability",
-    "permissive": "PERMISSIVE",
-    "roles": "{public}",
-    "cmd": "ALL",
-    "qual": "(auth.uid() = driver_id)",
-    "with_check": null
-  },
-  {
-    "tablename": "customers",
-    "policyname": "Enable all for authenticated users",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "ALL",
-    "qual": "true",
-    "with_check": "true"
-  },
-  {
-    "tablename": "bookings",
-    "policyname": "Enable all for authenticated users",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "ALL",
-    "qual": "true",
-    "with_check": "true"
-  },
-  {
-    "tablename": "bookings",
-    "policyname": "Drivers can view assigned bookings",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "((id IN ( SELECT trip_assignments.booking_id\n   FROM trip_assignments\n  WHERE (trip_assignments.driver_id = auth.uid()))) AND (EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'driver'::text)))))",
-    "with_check": null
-  },
-  {
-    "tablename": "bookings",
-    "policyname": "Drivers can update assigned booking status",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "UPDATE",
-    "qual": "((id IN ( SELECT trip_assignments.booking_id\n   FROM trip_assignments\n  WHERE (trip_assignments.driver_id = auth.uid()))) AND (EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'driver'::text)))))",
-    "with_check": "((id IN ( SELECT trip_assignments.booking_id\n   FROM trip_assignments\n  WHERE (trip_assignments.driver_id = auth.uid()))) AND (EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = 'driver'::text)))))"
-  },
-  {
-    "tablename": "trip_assignments",
-    "policyname": "Drivers can view their own trips",
-    "permissive": "PERMISSIVE",
-    "roles": "{authenticated}",
-    "cmd": "SELECT",
-    "qual": "((driver_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM staff_roles\n  WHERE ((staff_roles.user_id = auth.uid()) AND (staff_roles.role = ANY (ARRAY['admin'::text, 'staff'::text]))))))",
-    "with_check": null
+    "table_name": "users",
+    "column_name": "id",
+    "foreign_table": "users",
+    "foreign_column": "id"
   }
 ]
+## 5. List All Indexes
+[
+  {
+    "schemaname": "public",
+    "tablename": "admin_access",
+    "indexname": "admin_access_pkey",
+    "indexdef": "CREATE UNIQUE INDEX admin_access_pkey ON public.admin_access USING btree (user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "bookings",
+    "indexname": "bookings_pkey",
+    "indexdef": "CREATE UNIQUE INDEX bookings_pkey ON public.bookings USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "customers",
+    "indexname": "customers_pkey",
+    "indexdef": "CREATE UNIQUE INDEX customers_pkey ON public.customers USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "driver_application_drafts",
+    "indexname": "driver_application_drafts_pkey",
+    "indexdef": "CREATE UNIQUE INDEX driver_application_drafts_pkey ON public.driver_application_drafts USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "driver_application_drafts",
+    "indexname": "driver_application_drafts_user_id_key",
+    "indexdef": "CREATE UNIQUE INDEX driver_application_drafts_user_id_key ON public.driver_application_drafts USING btree (user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "driver_applications",
+    "indexname": "idx_driver_applications_status",
+    "indexdef": "CREATE INDEX idx_driver_applications_status ON public.driver_applications USING btree (status)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "driver_applications",
+    "indexname": "idx_driver_applications_user_id",
+    "indexdef": "CREATE INDEX idx_driver_applications_user_id ON public.driver_applications USING btree (user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "driver_applications",
+    "indexname": "driver_applications_pkey",
+    "indexdef": "CREATE UNIQUE INDEX driver_applications_pkey ON public.driver_applications USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "driver_availability",
+    "indexname": "idx_driver_availability_composite",
+    "indexdef": "CREATE INDEX idx_driver_availability_composite ON public.driver_availability USING btree (driver_id, day_of_week, time_slot)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "driver_availability",
+    "indexname": "driver_availability_pkey",
+    "indexdef": "CREATE UNIQUE INDEX driver_availability_pkey ON public.driver_availability USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "driver_availability",
+    "indexname": "idx_driver_availability_driver",
+    "indexdef": "CREATE INDEX idx_driver_availability_driver ON public.driver_availability USING btree (driver_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "driver_availability",
+    "indexname": "idx_driver_availability_day",
+    "indexdef": "CREATE INDEX idx_driver_availability_day ON public.driver_availability USING btree (day_of_week)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "drivers",
+    "indexname": "drivers_license_number_key",
+    "indexdef": "CREATE UNIQUE INDEX drivers_license_number_key ON public.drivers USING btree (license_number)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "drivers",
+    "indexname": "drivers_pkey",
+    "indexdef": "CREATE UNIQUE INDEX drivers_pkey ON public.drivers USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "payments",
+    "indexname": "payments_pkey",
+    "indexdef": "CREATE UNIQUE INDEX payments_pkey ON public.payments USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "profiles",
+    "indexname": "profiles_role_idx",
+    "indexdef": "CREATE INDEX profiles_role_idx ON public.profiles USING btree (role)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "profiles",
+    "indexname": "profiles_pkey",
+    "indexdef": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "routes",
+    "indexname": "routes_pkey",
+    "indexdef": "CREATE UNIQUE INDEX routes_pkey ON public.routes USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "routes",
+    "indexname": "routes_from_location_to_location_key",
+    "indexdef": "CREATE UNIQUE INDEX routes_from_location_to_location_key ON public.routes USING btree (from_location, to_location)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "staff_roles",
+    "indexname": "staff_roles_new_pkey",
+    "indexdef": "CREATE UNIQUE INDEX staff_roles_new_pkey ON public.staff_roles USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "staff_roles_old",
+    "indexname": "staff_roles_pkey",
+    "indexdef": "CREATE UNIQUE INDEX staff_roles_pkey ON public.staff_roles_old USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "staff_roles_old",
+    "indexname": "staff_roles_user_id_key",
+    "indexdef": "CREATE UNIQUE INDEX staff_roles_user_id_key ON public.staff_roles_old USING btree (user_id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "trip_assignments",
+    "indexname": "trip_assignments_pkey",
+    "indexdef": "CREATE UNIQUE INDEX trip_assignments_pkey ON public.trip_assignments USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "indexname": "users_role_idx",
+    "indexdef": "CREATE INDEX users_role_idx ON public.users USING btree (role)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "indexname": "users_pkey",
+    "indexdef": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "vehicles",
+    "indexname": "vehicles_pkey",
+    "indexdef": "CREATE UNIQUE INDEX vehicles_pkey ON public.vehicles USING btree (id)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "vehicles",
+    "indexname": "vehicles_plate_number_key",
+    "indexdef": "CREATE UNIQUE INDEX vehicles_plate_number_key ON public.vehicles USING btree (plate_number)"
+  }
+]
+
