@@ -443,6 +443,12 @@ export default function BookingsPage() {
                           {booking.return_date && (
                             <div>Return: {formatDateTime(booking.return_date, booking.return_time)}</div>
                           )}
+                          {booking.pickup_option === 'hotel' && booking.hotel_details && (
+                            <div className="mt-1 text-xs">
+                              <div>Hotel: {booking.hotel_details.name}</div>
+                              <div className="text-gray-400">{booking.hotel_details.address}</div>
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -512,6 +518,12 @@ export default function BookingsPage() {
                         <div>Departure: {formatDateTime(booking.departure_date, booking.departure_time)}</div>
                         {booking.return_date && (
                           <div>Return: {formatDateTime(booking.return_date, booking.return_time)}</div>
+                        )}
+                        {booking.pickup_option === 'hotel' && booking.hotel_details && (
+                          <div className="mt-1 text-xs">
+                            <div>Hotel: {booking.hotel_details.name}</div>
+                            <div className="text-gray-400">{booking.hotel_details.address}</div>
+                          </div>
                         )}
                       </div>
                     </div>

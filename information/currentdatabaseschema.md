@@ -216,6 +216,13 @@ This file contains the complete database schema (tables and columns), Row-Level 
     "column_default": null
   },
   {
+    "table_name": "bookings",
+    "column_name": "hotel_details",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
     "table_name": "customers",
     "column_name": "id",
     "data_type": "uuid",

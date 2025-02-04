@@ -30,6 +30,13 @@ function subtractMinutes(timeStr, minutesToSubtract) {
   return `${newHour.toString().padStart(2, '0')}:${newMinute.toString().padStart(2, '0')}`;
 }
 
+// Add this helper function at the top with other helpers
+const getStaticMapUrl = (location) => {
+  if (!location || !location.lat || !location.lng) return null;
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  return `https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=15&size=600x300&scale=2&markers=color:red%7C${location.lat},${location.lng}&key=${apiKey}`;
+};
+
 export default function ManageBookings() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -202,24 +209,70 @@ export default function ManageBookings() {
             // For hotel pickups, compute the pickup time (default offset: 60 minutes) 
             // and a "ready by" time (10 minutes earlier)
             let hotelPickupDisplay = null;
-            if (booking.pickup_option === 'hotel' && booking.departure_time) {
+            if (booking.pickup_option === 'hotel' && booking.hotel_details && booking.departure_time) {
               const departureTimeStr = booking.departure_time.slice(0, 5);
               const hotelPickupTime = getHotelPickupTime(departureTimeStr, 60);
               const readyByTime = subtractMinutes(hotelPickupTime, 10);
+              const mapUrl = getStaticMapUrl(booking.hotel_details.location);
+              
               hotelPickupDisplay = (
-                <p className="mt-1">
-                  <strong>Hotel Pickup Time:</strong> {hotelPickupTime} <span className="text-xs text-gray-500">(be ready by {readyByTime})</span>
-                </p>
+                <div className="mt-4 space-y-3">
+                  {/* Hotel Info Section */}
+                  <div className="text-sm text-gray-600">
+                    <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between">
+                      <div>
+                        <p><strong>Hotel:</strong> {booking.hotel_details.name}</p>
+                        <p className="text-xs text-gray-500 mt-1 sm:mt-0">{booking.hotel_details.address}</p>
+                      </div>
+                      <p className="mt-2 sm:mt-0 sm:ml-4 text-sm whitespace-nowrap">
+                        <strong>Pickup:</strong> {hotelPickupTime}
+                        <span className="text-xs text-gray-500 block sm:inline sm:ml-1">
+                          (be ready by {readyByTime})
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Map Section */}
+                  {mapUrl && (
+                    <div className="relative rounded-lg overflow-hidden bg-gray-100">
+                      {/* Aspect ratio container for consistent height */}
+                      <div className="aspect-w-16 aspect-h-9 sm:aspect-h-7">
+                        <img 
+                          src={mapUrl}
+                          alt={`Map showing ${booking.hotel_details.name}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      
+                      {/* Map Controls */}
+                      <div className="absolute bottom-2 right-2 flex space-x-2">
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${booking.hotel_details.location.lat},${booking.hotel_details.location.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-black/75 rounded-full hover:bg-black/90 transition-colors flex items-center space-x-1"
+                        >
+                          <span>Open in Maps</span>
+                          {/* Optional: Add an external link icon */}
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
               );
             }
 
             return (
               <div
                 key={booking.id}
-                className="bg-gray-50 rounded-lg p-6 hover:shadow-md transition-shadow duration-200"
+                className="bg-gray-50 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow duration-200"
               >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
+                <div className="flex flex-col sm:flex-row justify-between items-start mb-4">
+                  <div className="w-full sm:w-auto mb-2 sm:mb-0">
                     <h3 className="text-lg font-semibold text-gray-900">
                       {booking.from_location} → {booking.to_location}
                     </h3>
@@ -235,26 +288,27 @@ export default function ManageBookings() {
                   </span>
                 </div>
                 
-                <div className="mt-4 text-sm text-gray-600">
+                <div className="mt-4 text-sm text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <p>Group Size: {booking.group_size}</p>
                   <p>Amount: ₱{parseFloat(booking.total_amount).toLocaleString()}</p>
                   <p>Payment Status: {booking.payment_status}</p>
                   {booking.payment && (
                     <p>Payment Provider: {booking.payment.provider}</p>
                   )}
-                  {hotelPickupDisplay}
                 </div>
 
-                <div className="space-y-2 mt-4">
+                {hotelPickupDisplay}
+
+                <div className="space-y-2 mt-4 sm:flex sm:space-y-0 sm:space-x-2">
                   <button 
-                    className="w-full px-4 py-2 text-sm font-medium text-ai-600 bg-ai-50 rounded-md hover:bg-ai-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ai-500 transition-colors duration-200"
+                    className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-ai-600 bg-ai-50 rounded-md hover:bg-ai-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ai-500 transition-colors duration-200"
                   >
                     View Details
                   </button>
                   {activeTab === 'upcoming' && booking.status !== 'cancelled' && (
                     <button 
                       onClick={() => handleCancelBooking(booking.id)}
-                      className="w-full px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                      className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
                     >
                       Cancel Booking
                     </button>
