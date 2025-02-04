@@ -19,6 +19,7 @@ import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid';
 import { useNavigate } from 'react-router-dom';
 import PaymentOptions from './PaymentOptions';
 import debounce from 'lodash.debounce';
+import HotelAutocomplete from './HotelAutocomplete';
 
 const drivers = [
   {
@@ -162,13 +163,33 @@ const createCustomer = async (customerData) => {
 };
 
 const createBooking = async (bookingData) => {
+  // Validate hotel details if hotel pickup is selected
+  if (bookingData.pickup_option === 'hotel' && (!bookingData.hotel_details || !bookingData.hotel_details.name)) {
+    throw new Error('Hotel details are required for hotel pickup');
+  }
+
+  // Clean up the hotel_details object to ensure no undefined values
+  if (bookingData.hotel_details) {
+    bookingData.hotel_details = {
+      name: bookingData.hotel_details.name || null,
+      address: bookingData.hotel_details.address || null,
+      location: bookingData.hotel_details.location ? {
+        lat: bookingData.hotel_details.location.lat || null,
+        lng: bookingData.hotel_details.location.lng || null
+      } : null
+    };
+  }
+
   const { data, error } = await supabase
     .from('bookings')
     .insert([bookingData])
     .select()
     .single();
 
-  if (error) throw new Error('Failed to create booking');
+  if (error) {
+    console.error('Booking creation error:', error);
+    throw new Error('Failed to create booking: ' + error.message);
+  }
   return data;
 };
 
@@ -411,7 +432,12 @@ export default function BookingForm() {
         service_type: serviceType,
         group_size: groupSize,
         pickup_option: pickupOption,
-        hotel_pickup: pickupOption === 'hotel' ? (selectedHotel ? selectedHotel.name : null) : null,
+        hotel_pickup: pickupOption === 'hotel' ? selectedHotel?.name : null,
+        hotel_details: pickupOption === 'hotel' ? {
+          name: selectedHotel?.name,
+          address: selectedHotel?.address,
+          location: selectedHotel?.location
+        } : null,
         payment_method: paymentMethod.toLowerCase(),
         total_amount: calculatePrice(),
         payment_status: 'pending',
@@ -980,56 +1006,23 @@ export default function BookingForm() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Select Your Hotel
                       </label>
-                      <Listbox value={selectedHotel} onChange={setSelectedHotel}>
-                        <div className="relative mt-1">
-                          <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-3 pl-4 pr-10 text-left border focus:outline-none focus-visible:border-blue-500 focus-visible:ring-2">
-                            <span className="block truncate">
-                              {selectedHotel ? selectedHotel.name : 'Select a hotel'}
-                            </span>
-                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                              <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                            </span>
-                          </Listbox.Button>
-                          <Transition
-                            as={Fragment}
-                            leave="transition ease-in duration-100"
-                            leaveFrom="opacity-100"
-                            leaveTo="opacity-0"
-                          >
-                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg">
-                              {hotelOptions.map((hotel) => (
-                                <Listbox.Option
-                                  key={hotel.id}
-                                  value={hotel}
-                                  className={({ active }) =>
-                                    `relative cursor-pointer select-none py-2 pl-10 pr-4 ${
-                                      active ? 'bg-blue-100 text-blue-900' : 'text-gray-900'
-                                    }`
-                                  }
-                                >
-                                  {({ selected }) => (
-                                    <>
-                                      <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                                        {hotel.name}
-                                      </span>
-                                      {selected && (
-                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600">
-                                          <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                                        </span>
-                                      )}
-                                    </>
-                                  )}
-                                </Listbox.Option>
-                              ))}
-                            </Listbox.Options>
-                          </Transition>
+                      <HotelAutocomplete
+                        onSelect={(hotel) => {
+                          setSelectedHotel(hotel);
+                        }}
+                        defaultValue={selectedHotel?.name}
+                      />
+                      {selectedHotel && (
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-600">
+                            {selectedHotel.address}
+                          </p>
+                          {departureTime && (
+                            <p className="mt-2 text-sm text-gray-600">
+                              Your pickup will be scheduled at approximately {getHotelPickupTime(departureTime, 60)}.
+                            </p>
+                          )}
                         </div>
-                      </Listbox>
-
-                      {departureTime && selectedHotel && (
-                        <p className="mt-2 text-sm text-gray-600">
-                          Your pickup will be scheduled at approximately {getHotelPickupTime(departureTime, selectedHotel.pickupTimeOffset)}.
-                        </p>
                       )}
                     </div>
                   )}
