@@ -83,9 +83,12 @@ export const createPaymentSession = async (amount, description) => {
       throw new Error('Invalid response: Missing checkout URL');
     }
 
-    // Store the session ID for verification
+    // Store the session ID and payment intent ID
     const sessionId = responseData.data.id;
+    const paymentIntentId = responseData.data.attributes.payment_intent_id;
+
     sessionStorage.setItem('paymentSessionId', sessionId);
+    sessionStorage.setItem('paymentIntentId', paymentIntentId);
 
     return responseData.data;
   } catch (error) {

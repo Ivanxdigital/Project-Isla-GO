@@ -420,7 +420,7 @@ export default function BookingForm() {
       
       console.log('Creating booking...');
       // Create booking record
-      const bookingData = {
+      const createBookingData = {
         customer_id: customer.id,
         user_id: userToUse.id,
         from_location: fromLocation,
@@ -440,78 +440,51 @@ export default function BookingForm() {
         } : null,
         payment_method: paymentMethod.toLowerCase(),
         total_amount: calculatePrice(),
-        payment_status: 'pending',
-        status: 'pending'
+        payment_session_id: sessionStorage.getItem('paymentIntentId'),
+        status: 'pending',
+        payment_status: 'pending'
       };
       
-      const booking = await createBooking(bookingData);
-      console.log('Booking created:', booking);
+      const bookingData = await createBooking(createBookingData);
+      console.log('Booking created:', bookingData);
       
-      // Handle payment based on selected method
+      // Store booking ID in sessionStorage for polling
+      sessionStorage.setItem('lastBookingId', bookingData.id);
+      
       if (paymentMethod?.toLowerCase() === 'online') {
         console.log('Processing online payment...');
         try {
-          console.log('Starting payment session creation...');
-          // Create PayMongo session with amount in cents
           const totalAmount = calculatePrice();
-          console.log('Base amount:', totalAmount);
           const amountInCents = Math.round(totalAmount * 100);
-          console.log('Amount in cents:', amountInCents);
-          
-          const description = `Booking #${booking.id} - ${fromLocation} to ${toLocation}`;
-          console.log('Payment description:', description);
+          const description = `Booking #${bookingData.id} - ${fromLocation} to ${toLocation}`;
 
           const session = await createPaymentSession(
             amountInCents,
             description
           );
-          
-          if (!session) {
-            throw new Error('Failed to create payment session');
-          }
-          
-          console.log('Payment session created:', session);
-          
+
           if (!session?.attributes?.checkout_url) {
-            console.error('Invalid session response:', session);
             throw new Error('Invalid payment session: Missing checkout URL');
           }
-          
-          // Store booking ID in sessionStorage
-          sessionStorage.setItem('lastBookingId', booking.id);
-          console.log('Stored booking ID:', booking.id);
-          
+
           // Update booking with payment session ID
-          const { error: updateError } = await supabase
+          await supabase
             .from('bookings')
             .update({ 
               payment_session_id: session.id,
               updated_at: new Date().toISOString()
             })
-            .eq('id', booking.id);
+            .eq('id', bookingData.id);
 
-          if (updateError) {
-            console.error('Error updating booking:', updateError);
-            throw new Error('Failed to update booking with payment session');
-          }
-          
-          const checkoutUrl = session.attributes.checkout_url;
-          console.log('Redirecting to checkout URL:', checkoutUrl);
-          
-          // Use window.location.href for redirection
-          window.location.href = checkoutUrl;
+          // Redirect to PayMongo checkout
+          window.location.href = session.attributes.checkout_url;
           return;
         } catch (error) {
-          console.error('Detailed payment error:', error);
-          console.error('Error stack:', error.stack);
-          if (error.response) {
-            console.error('PayMongo API response:', await error.response.json());
-          }
+          console.error('Payment error:', error);
           throw new Error(`Payment failed: ${error.message}`);
         }
       } else if (paymentMethod?.toLowerCase() === 'cash') {
         console.log('Processing cash payment...');
-        // Handle cash payment
         navigate('/booking/success');
       } else {
         console.error('Invalid payment method:', paymentMethod);
