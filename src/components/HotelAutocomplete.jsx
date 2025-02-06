@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { waitForGoogleMaps } from '../utils/googleMaps';
+import { waitForGoogleMaps } from '../utils/googleMaps.js';
 
 // Palawan bounds
 const PALAWAN_BOUNDS = {

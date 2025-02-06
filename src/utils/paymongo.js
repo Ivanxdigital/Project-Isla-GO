@@ -1,8 +1,8 @@
 // Add this import at the top
-import { supabase } from './supabase';
+import { supabase } from './supabase.js';
 
 // PayMongo client-side integration
-const PAYMONGO_PUBLIC_KEY = import.meta.env.VITE_PAYMONGO_PUBLIC_KEY;
+const _PAYMONGO_PUBLIC_KEY = import.meta.env.VITE_PAYMONGO_PUBLIC_KEY;
 const PAYMONGO_SECRET_KEY = import.meta.env.VITE_PAYMONGO_SECRET_KEY;
 
 // Base64 encoding function for UTF-8 strings
@@ -17,6 +17,9 @@ function base64Encode(str) {
   }
 }
 
+// Replace window with globalThis
+const baseUrl = globalThis.location.origin;
+
 // Create a payment session
 export const createPaymentSession = async (amount, description) => {
   try {
@@ -24,7 +27,6 @@ export const createPaymentSession = async (amount, description) => {
     if (!description) throw new Error('Description is required');
     if (!PAYMONGO_SECRET_KEY) throw new Error('PayMongo secret key is not configured');
 
-    const baseUrl = window.location.origin;
     console.log('Creating payment session:', { baseUrl, amount, description });
 
     const encodedAuth = base64Encode(PAYMONGO_SECRET_KEY + ':');

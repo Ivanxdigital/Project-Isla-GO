@@ -2,25 +2,26 @@ let isGoogleMapsLoaded = false;
 
 export const waitForGoogleMaps = () => {
   return new Promise((resolve, reject) => {
-    if (window.google) {
-      isGoogleMapsLoaded = true;
-      resolve(window.google);
+    if (window.google && window.google.maps) {
+      resolve(window.google.maps);
       return;
     }
 
-    const checkGoogle = setInterval(() => {
-      if (window.google) {
-        clearInterval(checkGoogle);
-        isGoogleMapsLoaded = true;
-        resolve(window.google);
-      }
-    }, 100);
+    const maxAttempts = 20;
+    let attempts = 0;
 
-    // Timeout after 10 seconds
-    setTimeout(() => {
-      clearInterval(checkGoogle);
-      reject(new Error('Google Maps failed to load'));
-    }, 10000);
+    const checkGoogleMaps = () => {
+      attempts++;
+      if (window.google && window.google.maps) {
+        resolve(window.google.maps);
+      } else if (attempts >= maxAttempts) {
+        reject(new Error('Google Maps failed to load'));
+      } else {
+        setTimeout(checkGoogleMaps, 500);
+      }
+    };
+
+    checkGoogleMaps();
   });
 };
 

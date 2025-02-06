@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../utils/supabase';
-import { sendBookingConfirmationEmail } from '../utils/email';
-import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo';
+import { supabase } from '../utils/supabase.js';
+import { sendBookingConfirmationEmail } from '../utils/email.js';
+import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo.js';
+import { sendBookingNotificationToDrivers } from '../utils/twilio.js';
 
 export default function PaymentSuccess() {
   const { t } = useTranslation();
@@ -138,6 +139,39 @@ export default function PaymentSuccess() {
       clearTimeout(timeoutId);
     };
   }, [navigate]);
+
+  useEffect(() => {
+    const bookingId = sessionStorage.getItem('lastBookingId');
+    console.log('Retrieved bookingId:', bookingId);
+
+    const processPaymentSuccess = async () => {
+      try {
+        if (!bookingId) {
+          console.error('No booking ID found');
+          return;
+        }
+
+        // Verify payment status
+        const { data: booking, error: bookingError } = await supabase
+          .from('bookings')
+          .select('payment_status')
+          .eq('id', bookingId)
+          .single();
+
+        if (bookingError) throw bookingError;
+
+        if (booking.payment_status === 'paid') {
+          console.log('Payment confirmed, sending driver notifications...');
+          await sendBookingNotificationToDrivers(bookingId);
+        }
+      } catch (error) {
+        console.error('Error processing payment success:', error);
+        setError('There was an issue notifying drivers. Our team will handle this manually.');
+      }
+    };
+
+    processPaymentSuccess();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">

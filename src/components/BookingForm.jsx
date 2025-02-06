@@ -4,22 +4,22 @@ import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/20/soli
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
 import { motion, AnimatePresence } from 'framer-motion';
-import LanguageSelector from './LanguageSelector';
-import ReviewsSection from './ReviewsSection';
-import { createPaymentSession } from '../utils/paymongo';
-import { sendBookingEmail } from '../utils/email';
-import { countryCodes } from '../data/countryCodes';
+import LanguageSelector from './LanguageSelector.jsx';
+import ReviewsSection from './ReviewsSection.jsx';
+import { createPaymentSession } from '../utils/paymongo.js';
+import { sendBookingEmail as _sendBookingEmail } from '../utils/email.js';
+import { countryCodes } from '../data/countryCodes.js';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../utils/supabase';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { supabase } from '../utils/supabase.js';
 import { Listbox, Transition } from '@headlessui/react';
 import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid';
 import { useNavigate } from 'react-router-dom';
-import PaymentOptions from './PaymentOptions';
+import PaymentOptions from './PaymentOptions.jsx';
 import debounce from 'lodash.debounce';
-import HotelAutocomplete from './HotelAutocomplete';
+import HotelAutocomplete from './HotelAutocomplete.jsx';
 
 const drivers = [
   {
@@ -221,16 +221,16 @@ export default function BookingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
   const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [_error, setError] = useState('');
 
   // New state for hotel pickup
   const [pickupOption, setPickupOption] = useState('airport'); // 'airport' or 'hotel'
   const [selectedHotel, setSelectedHotel] = useState(null);
-  const hotelOptions = [
+  const _hotelOptions = useMemo(() => [
     { id: 1, name: 'City Centre Hotel A', pickupTimeOffset: 60 },
     { id: 2, name: 'City Centre Hotel B', pickupTimeOffset: 60 },
     { id: 3, name: 'City Centre Hotel C', pickupTimeOffset: 60 }
-  ];
+  ], []);
 
   // New state for validation errors
   const [validationErrors, setValidationErrors] = useState({
@@ -477,7 +477,7 @@ export default function BookingForm() {
             .eq('id', bookingData.id);
 
           // Redirect to PayMongo checkout
-          window.location.href = session.attributes.checkout_url;
+          globalThis.location.href = session.attributes.checkout_url;
           return;
         } catch (error) {
           console.error('Payment error:', error);
@@ -498,7 +498,7 @@ export default function BookingForm() {
     }
   };
 
-  const handleRegister = async (e) => {
+  const _handleRegister = async (e) => {
     e.preventDefault();
     try {
       // First, create the auth user
@@ -717,7 +717,7 @@ export default function BookingForm() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const minDate = tomorrow.toISOString().split('T')[0];
 
-  const availableDestinations = useMemo(() => {
+  const _availableDestinations = useMemo(() => {
     return fromLocation === 'Puerto Princesa'
       ? ['El Nido', 'San Vicente']
       : ['Puerto Princesa'];

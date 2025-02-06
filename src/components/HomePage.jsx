@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import HeroSection from './HeroSection';
-import BookingForm from './BookingForm';
-import WhyIslaGO from './WhyIslaGO';
+import HeroSection from './HeroSection.jsx';
+import BookingForm from './BookingForm.jsx';
+import WhyIslaGO from './WhyIslaGO.jsx';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
