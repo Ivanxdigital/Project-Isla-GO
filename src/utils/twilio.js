@@ -14,16 +14,20 @@ console.log('Twilio Config:', {
 export const sendBookingNotificationToDrivers = async (bookingId) => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    console.log('Got session:', !!session);
+    console.log('Got session:', !!session, 'Token:', session?.access_token?.substring(0, 20) + '...');
     
-    // Use local URL when in development
     const baseUrl = import.meta.env.DEV 
       ? 'http://localhost:54321/functions/v1'
       : 'https://achpbaomhjddqycgzomw.supabase.co/functions/v1';
     
-    console.log('Calling Edge Function:', `${baseUrl}/send-sms`);
-    
-    const response = await fetch(`${baseUrl}/send-sms`, {
+    const url = `${baseUrl}/twilio-webhook/send-sms`;
+    console.log('Attempting to call Edge Function:', {
+      url,
+      method: 'POST',
+      hasToken: !!session?.access_token
+    });
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -32,19 +36,22 @@ export const sendBookingNotificationToDrivers = async (bookingId) => {
       body: JSON.stringify({ bookingId }),
     });
 
-    const responseData = await response.json();
-    console.log('Edge function response:', responseData);
+    console.log('Edge Function Response:', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText
+    });
+
+    const data = await response.json();
+    console.log('Edge Function Data:', data);
 
     if (!response.ok) {
-      throw new Error(responseData.error || `Failed to send notifications (${response.status})`);
+      throw new Error(data.error || 'Failed to notify drivers');
     }
 
     return true;
   } catch (error) {
-    console.error('Error sending driver notifications:', {
-      message: error.message,
-      details: error.stack
-    });
+    console.error('Error sending notifications:', error);
     throw error;
   }
 };
