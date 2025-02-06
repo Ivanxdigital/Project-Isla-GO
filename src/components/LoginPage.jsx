@@ -38,14 +38,52 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
-      
+
       if (error) throw error;
+
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN') {
+          try {
+            const { data: existingUser } = await supabase
+              .from('users')
+              .select()
+              .eq('id', session.user.id)
+              .single();
+
+            if (!existingUser) {
+              const { error: insertError } = await supabase
+                .from('users')
+                .insert([
+                  {
+                    id: session.user.id,
+                    email: session.user.email,
+                    first_name: session.user.user_metadata?.full_name?.split(' ')[0] || '',
+                    last_name: session.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+                    avatar_url: session.user.user_metadata?.avatar_url,
+                    created_at: new Date().toISOString()
+                  }
+                ]);
+
+              if (insertError) {
+                console.error('Error creating user record:', insertError);
+              }
+            }
+          } catch (error) {
+            console.error('Error handling user creation:', error);
+          }
+        }
+      });
+
     } catch (error) {
       console.error('Google login error:', error);
       setError(error.message);

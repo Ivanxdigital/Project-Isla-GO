@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../utils/supabase';
+import { sendBookingConfirmationEmail } from '../utils/email';
+import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo';
 
 export default function PaymentSuccess() {
   const { t } = useTranslation();
@@ -12,6 +14,8 @@ export default function PaymentSuccess() {
   
   useEffect(() => {
     const bookingId = sessionStorage.getItem('lastBookingId');
+    console.log('Retrieved bookingId:', bookingId);
+
     if (!bookingId) {
       setError('No booking found');
       return;
@@ -19,29 +23,103 @@ export default function PaymentSuccess() {
 
     const pollPaymentStatus = async () => {
       try {
+        console.log('Polling payment status for booking:', bookingId);
+        
+        // Get booking details including PayMongo session ID
         const { data: booking, error } = await supabase
           .from('bookings')
-          .select('payment_status, status')
+          .select('payment_status, status, confirmation_email_sent, payment_session_id')
           .eq('id', bookingId)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase query error:', error);
+          throw error;
+        }
 
-        if (booking.payment_status === 'paid') {
-          setPaymentStatus('success');
-          // Clear the booking ID from session storage
-          sessionStorage.removeItem('lastBookingId');
-          // Redirect to home after 3 seconds
-          setTimeout(() => navigate('/'), 3000);
-        } else if (booking.payment_status === 'failed') {
-          setPaymentStatus('failed');
-          setError('Payment failed. Please try again.');
+        console.log('Current booking status:', booking);
+
+        // Check PayMongo session status
+        if (booking.payment_session_id) {
+          const paymongoSession = await verifyPaymentSession(booking.payment_session_id);
+          console.log('PayMongo session status:', paymongoSession.attributes.status);
+
+          // If payment is already marked as paid in our database, process success
+          if (booking.payment_status === 'paid') {
+            console.log('Payment already marked as paid');
+            setPaymentStatus('success');
+            
+            if (!booking.confirmation_email_sent) {
+              try {
+                console.log('Sending confirmation email...');
+                await sendBookingConfirmationEmail(bookingId);
+              } catch (emailError) {
+                console.error('Failed to send confirmation email:', emailError);
+              }
+            }
+            
+            sessionStorage.removeItem('lastBookingId');
+            setTimeout(() => navigate('/'), 3000);
+            return;
+          }
+
+          // Map PayMongo status to our status
+          const mappedStatus = mapPaymentStatus(paymongoSession.attributes.status);
+          
+          // Update booking status if it's different
+          if (mappedStatus !== booking.payment_status) {
+            const { error: updateError } = await supabase
+              .from('bookings')
+              .update({ 
+                payment_status: mappedStatus,
+                status: mappedStatus === 'paid' ? 'confirmed' : booking.status,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', bookingId);
+
+            if (updateError) {
+              console.error('Error updating booking status:', updateError);
+            }
+          }
+
+          // Update local state based on PayMongo status
+          if (mappedStatus === 'paid') {
+            console.log('Payment confirmed as paid');
+            setPaymentStatus('success');
+            
+            if (!booking.confirmation_email_sent) {
+              try {
+                console.log('Initiating confirmation email send...');
+                await sendBookingConfirmationEmail(bookingId);
+                console.log('Confirmation email sent successfully');
+              } catch (emailError) {
+                console.error('Detailed email error:', {
+                  error: emailError,
+                  message: emailError.message,
+                  stack: emailError.stack
+                });
+                // Don't throw the error - we still want to show success
+                // but maybe show a warning to the user
+                setError('Payment successful but confirmation email failed to send. Our team will contact you shortly.');
+              }
+            }
+            
+            sessionStorage.removeItem('lastBookingId');
+            setTimeout(() => navigate('/'), 3000);
+          } else if (mappedStatus === 'failed') {
+            console.log('Payment marked as failed');
+            setPaymentStatus('failed');
+            setError('Payment failed. Please try again.');
+          }
         }
       } catch (err) {
         console.error('Error polling payment status:', err);
         setError('Failed to check payment status');
       }
     };
+
+    // Initial check
+    pollPaymentStatus();
 
     // Poll every 3 seconds
     const pollInterval = setInterval(pollPaymentStatus, 3000);
@@ -50,11 +128,11 @@ export default function PaymentSuccess() {
     const timeoutId = setTimeout(() => {
       clearInterval(pollInterval);
       if (paymentStatus === 'processing') {
+        console.log('Payment verification timed out');
         setError('Payment verification timed out. Please contact support.');
       }
     }, 5 * 60 * 1000);
 
-    // Cleanup
     return () => {
       clearInterval(pollInterval);
       clearTimeout(timeoutId);

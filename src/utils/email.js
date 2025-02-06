@@ -1,9 +1,8 @@
-import emailjs from '@emailjs/browser';
+import { supabase } from './supabase';
+import { Resend } from 'resend';
+import { getBookingConfirmationTemplate } from './emailTemplates';
 
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-const EMAILJS_CUSTOMER_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_CUSTOMER_TEMPLATE_ID;
-const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+const resend = new Resend(import.meta.env.VITE_RESEND_API_KEY);
 
 export const sendBookingEmail = async (bookingData) => {
   try {
@@ -136,6 +135,93 @@ export const sendBookingEmail = async (bookingData) => {
         customerTemplateId: EMAILJS_CUSTOMER_TEMPLATE_ID ? 'configured' : 'missing',
         publicKey: EMAILJS_PUBLIC_KEY ? 'configured' : 'missing'
       }
+    });
+    throw error;
+  }
+};
+
+export const sendBookingConfirmationEmail = async (bookingId) => {
+  try {
+    // Validate Resend API key
+    if (!import.meta.env.VITE_RESEND_API_KEY) {
+      throw new Error('Resend API key is not configured');
+    }
+
+    console.log('Fetching booking details for email:', bookingId);
+
+    // Fetch booking details with customer info
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        customer:customers(
+          id,
+          first_name,
+          last_name,
+          email,
+          mobile_number
+        )
+      `)
+      .eq('id', bookingId)
+      .single();
+
+    if (bookingError) {
+      console.error('Error fetching booking details:', bookingError);
+      throw bookingError;
+    }
+
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    if (!booking.customer?.email) {
+      console.error('No email found for customer:', booking.customer);
+      throw new Error('Customer email is required for sending confirmation');
+    }
+
+    console.log('Preparing to send email to:', booking.customer.email);
+
+    // Send email using Resend
+    const { data, error } = await resend.emails.send({
+      from: 'IslaGo <noreply@resend.dev>',
+      reply_to: 'islagoph@gmail.com',
+      to: booking.customer.email,
+      subject: `Booking Confirmation #${booking.id} - IslaGo Transport`,
+      html: getBookingConfirmationTemplate(booking),
+      tags: [
+        { name: 'booking_id', value: booking.id.toString() },
+        { name: 'type', value: 'booking_confirmation' }
+      ]
+    });
+
+    if (error) {
+      console.error('Resend API error:', error);
+      throw error;
+    }
+
+    console.log('Email sent successfully:', data);
+
+    // Update booking to mark email as sent
+    const { error: updateError } = await supabase
+      .from('bookings')
+      .update({ 
+        confirmation_email_sent: true,
+        confirmation_email_sent_at: new Date().toISOString()
+      })
+      .eq('id', bookingId);
+
+    if (updateError) {
+      console.error('Error updating booking email status:', updateError);
+      throw updateError;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Detailed error sending confirmation email:', {
+      error,
+      message: error.message,
+      stack: error.stack,
+      details: error.details || 'No additional details'
     });
     throw error;
   }

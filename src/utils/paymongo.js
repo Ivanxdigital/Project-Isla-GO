@@ -1,3 +1,6 @@
+// Add this import at the top
+import { supabase } from './supabase';
+
 // PayMongo client-side integration
 const PAYMONGO_PUBLIC_KEY = import.meta.env.VITE_PAYMONGO_PUBLIC_KEY;
 const PAYMONGO_SECRET_KEY = import.meta.env.VITE_PAYMONGO_SECRET_KEY;
@@ -90,6 +93,14 @@ export const createPaymentSession = async (amount, description) => {
     sessionStorage.setItem('paymentSessionId', sessionId);
     sessionStorage.setItem('paymentIntentId', paymentIntentId);
 
+    // If the payment is immediately successful, update the status
+    if (responseData.data.attributes.status === 'active') {
+      const bookingId = sessionStorage.getItem('lastBookingId');
+      if (bookingId) {
+        await updatePaymentStatus(bookingId, 'paid');
+      }
+    }
+
     return responseData.data;
   } catch (error) {
     console.error('PayMongo error:', error);
@@ -132,8 +143,9 @@ export const mapPaymentStatus = (paymongoStatus) => {
   switch (paymongoStatus?.toLowerCase()) {
     case 'paid':
     case 'completed':
-      return 'completed';
+    case 'succeeded':
     case 'active':
+      return 'paid';
     case 'pending':
     case 'awaiting_payment_method':
     case 'processing':
@@ -148,5 +160,64 @@ export const mapPaymentStatus = (paymongoStatus) => {
     default:
       console.warn('Unhandled PayMongo status:', paymongoStatus);
       return 'pending';
+  }
+};
+
+// Add this function to verify webhook events
+export const handlePayMongoWebhook = async (event) => {
+  try {
+    console.log('Received PayMongo webhook:', event.type);
+    
+    if (event.type === 'checkout.session.completed') {
+      const sessionId = event.data.id;
+      
+      // Find the booking with this session ID
+      const { data: booking, error } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('payment_session_id', sessionId)
+        .single();
+
+      if (error) {
+        console.error('Error finding booking:', error);
+        return;
+      }
+
+      // Update the booking status
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ 
+          payment_status: 'paid',
+          status: 'confirmed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+
+      if (updateError) {
+        console.error('Error updating booking:', updateError);
+      }
+    }
+  } catch (error) {
+    console.error('Webhook handling error:', error);
+  }
+};
+
+// Add this function to directly update payment status
+export const updatePaymentStatus = async (bookingId, status) => {
+  try {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ 
+        payment_status: status,
+        status: status === 'paid' ? 'confirmed' : status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error updating payment status:', error);
+    throw error;
   }
 };
