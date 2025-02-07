@@ -3,26 +3,39 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+// Add debug logging
+console.log('Supabase initialization:', {
+  hasUrl: !!supabaseUrl,
+  hasKey: !!supabaseAnonKey
+})
+
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+  console.error('Missing Supabase environment variables:', {
+    VITE_SUPABASE_URL: !!supabaseUrl,
+    VITE_SUPABASE_ANON_KEY: !!supabaseAnonKey
+  })
 }
 
 // Create Supabase client with custom configuration
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  },
-  db: {
-    schema: 'public'
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'islaGO-admin'
+export const supabase = createClient(
+  supabaseUrl || 'fallback-url', // Prevent crash in development
+  supabaseAnonKey || 'fallback-key', // Prevent crash in development
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    },
+    db: {
+      schema: 'public'
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'islaGO-admin'
+      }
     }
   }
-})
+)
 
 // Add response interceptor for debugging
 const originalFrom = supabase.from.bind(supabase)
