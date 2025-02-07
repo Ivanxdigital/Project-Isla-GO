@@ -11,30 +11,15 @@ console.log('Supabase initialization:', {
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables:', {
-    VITE_SUPABASE_URL: !!supabaseUrl,
-    VITE_SUPABASE_ANON_KEY: !!supabaseAnonKey
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseAnonKey
   })
 }
 
 // Create Supabase client with custom configuration
 export const supabase = createClient(
-  supabaseUrl || 'fallback-url', // Prevent crash in development
-  supabaseAnonKey || 'fallback-key', // Prevent crash in development
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true
-    },
-    db: {
-      schema: 'public'
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'islaGO-admin'
-      }
-    }
-  }
+  supabaseUrl,
+  supabaseAnonKey
 )
 
 // Add response interceptor for debugging
