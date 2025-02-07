@@ -1,27 +1,48 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
+import type { Twilio } from 'twilio';
 
 module.exports = async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  try {
-    console.log('Function started', { method: req.method, body: req.body });
+  // Add CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
 
-    // Check environment variables first
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  try {
+    console.log('SMS Function started', { 
+      method: req.method, 
+      body: req.body,
+      hasBookingId: !!req.body?.bookingId 
+    });
+
+    // Check environment variables with more detail
     const envCheck = {
       TWILIO_ACCOUNT_SID: !!process.env.TWILIO_ACCOUNT_SID,
       TWILIO_AUTH_TOKEN: !!process.env.TWILIO_AUTH_TOKEN,
       TWILIO_PHONE_NUMBER: !!process.env.TWILIO_PHONE_NUMBER,
       SUPABASE_URL: !!process.env.SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      twilioSidLength: process.env.TWILIO_ACCOUNT_SID?.length,
+      twilioTokenLength: process.env.TWILIO_AUTH_TOKEN?.length,
+      twilioPhoneFormat: process.env.TWILIO_PHONE_NUMBER?.startsWith('+')
     };
 
     console.log('Environment check:', envCheck);
 
     // Initialize clients inside try block with better error handling
-    let twilioClient;
+    let twilioClient: Twilio;
     try {
       twilioClient = twilio(
         process.env.TWILIO_ACCOUNT_SID!,

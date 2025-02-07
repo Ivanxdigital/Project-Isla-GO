@@ -161,6 +161,7 @@ export default function PaymentSuccess() {
 
         // Add driver notification here
         try {
+          console.log('Starting SMS notification process for booking:', bookingId);
           const response = await fetch('/api/send-driver-sms', {
             method: 'POST',
             headers: {
@@ -169,15 +170,20 @@ export default function PaymentSuccess() {
             body: JSON.stringify({ bookingId }),
           });
 
+          const responseData = await response.json();
+          console.log('SMS notification response:', responseData);
+
           if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Failed to send driver notifications:', errorData);
+            console.error('Failed to send driver notifications:', responseData);
           } else {
             console.log('Driver notifications sent successfully');
           }
         } catch (notificationError) {
-          console.error('Error sending driver notifications:', notificationError);
-          // Don't throw here - we don't want to interrupt the success flow
+          console.error('Error sending driver notifications:', {
+            error: notificationError,
+            message: notificationError.message,
+            stack: notificationError.stack
+          });
         }
 
         // Clear the booking ID from session storage
