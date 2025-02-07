@@ -24,14 +24,14 @@ export default async function handler(
     let twilioClient;
     try {
       twilioClient = twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
+        process.env.TWILIO_ACCOUNT_SID!,
+        process.env.TWILIO_AUTH_TOKEN!
       );
       
       // Test the credentials
-      await twilioClient.api.accounts(process.env.TWILIO_ACCOUNT_SID).fetch();
+      await twilioClient.api.accounts(process.env.TWILIO_ACCOUNT_SID!).fetch();
       console.log('Twilio credentials verified successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Twilio initialization error:', {
         error,
         sid: process.env.TWILIO_ACCOUNT_SID?.substring(0, 5) + '...',
@@ -208,7 +208,7 @@ Reply YES to accept this booking.
         success: true, 
         messagesSent: smsResults.length 
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('SMS sending error:', error);
       return res.status(500).json({ 
         error: 'Failed to send SMS',

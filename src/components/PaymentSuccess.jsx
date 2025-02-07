@@ -151,13 +151,34 @@ export default function PaymentSuccess() {
           return;
         }
 
-        // Update payment status to trigger notifications
+        // Update payment status
         const { error: updateError } = await supabase
           .from('bookings')
           .update({ payment_status: 'paid' })
           .eq('id', bookingId);
 
         if (updateError) throw updateError;
+
+        // Add driver notification here
+        try {
+          const response = await fetch('/api/send-driver-sms', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ bookingId }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Failed to send driver notifications:', errorData);
+          } else {
+            console.log('Driver notifications sent successfully');
+          }
+        } catch (notificationError) {
+          console.error('Error sending driver notifications:', notificationError);
+          // Don't throw here - we don't want to interrupt the success flow
+        }
 
         // Clear the booking ID from session storage
         sessionStorage.removeItem('lastBookingId');
