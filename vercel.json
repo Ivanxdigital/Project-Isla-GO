@@ -1,9 +1,16 @@
 {
   "version": 2,
   "functions": {
-    "api/send-driver-sms.ts": {
+    "api/**/*.ts": {
       "memory": 1024,
       "maxDuration": 10
     }
+  },
+  "env": {
+    "TWILIO_ACCOUNT_SID": "@twilio_account_sid",
+    "TWILIO_AUTH_TOKEN": "@twilio_auth_token",
+    "TWILIO_PHONE_NUMBER": "@twilio_phone_number",
+    "SUPABASE_URL": "@supabase_url",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key"
   }
 }

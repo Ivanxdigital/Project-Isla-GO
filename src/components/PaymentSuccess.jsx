@@ -151,22 +151,22 @@ export default function PaymentSuccess() {
           return;
         }
 
-        // Verify payment status
-        const { data: booking, error: bookingError } = await supabase
+        // Update payment status to trigger notifications
+        const { error: updateError } = await supabase
           .from('bookings')
-          .select('payment_status')
-          .eq('id', bookingId)
-          .single();
+          .update({ payment_status: 'paid' })
+          .eq('id', bookingId);
 
-        if (bookingError) throw bookingError;
+        if (updateError) throw updateError;
 
-        if (booking.payment_status === 'paid') {
-          console.log('Payment confirmed, sending driver notifications...');
-          await sendBookingNotificationToDrivers(bookingId);
-        }
+        // Clear the booking ID from session storage
+        sessionStorage.removeItem('lastBookingId');
+        
+        // Redirect after a delay
+        setTimeout(() => navigate('/'), 3000);
       } catch (error) {
         console.error('Error processing payment success:', error);
-        setError('There was an issue notifying drivers. Our team will handle this manually.');
+        setError('There was an issue updating the booking. Please contact support.');
       }
     };
 
