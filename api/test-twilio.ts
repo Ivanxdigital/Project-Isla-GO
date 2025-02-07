@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import twilio from 'twilio';
 
-module.exports = async function handler(
+export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -35,4 +35,4 @@ module.exports = async function handler(
       code: error.code
     });
   }
-}; 
+} 

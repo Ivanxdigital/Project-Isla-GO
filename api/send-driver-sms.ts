@@ -3,7 +3,7 @@ import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
 import type { Twilio } from 'twilio';
 
-module.exports = async function handler(
+export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
