@@ -1,8 +1,9 @@
 {
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
+  "version": 2,
+  "functions": {
+    "api/send-driver-sms.ts": {
+      "memory": 1024,
+      "maxDuration": 10
     }
-  ]
+  }
 }
