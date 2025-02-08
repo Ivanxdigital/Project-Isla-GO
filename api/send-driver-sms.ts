@@ -3,6 +3,20 @@ import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
 import type { Twilio } from 'twilio';
 
+const isTrialAccount = true; // Since we confirmed it's a trial account
+
+// Add this function to verify numbers
+const isVerifiedNumber = async (twilioClient: Twilio, phoneNumber: string) => {
+  try {
+    // Get list of verified numbers
+    const verifiedNumbers = await twilioClient.outgoingCallerIds.list();
+    return verifiedNumbers.some(v => v.phoneNumber === phoneNumber);
+  } catch (error) {
+    console.error('Error checking verified numbers:', error);
+    return false;
+  }
+};
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -122,121 +136,77 @@ export default async function handler(
     const { data: drivers, error: driversError } = await supabase
       .from('drivers')
       .select('*')
-      .eq('status', 'active')
-      .eq('documents_verified', true)
-      .eq('is_available', true);
+      .eq('status', 'active');
 
     if (driversError) {
-      console.error('Drivers fetch error:', driversError);
-      return res.status(500).json({ error: 'Failed to fetch drivers', details: driversError });
+      console.error('Error fetching drivers:', driversError);
+      throw driversError;
     }
 
-    console.log('Drivers fetched:', drivers);
+    console.log(`Found ${drivers?.length || 0} active drivers`);
 
     if (!drivers?.length) {
-      return res.status(404).json({ error: 'No available drivers found' });
+      return res.status(404).json({ error: 'No active drivers found' });
     }
 
-    // Update the message template
-    const message = `
-New IslaGO Booking Alert!
-Route: ${booking.from_location} → ${booking.to_location}
-Date: ${new Date(booking.departure_date).toLocaleDateString()}
-Time: ${booking.departure_time}
-Passengers: ${booking.group_size}
-Service: ${booking.service_type}
-${booking.pickup_option === 'hotel' ? `Pickup: ${booking.hotel_details?.name || 'Hotel'}` : 'Pickup: Airport'}
-Customer: ${customerName}
+    // For trial accounts, only send to verified numbers
+    const smsPromises = [];
+    for (const driver of drivers) {
+      const phone = driver.mobile_number?.startsWith('+') 
+        ? driver.mobile_number 
+        : `+63${driver.mobile_number?.replace(/^0+/, '')}`;
 
-Amount: ₱${parseFloat(booking.total_amount).toLocaleString()}
-
-Reply YES to accept this booking.
-`;
-
-    // Add this helper function at the top of the file
-    function isValidPhoneNumber(phone: string): boolean {
-      // Basic validation for Philippines mobile numbers
-      return /^\+63[0-9]{10}$/.test(phone);
-    }
-
-    // Test with just one driver first
-    const testDriver = drivers[0];
-    try {
-      const formattedPhone = testDriver.mobile_number?.startsWith('+') 
-        ? testDriver.mobile_number 
-        : `+63${testDriver.mobile_number?.replace(/^0+/, '')}`;
-
-      if (!isValidPhoneNumber(formattedPhone)) {
-        console.error('Invalid phone number:', formattedPhone);
-        return res.status(400).json({ 
-          error: 'Invalid phone number',
-          details: `Invalid phone number format: ${formattedPhone}`
-        });
+      if (isTrialAccount) {
+        const isVerified = await isVerifiedNumber(twilioClient, phone);
+        if (!isVerified) {
+          console.log(`Skipping unverified number in trial mode: ${phone}`);
+          continue;
+        }
       }
 
-      console.log('Attempting to send test SMS:', { 
-        to: formattedPhone,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        messageLength: message.length
-      });
-
-      const result = await twilioClient.messages.create({
-        body: message,
-        to: formattedPhone,
-        from: process.env.TWILIO_PHONE_NUMBER
-      });
-
-      console.log('Test SMS sent successfully:', result.sid);
-
-      // When sending to other drivers, filter out invalid numbers
-      const otherDrivers = drivers.slice(1);
-      const validDrivers = otherDrivers.filter(driver => {
-        const phone = driver.mobile_number?.startsWith('+') 
-          ? driver.mobile_number 
-          : `+63${driver.mobile_number?.replace(/^0+/, '')}`;
-        return isValidPhoneNumber(phone);
-      });
-
-      const smsPromises = validDrivers.map(driver => {
-        const phone = driver.mobile_number?.startsWith('+') 
-          ? driver.mobile_number 
-          : `+63${driver.mobile_number?.replace(/^0+/, '')}`;
-
-        return twilioClient.messages.create({
-          body: message,
+      console.log(`Sending SMS to driver: ${driver.id} at ${phone}`);
+      smsPromises.push(
+        twilioClient.messages.create({
+          body: `New booking received! ID: ${bookingId}. Please check your dashboard for details.`,
           to: phone,
           from: process.env.TWILIO_PHONE_NUMBER
-        });
-      });
-
-      const smsResults = await Promise.all(smsPromises);
-      console.log('All SMS sent successfully:', smsResults.map(r => r.sid));
-
-      // Update booking status
-      const { error: updateError } = await supabase
-        .from('bookings')
-        .update({ 
-          driver_notification_sent: true,
-          driver_notification_sent_at: new Date().toISOString()
         })
-        .eq('id', bookingId);
+      );
+    }
 
-      if (updateError) {
-        console.error('Booking update error:', updateError);
-      }
-
+    if (smsPromises.length === 0) {
+      console.log('No verified numbers to send SMS to');
       return res.status(200).json({ 
         success: true, 
-        messagesSent: smsResults.length 
-      });
-    } catch (error: any) {
-      console.error('SMS sending error:', error);
-      return res.status(500).json({ 
-        error: 'Failed to send SMS',
-        details: error.message,
-        twilioError: error.code
+        messagesSent: 0,
+        warning: 'No verified numbers found. In trial mode, SMS can only be sent to verified numbers.'
       });
     }
+
+    const smsResults = await Promise.all(smsPromises);
+    console.log('SMS sent successfully:', smsResults.map(r => ({ 
+      sid: r.sid, 
+      status: r.status,
+      to: r.to 
+    })));
+
+    // Update booking status
+    const { error: updateError } = await supabase
+      .from('bookings')
+      .update({ 
+        driver_notification_sent: true,
+        driver_notification_sent_at: new Date().toISOString()
+      })
+      .eq('id', bookingId);
+
+    if (updateError) {
+      console.error('Booking update error:', updateError);
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      messagesSent: smsResults.length 
+    });
   } catch (error: any) {
     console.error('Detailed error:', error);
     return res.status(500).json({ 

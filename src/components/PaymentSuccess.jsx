@@ -167,16 +167,17 @@ export default function PaymentSuccess() {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ bookingId }),
+            body: JSON.stringify({ 
+              bookingId,
+              test: true // Add this flag for testing
+            }),
           });
 
-          const responseData = await response.json();
-          console.log('SMS notification response:', responseData);
-
+          const data = await response.json();
+          console.log('SMS test response:', data);
+          
           if (!response.ok) {
-            console.error('Failed to send driver notifications:', responseData);
-          } else {
-            console.log('Driver notifications sent successfully');
+            throw new Error(`SMS test failed: ${data.error}`);
           }
         } catch (notificationError) {
           console.error('Error sending driver notifications:', {

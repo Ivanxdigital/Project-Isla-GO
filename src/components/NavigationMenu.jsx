@@ -343,6 +343,11 @@ export default function NavigationMenu() {
     }
   `;
 
+  // Add a handler for menu item clicks
+  const handleMenuItemClick = () => {
+    setIsProfileDropdownOpen(false);
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800/50 z-50 transition-all duration-300">
       <style>{keyframes}</style>
@@ -448,6 +453,7 @@ export default function NavigationMenu() {
                         
                         <Link
                           to="/profile"
+                          onClick={handleMenuItemClick}
                           className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                         >
                           Your Profile
@@ -455,6 +461,7 @@ export default function NavigationMenu() {
 
                         <Link
                           to="/manage-bookings"
+                          onClick={handleMenuItemClick}
                           className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                         >
                           Manage Bookings
@@ -463,6 +470,7 @@ export default function NavigationMenu() {
                         {!adminLoading && isAdmin && (
                           <Link
                             to="/admin/dashboard"
+                            onClick={handleMenuItemClick}
                             className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                           >
                             Admin Dashboard
@@ -474,6 +482,7 @@ export default function NavigationMenu() {
                             {driverStatus === 'pending' && (
                               <Link
                                 to="/driver/pending"
+                                onClick={handleMenuItemClick}
                                 className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                               >
                                 <span className="text-sm text-yellow-600 flex items-center">
@@ -488,24 +497,28 @@ export default function NavigationMenu() {
                               <>
                                 <Link
                                   to="/driver/dashboard"
+                                  onClick={handleMenuItemClick}
                                   className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                                 >
                                   Driver Dashboard
                                 </Link>
                                 <Link
                                   to="/driver/trips"
+                                  onClick={handleMenuItemClick}
                                   className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                                 >
                                   My Trips
                                 </Link>
                                 <Link
                                   to="/driver/profile"
+                                  onClick={handleMenuItemClick}
                                   className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                                 >
                                   Driver Profile
                                 </Link>
                                 <Link
                                   to="/driver/availability"
+                                  onClick={handleMenuItemClick}
                                   className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                                 >
                                   Manage Availability
@@ -516,9 +529,12 @@ export default function NavigationMenu() {
                         )}
 
                         <button
-                          onClick={handleSignOut}
+                          onClick={(e) => {
+                            handleMenuItemClick();
+                            handleSignOut(e);
+                          }}
                           disabled={isSigningOut || adminLoading}
-                          className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
+                          className="w-full text-left block px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors duration-150"
                         >
                           {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                         </button>

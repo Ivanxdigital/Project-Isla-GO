@@ -10,7 +10,12 @@ import {
   XMarkIcon,
   CheckIcon,
   EllipsisVerticalIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  PlusIcon,
+  DocumentArrowDownIcon,
+  DocumentCheckIcon,
+  XCircleIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 import { Menu, Transition, Dialog } from '@headlessui/react';
 import { toast } from 'react-hot-toast';
@@ -33,6 +38,24 @@ export default function BookingsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedBookings, setSelectedBookings] = useState(new Set());
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isMultiDeleteModalOpen, setIsMultiDeleteModalOpen] = useState(false);
+  const [newBooking, setNewBooking] = useState({
+    from_location: '',
+    to_location: '',
+    departure_date: '',
+    departure_time: '',
+    return_date: '',
+    return_time: '',
+    service_type: 'one_way',
+    group_size: 1,
+    payment_method: 'cash',
+    total_amount: 0,
+    payment_status: 'pending',
+    status: 'pending',
+    pickup_option: 'airport'
+  });
 
   useEffect(() => {
     fetchBookings();
@@ -207,6 +230,143 @@ export default function BookingsPage() {
     }
   };
 
+  const handleBookingSelect = (bookingId) => {
+    const newSelected = new Set(selectedBookings);
+    if (newSelected.has(bookingId)) {
+      newSelected.delete(bookingId);
+    } else {
+      newSelected.add(bookingId);
+    }
+    setSelectedBookings(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedBookings.size === filteredBookings.length) {
+      setSelectedBookings(new Set());
+    } else {
+      setSelectedBookings(new Set(filteredBookings.map(b => b.id)));
+    }
+  };
+
+  const handleMultiDelete = async () => {
+    try {
+      setIsProcessing(true);
+      const deletePromises = Array.from(selectedBookings).map(id =>
+        supabase
+          .from('bookings')
+          .delete()
+          .eq('id', id)
+      );
+
+      await Promise.all(deletePromises);
+      
+      toast.success(`${selectedBookings.size} bookings deleted successfully`);
+      setIsMultiDeleteModalOpen(false);
+      setSelectedBookings(new Set());
+      fetchBookings();
+    } catch (error) {
+      console.error('Error deleting bookings:', error);
+      toast.error('Failed to delete bookings');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleAddBooking = async () => {
+    try {
+      setIsProcessing(true);
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([newBooking])
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      toast.success('Booking added successfully');
+      setIsAddModalOpen(false);
+      setNewBooking({
+        from_location: '',
+        to_location: '',
+        departure_date: '',
+        departure_time: '',
+        return_date: '',
+        return_time: '',
+        service_type: 'one_way',
+        group_size: 1,
+        payment_method: 'cash',
+        total_amount: 0,
+        payment_status: 'pending',
+        status: 'pending',
+        pickup_option: 'airport'
+      });
+      fetchBookings();
+    } catch (error) {
+      console.error('Error adding booking:', error);
+      toast.error('Failed to add booking');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleBulkStatusUpdate = async (newStatus) => {
+    try {
+      setIsProcessing(true);
+      const updatePromises = Array.from(selectedBookings).map(id =>
+        supabase
+          .from('bookings')
+          .update({ 
+            status: newStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+      );
+
+      await Promise.all(updatePromises);
+      toast.success(`Updated ${selectedBookings.size} bookings to ${newStatus}`);
+      setSelectedBookings(new Set());
+      fetchBookings();
+    } catch (error) {
+      console.error('Error updating bookings:', error);
+      toast.error('Failed to update bookings');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleExportSelected = () => {
+    const selectedBookingsData = bookings.filter(booking => 
+      selectedBookings.has(booking.id)
+    );
+
+    // Create CSV content
+    const csvContent = [
+      // CSV Headers
+      ['Booking ID', 'Customer', 'From', 'To', 'Date', 'Status', 'Amount'].join(','),
+      // CSV Data
+      ...selectedBookingsData.map(booking => [
+        booking.id,
+        getCustomerFullName(booking.customers),
+        booking.from_location,
+        booking.to_location,
+        formatDateTime(booking.departure_date, booking.departure_time),
+        booking.status,
+        booking.total_amount
+      ].join(','))
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bookings-export-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   const BookingActions = ({ booking }) => (
     <Menu as="div" className="relative inline-block text-left">
       <Menu.Button className="p-2 hover:bg-gray-100 rounded-full">
@@ -344,9 +504,168 @@ export default function BookingsPage() {
     </Dialog>
   );
 
+  const AddBookingModal = () => (
+    <Dialog open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)}>
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="mx-auto max-w-2xl w-full rounded-lg bg-white p-6">
+          <Dialog.Title className="text-lg font-medium leading-6 text-gray-900 mb-4">
+            Add New Booking
+          </Dialog.Title>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">From Location</label>
+                <input
+                  type="text"
+                  value={newBooking.from_location}
+                  onChange={(e) => setNewBooking({...newBooking, from_location: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              {/* Add more form fields for other booking details */}
+            </div>
+            <div className="mt-4 flex justify-end space-x-2">
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddBooking}
+                disabled={isProcessing}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50"
+              >
+                {isProcessing ? 'Adding...' : 'Add Booking'}
+              </button>
+            </div>
+          </div>
+        </Dialog.Panel>
+      </div>
+    </Dialog>
+  );
+
+  const MultiDeleteModal = () => (
+    <Dialog open={isMultiDeleteModalOpen} onClose={() => setIsMultiDeleteModalOpen(false)}>
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="mx-auto max-w-md rounded-lg bg-white p-6">
+          <Dialog.Title className="text-lg font-medium leading-6 text-gray-900">
+            Delete Selected Bookings
+          </Dialog.Title>
+          <div className="mt-2">
+            <p className="text-sm text-gray-500">
+              Are you sure you want to delete {selectedBookings.size} selected bookings? This action cannot be undone.
+            </p>
+          </div>
+          <div className="mt-4 flex justify-end space-x-2">
+            <button
+              onClick={() => setIsMultiDeleteModalOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleMultiDelete}
+              disabled={isProcessing}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50"
+            >
+              {isProcessing ? 'Deleting...' : 'Delete Selected'}
+            </button>
+          </div>
+        </Dialog.Panel>
+      </div>
+    </Dialog>
+  );
+
+  const SelectionIndicator = () => (
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-full shadow-lg flex items-center space-x-4 z-50">
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          checked={selectedBookings.size === filteredBookings.length}
+          onChange={handleSelectAll}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <span>{selectedBookings.size} selected</span>
+      </div>
+      <div className="h-4 w-px bg-gray-700" />
+      <div className="flex items-center space-x-2">
+        <button
+          onClick={() => handleBulkStatusUpdate('completed')}
+          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
+          disabled={isProcessing}
+        >
+          <DocumentCheckIcon className="h-4 w-4 text-green-400" />
+          <span>Complete</span>
+        </button>
+        <button
+          onClick={() => handleBulkStatusUpdate('cancelled')}
+          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
+          disabled={isProcessing}
+        >
+          <XCircleIcon className="h-4 w-4 text-red-400" />
+          <span>Cancel</span>
+        </button>
+        <button
+          onClick={() => handleBulkStatusUpdate('pending')}
+          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
+          disabled={isProcessing}
+        >
+          <ClockIcon className="h-4 w-4 text-yellow-400" />
+          <span>Pending</span>
+        </button>
+        <button
+          onClick={handleExportSelected}
+          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
+        >
+          <DocumentArrowDownIcon className="h-4 w-4 text-blue-400" />
+          <span>Export</span>
+        </button>
+        <button
+          onClick={() => setIsMultiDeleteModalOpen(true)}
+          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
+          disabled={isProcessing}
+        >
+          <TrashIcon className="h-4 w-4 text-red-400" />
+          <span>Delete</span>
+        </button>
+      </div>
+      <div className="h-4 w-px bg-gray-700" />
+      <button
+        onClick={() => setSelectedBookings(new Set())}
+        className="text-gray-400 hover:text-white"
+      >
+        Clear
+      </button>
+    </div>
+  );
+
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Bookings Management</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900">Manage Bookings</h1>
+        <div className="flex space-x-2">
+          {selectedBookings.size > 0 && (
+            <button
+              onClick={() => setIsMultiDeleteModalOpen(true)}
+              className="flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md"
+            >
+              <TrashIcon className="h-4 w-4 mr-2" />
+              Delete Selected ({selectedBookings.size})
+            </button>
+          )}
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Booking
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
           <select
@@ -383,6 +702,14 @@ export default function BookingsPage() {
               <table className="min-w-full divide-y divide-gray-200 hidden md:table">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <input
+                        type="checkbox"
+                        checked={selectedBookings.size === filteredBookings.length}
+                        onChange={handleSelectAll}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
@@ -419,6 +746,14 @@ export default function BookingsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredBookings.map((booking) => (
                     <tr key={booking.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedBookings.has(booking.id)}
+                          onChange={() => handleBookingSelect(booking.id)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(booking.created_at).toLocaleString('en-US', {
                           month: 'short',
@@ -560,8 +895,12 @@ export default function BookingsPage() {
         </div>
       </div>
 
+      {selectedBookings.size > 0 && <SelectionIndicator />}
+
       <EditBookingModal />
       <DeleteConfirmationModal />
+      <AddBookingModal />
+      <MultiDeleteModal />
     </div>
   );
 }
