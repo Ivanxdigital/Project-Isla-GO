@@ -1,0 +1,8 @@
+---
+description: before generating any code or fixing any errors, read this.
+globs: 
+---
+
+# When creating, altering or adding new features to my web apps or any code. Always keep in mind the following:
+- [currentdatabaseschema.md](mdc:information/currentdatabaseschema.md) which is the current database schema.
+- Always ask for more context that you may need from me before generating any code to avoid errors.

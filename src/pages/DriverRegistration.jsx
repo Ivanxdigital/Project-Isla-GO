@@ -133,6 +133,8 @@ export default function DriverRegistration() {
               }
               return acc;
             }, {}),
+            terms_accepted: formData.termsAgreed,
+            privacy_accepted: formData.privacyAgreed,
             status: 'pending',
           }
         ])
