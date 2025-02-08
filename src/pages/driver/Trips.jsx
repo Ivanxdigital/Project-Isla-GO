@@ -12,9 +12,18 @@ export default function DriverTrips() {
   const [filter, setFilter] = useState('all'); // all, pending, completed
 
   useEffect(() => {
-    if (driverAuthLoading) return;
-    if (!user) return;
+    if (driverAuthLoading) {
+      console.log('Driver auth still loading...');
+      return;
+    }
+    if (!user) {
+      console.log('No user found...');
+      return;
+    }
 
+    console.log('Fetching trips for user:', user.id);
+    console.log('Current filter:', filter);
+    
     fetchTrips();
   }, [user, filter, driverAuthLoading]);
 
@@ -43,8 +52,16 @@ export default function DriverTrips() {
       let query = supabase
         .from('trip_assignments')
         .select(`
-          *,
-          bookings (
+          id,
+          driver_id,
+          booking_id,
+          vehicle_id,
+          departure_time,
+          status,
+          notes,
+          created_at,
+          updated_at,
+          booking:bookings (
             id,
             from_location,
             to_location,
@@ -57,25 +74,27 @@ export default function DriverTrips() {
             status,
             total_amount
           ),
-          vehicles (
+          vehicle:vehicles (
             id,
-            make,
             model,
-            plate_number
+            plate_number,
+            capacity,
+            status
           )
         `)
         .eq('driver_id', user.id);
 
-      if (filter !== 'all') {
-        query = query.eq('bookings.status', filter.toUpperCase());
-      }
-
       const { data, error } = await query.order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setTrips(data);
+      if (error) {
+        console.error('Trips query error:', error.message);
+        throw error;
+      }
+
+      console.log('Fetched trips:', data);
+      setTrips(data || []);
     } catch (error) {
-      console.error('Error fetching trips:', error);
+      console.error('Error fetching trips:', error.message);
     } finally {
       setLoading(false);
     }
@@ -132,39 +151,46 @@ export default function DriverTrips() {
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <p className="font-medium text-gray-900">
-                          {trip.bookings.from_location} → {trip.bookings.to_location}
+                          {trip.booking?.from_location} → {trip.booking?.to_location}
                         </p>
                         <p className="text-gray-500">
-                          {trip.bookings.service_type} • {trip.bookings.group_size} passengers
+                          {trip.booking?.service_type} • {trip.booking?.group_size} passengers
                         </p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <p className="text-gray-900">
-                          {new Date(trip.bookings.departure_date).toLocaleDateString()}
+                          {new Date(trip.departure_time).toLocaleDateString()}
                         </p>
                         <p className="text-gray-500">
-                          {trip.bookings.departure_time}
+                          {new Date(trip.departure_time).toLocaleTimeString()}
                         </p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
-                        <p className="text-gray-900">
-                          {trip.vehicles.make} {trip.vehicles.model}
-                        </p>
-                        <p className="text-gray-500">
-                          {trip.vehicles.plate_number}
-                        </p>
+                        {trip.vehicle ? (
+                          <>
+                            <p className="text-gray-900">
+                              {trip.vehicle.model}
+                            </p>
+                            <p className="text-gray-500">
+                              {trip.vehicle.plate_number}
+                              {trip.vehicle.capacity && ` • ${trip.vehicle.capacity} seats`}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-gray-500 italic">No vehicle assigned</p>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${trip.bookings.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 
-                          trip.bookings.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
+                        ${trip.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                          trip.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                           'bg-gray-100 text-gray-800'}`}>
-                        {trip.bookings.status}
+                        {trip.status.toUpperCase()}
                       </span>
                     </td>
                   </tr>
