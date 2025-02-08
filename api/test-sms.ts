@@ -1,46 +1,34 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 import twilio from 'twilio';
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
-  try {
-    // Check environment variables
-    const envCheck = {
-      TWILIO_ACCOUNT_SID: !!process.env.TWILIO_ACCOUNT_SID,
-      TWILIO_AUTH_TOKEN: !!process.env.TWILIO_AUTH_TOKEN,
-      TWILIO_PHONE_NUMBER: !!process.env.TWILIO_PHONE_NUMBER,
-    };
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-    // Initialize Twilio client
-    const twilioClient = twilio(
-      process.env.TWILIO_ACCOUNT_SID!,
-      process.env.TWILIO_AUTH_TOKEN!
+  try {
+    const { to, message } = req.body;
+
+    const client = twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
     );
 
-    // Test message
-    const result = await twilioClient.messages.create({
-      body: 'Test message from IslaGO',
-      to: '+639123456789', // Replace with your test number
+    const result = await client.messages.create({
+      body: message,
+      to: to,
       from: process.env.TWILIO_PHONE_NUMBER
     });
 
     return res.status(200).json({ 
-      success: true,
-      envCheck,
-      messageSid: result.sid
+      success: true, 
+      messageId: result.sid 
     });
-  } catch (error: any) {
-    console.error('Test SMS error:', error);
+  } catch (error) {
+    console.error('SMS Error:', error);
     return res.status(500).json({ 
-      error: 'Failed to send test SMS',
-      details: error.message,
-      envCheck: {
-        TWILIO_ACCOUNT_SID: !!process.env.TWILIO_ACCOUNT_SID,
-        TWILIO_AUTH_TOKEN: !!process.env.TWILIO_AUTH_TOKEN,
-        TWILIO_PHONE_NUMBER: !!process.env.TWILIO_PHONE_NUMBER,
-      }
+      error: 'Failed to send SMS',
+      details: error.message 
     });
   }
 } 

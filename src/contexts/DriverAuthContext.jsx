@@ -2,12 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../utils/supabase';
 import { useAuth } from './AuthContext';
 
-const DriverAuthContext = createContext({
-  isDriver: false,
-  driverStatus: null, // 'pending', 'approved', 'rejected'
-  loading: true,
-  error: null
-});
+const DriverAuthContext = createContext({});
 
 // Separate hook into its own named function
 function useDriverAuthContext() {
@@ -19,105 +14,73 @@ function useDriverAuthContext() {
 }
 
 // Provider component
-function DriverAuthProvider({ children }) {
+export function DriverAuthProvider({ children }) {
   const { user } = useAuth();
-  const [state, setState] = useState({
-    isDriver: false,
-    driverStatus: null,
-    loading: true,
-    error: null
-  });
+  const [isDriver, setIsDriver] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [driverStatus, setDriverStatus] = useState(null);
 
   useEffect(() => {
     async function checkDriverStatus() {
-      if (!user) {
-        setState({ isDriver: false, driverStatus: null, loading: false, error: null });
-        return;
-      }
-
-      // Add a small delay to prevent flashing
-      await new Promise(resolve => setTimeout(resolve, 100));
-
+      // Set loading to true at the start of the check
+      setLoading(true);
+      
       try {
-        // First check if they're an approved driver
-        const { data: driverData, error: driverError } = await supabase
-          .from('drivers')
-          .select('status, documents_verified')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (driverError) {
-          console.error('Error checking drivers:', driverError);
-          throw driverError;
-        }
-
-        // If they're an approved driver with verified documents
-        if (driverData?.status === 'Available' && driverData?.documents_verified) {
-          setState({
-            isDriver: true,
-            driverStatus: 'approved',
-            loading: false,
-            error: null
-          });
+        if (!user) {
+          console.log('DriverAuthContext: No user');
+          setIsDriver(false);
+          setDriverStatus(null);
+          setLoading(false);
           return;
         }
 
-        // Check application status if not an approved driver
-        const { data: applicationData, error: applicationError } = await supabase
-          .from('driver_applications')
-          .select('status')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
+        console.log('DriverAuthContext: Checking status for user:', user.id);
+
+        // First check drivers table
+        const { data: driverData, error: driverError } = await supabase
+          .from('drivers')
+          .select('id, status')
+          .eq('id', user.id)
           .maybeSingle();
 
-        if (applicationError) {
-          console.error('Error checking driver_applications:', applicationError);
-          throw applicationError;
+        console.log('DriverAuthContext: Driver data:', driverData, 'Error:', driverError);
+
+        if (driverError && driverError.code !== 'PGRST116') {
+          throw driverError;
         }
 
-        // Determine driver status based on both driver and application data
-        const status = determineDriverStatus(driverData, applicationData);
-        
-        setState({
-          isDriver: status !== null,
-          driverStatus: status,
-          loading: false,
-          error: null
-        });
-
+        if (driverData) {
+          console.log('DriverAuthContext: Found driver record:', driverData);
+          setIsDriver(driverData.status === 'active');
+          setDriverStatus(driverData.status);
+        } else {
+          console.log('DriverAuthContext: No driver record found');
+          setIsDriver(false);
+          setDriverStatus(null);
+        }
       } catch (error) {
-        console.error('Error in checkDriverStatus:', error);
-        setState({ 
-          isDriver: false, 
-          driverStatus: null, 
-          loading: false,
-          error: 'Failed to check driver status'
-        });
+        console.error('DriverAuthContext Error:', error);
+        setIsDriver(false);
+        setDriverStatus(null);
+      } finally {
+        // Set loading to false only after all state updates are done
+        setTimeout(() => setLoading(false), 0);
       }
     }
 
-    checkDriverStatus();
+    // Only check status if we have a user
+    if (user) {
+      checkDriverStatus();
+    }
   }, [user]);
 
-  // Helper function to determine driver status
-  function determineDriverStatus(driverData, applicationData) {
-    if (driverData?.status) {
-      return driverData.status;
-    }
-    
-    if (applicationData?.status) {
-      return applicationData.status;
-    }
-
-    return null;
-  }
-
   const value = {
-    ...state,
-    // Add any additional methods here if needed
+    isDriver,
+    driverStatus,
+    loading,
     refreshStatus: () => {
-      setState(prev => ({ ...prev, loading: true }));
+      setLoading(true);
+      checkDriverStatus();
     }
   };
 
@@ -129,4 +92,4 @@ function DriverAuthProvider({ children }) {
 }
 
 // Export both the Provider and the hook
-export { DriverAuthProvider, useDriverAuthContext as useDriverAuth }; 
+export const useDriverAuth = () => useContext(DriverAuthContext); 

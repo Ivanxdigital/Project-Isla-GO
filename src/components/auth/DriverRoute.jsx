@@ -1,14 +1,34 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDriverAuth } from '../../contexts/DriverAuthContext';
 
 export default function DriverRoute({ children }) {
-  const { user } = useAuth();
-  const { isDriver, driverStatus, loading } = useDriverAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { isDriver, driverStatus, loading: driverLoading } = useDriverAuth();
   const location = useLocation();
 
-  if (loading) {
+  // Enhanced debugging
+  useEffect(() => {
+    console.log('DriverRoute Detailed State:', {
+      user: user?.id,
+      authLoading,
+      isDriver,
+      driverStatus,
+      driverLoading,
+      path: location.pathname,
+      timestamp: new Date().toISOString()
+    });
+  }, [user, authLoading, isDriver, driverStatus, driverLoading, location]);
+
+  // Always show loading while any state is loading
+  if (authLoading || driverLoading || !user || driverStatus === undefined) {
+    console.log('DriverRoute: Loading state...', { 
+      authLoading, 
+      driverLoading,
+      hasUser: !!user,
+      driverStatus 
+    });
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -16,35 +36,26 @@ export default function DriverRoute({ children }) {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
+  // Log the status check
+  console.log('DriverRoute Final Status Check:', { 
+    driverStatus, 
+    isDriver,
+    userId: user.id 
+  });
 
-  if (!isDriver) {
-    return <Navigate to="/driver/before-register" replace />;
+  // Handle different driver statuses
+  switch (driverStatus) {
+    case 'active':
+      console.log('DriverRoute: Driver is active, showing content');
+      return children;
+    case 'pending':
+      console.log('DriverRoute: Driver is pending, redirecting to pending page');
+      return <Navigate to="/driver/pending" replace />;
+    case null:
+      console.log('DriverRoute: No driver status, redirecting to registration');
+      return <Navigate to="/driver/before-register" replace />;
+    default:
+      console.log('DriverRoute: Unknown status, redirecting to home');
+      return <Navigate to="/" replace />;
   }
-
-  // If they're a driver but their application is pending
-  if (driverStatus === 'pending') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center p-8 max-w-lg">
-          <h2 className="text-2xl font-bold mb-4">Application Under Review</h2>
-          <p className="text-gray-600 mb-4">
-            Your driver application is currently being reviewed by our team. 
-            This process typically takes 2-3 business days.
-          </p>
-          <p className="text-gray-500 text-sm">
-            You'll receive an email notification once your application has been processed.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (driverStatus !== 'approved' && driverStatus !== 'active') {
-    return <Navigate to="/driver/before-register" replace />;
-  }
-
-  return children;
 } 

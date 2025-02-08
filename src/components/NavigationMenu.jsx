@@ -24,11 +24,14 @@ export default function NavigationMenu() {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const { user, signOut } = useAuth();
   const { isAdmin, role, loading: adminLoading } = useAdminAuth();
+  const { isDriver, driverStatus } = useDriverAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(Date.now());
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const { isDriver, driverStatus } = useDriverAuth();
+
+  // Add this debug log
+  console.log('Navigation Menu Driver State:', { isDriver, driverStatus });
 
   // Debug log for auth status
   useEffect(() => {
@@ -218,7 +221,7 @@ export default function NavigationMenu() {
                         </span>
                       </Link>
                     )}
-                    {driverStatus === 'approved' && (
+                    {driverStatus === 'active' && (
                       <>
                         <Link
                           to="/driver/dashboard"
@@ -347,6 +350,11 @@ export default function NavigationMenu() {
   const handleMenuItemClick = () => {
     setIsProfileDropdownOpen(false);
   };
+
+  useEffect(() => {
+    // Add debug log for driver status
+    console.log('Driver Status:', { isDriver, driverStatus });
+  }, [isDriver, driverStatus]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800/50 z-50 transition-all duration-300">
@@ -493,7 +501,7 @@ export default function NavigationMenu() {
                                 </span>
                               </Link>
                             )}
-                            {driverStatus === 'approved' && (
+                            {driverStatus === 'active' && (
                               <>
                                 <Link
                                   to="/driver/dashboard"

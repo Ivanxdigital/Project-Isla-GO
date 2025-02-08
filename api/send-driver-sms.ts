@@ -17,6 +17,14 @@ const isVerifiedNumber = async (twilioClient: Twilio, phoneNumber: string) => {
   }
 };
 
+// Add this type for better type safety
+type SMSResponse = {
+  accepted: boolean;
+  messagesSent: number;
+  success: boolean;
+  warning?: string;
+};
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -104,10 +112,15 @@ export default async function handler(
       hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
     });
 
-    // Fetch booking details
+    // Fetch booking details with customer info
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('*')
+      .select(`
+        *,
+        profiles (
+          full_name
+        )
+      `)
       .eq('id', bookingId)
       .single();
 
@@ -167,7 +180,17 @@ export default async function handler(
       console.log(`Sending SMS to driver: ${driver.id} at ${phone}`);
       smsPromises.push(
         twilioClient.messages.create({
-          body: `New booking received! ID: ${bookingId}. Please check your dashboard for details.`,
+          body: `New booking received!
+Booking ID: ${bookingId}
+From: ${booking.from_location}
+To: ${booking.to_location}
+Date: ${new Date(booking.departure_date).toLocaleDateString()}
+Time: ${booking.departure_time}
+
+Reply with code ${acceptanceCode} to accept this booking.
+Or visit your dashboard: ${process.env.NEXT_PUBLIC_APP_URL}/driver/dashboard
+
+This offer expires in 30 minutes.`,
           to: phone,
           from: process.env.TWILIO_PHONE_NUMBER
         })
@@ -190,12 +213,27 @@ export default async function handler(
       to: r.to 
     })));
 
+    // Create a unique acceptance code for this booking
+    const acceptanceCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    // Store the acceptance code in driver_notifications
+    await supabase
+      .from('driver_notifications')
+      .insert(drivers.map(driver => ({
+        driver_id: driver.id,
+        booking_id: bookingId,
+        status: 'PENDING',
+        acceptance_code: acceptanceCode,
+        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min expiry
+      })));
+
     // Update booking status
     const { error: updateError } = await supabase
       .from('bookings')
       .update({ 
         driver_notification_sent: true,
-        driver_notification_sent_at: new Date().toISOString()
+        driver_notification_sent_at: new Date().toISOString(),
+        status: 'PENDING_DRIVER_ACCEPTANCE'
       })
       .eq('id', bookingId);
 

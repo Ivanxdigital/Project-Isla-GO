@@ -40,6 +40,8 @@ import DriverProfile from './pages/driver/Profile';
 import DriverTrips from './pages/driver/Trips';
 import DriverAvailability from './pages/driver/Availability';
 import AuthCallback from './components/AuthCallback';
+import TestDashboard from './pages/driver/test';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function RootLayout() {
   const location = useLocation();
@@ -226,6 +228,7 @@ const routes = [
       {
         path: "/driver",
         element: <RootLayout />,
+        errorElement: <ErrorBoundary />,
         children: [
           {
             path: "dashboard",
@@ -233,7 +236,8 @@ const routes = [
               <DriverRoute>
                 <DriverDashboard />
               </DriverRoute>
-            )
+            ),
+            errorElement: <ErrorBoundary />
           },
           {
             path: "profile",
@@ -256,6 +260,14 @@ const routes = [
             element: (
               <DriverRoute>
                 <DriverAvailability />
+              </DriverRoute>
+            )
+          },
+          {
+            path: "test",
+            element: (
+              <DriverRoute>
+                <TestDashboard />
               </DriverRoute>
             )
           }
