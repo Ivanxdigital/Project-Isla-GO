@@ -1,7 +1,11 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import twilio from 'twilio';
 
-export default async function handler(req, res) {
+export default async function handler(
+  req: VercelRequest, 
+  res: VercelResponse
+) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -24,7 +28,7 @@ export default async function handler(req, res) {
       success: true, 
       messageId: result.sid 
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('SMS Error:', error);
     return res.status(500).json({ 
       error: 'Failed to send SMS',

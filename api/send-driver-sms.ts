@@ -162,6 +162,9 @@ export default async function handler(
       return res.status(404).json({ error: 'No active drivers found' });
     }
 
+    // Move acceptanceCode declaration before its use
+    const acceptanceCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
     // For trial accounts, only send to verified numbers
     const smsPromises = [];
     for (const driver of drivers) {
@@ -212,9 +215,6 @@ This offer expires in 30 minutes.`,
       status: r.status,
       to: r.to 
     })));
-
-    // Create a unique acceptance code for this booking
-    const acceptanceCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
     // Store the acceptance code in driver_notifications
     await supabase
