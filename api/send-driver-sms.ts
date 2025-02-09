@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
 import type { Twilio } from 'twilio';
-import { logger } from '../src/utils/debug-logger';
+import { DebugLogger } from '../src/utils/debug-logger';
 
 const isTrialAccount = true; // Since we confirmed it's a trial account
 
@@ -54,21 +54,21 @@ async function withRetry<T>(
 
   while (attempt <= config.maxAttempts) {
     try {
-      logger.debug('SMS_API', `Attempt ${attempt} for ${context}`);
+      DebugLogger.debug('SMS_API', `Attempt ${attempt} for ${context}`);
       const result = await operation();
       if (attempt > 1) {
-        logger.info('SMS_API', `Succeeded on attempt ${attempt} for ${context}`);
+        DebugLogger.info('SMS_API', `Succeeded on attempt ${attempt} for ${context}`);
       }
       return result;
     } catch (error) {
       lastError = error;
-      logger.error('SMS_API', `Attempt ${attempt} failed for ${context}`, error as Error);
+      DebugLogger.error('SMS_API', `Attempt ${attempt} failed for ${context}`, error as Error);
       
       if (attempt === config.maxAttempts) {
         break;
       }
 
-      logger.debug('SMS_API', `Waiting ${delayTime}ms before retry`);
+      DebugLogger.debug('SMS_API', `Waiting ${delayTime}ms before retry`);
       await delay(delayTime);
       delayTime *= config.backoffFactor;
       attempt++;
@@ -78,11 +78,15 @@ async function withRetry<T>(
   throw new Error(`Failed after ${config.maxAttempts} attempts: ${lastError.message}`);
 }
 
+// Add rate limiting for batch sends
+const BATCH_SIZE = 50;
+const BATCH_DELAY = 1000; // 1 second
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  logger.info('SMS_API', 'Handler started', { method: req.method });
+  DebugLogger.info('SMS_API', 'Handler started', { method: req.method });
 
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -152,7 +156,7 @@ export default async function handler(
     }
 
     const { bookingId } = req.body;
-    logger.debug('SMS_API', 'Processing booking', { bookingId });
+    DebugLogger.debug('SMS_API', 'Processing booking', { bookingId });
 
     if (!bookingId) {
       return res.status(400).json({ error: 'bookingId is required' });
@@ -202,7 +206,7 @@ export default async function handler(
       }
     }
 
-    logger.info('SMS_API', 'Booking fetched', { booking });
+    DebugLogger.info('SMS_API', 'Booking fetched', { booking });
 
     // Get drivers with retry
     const { data: drivers } = await withRetry(
@@ -219,7 +223,7 @@ export default async function handler(
       'fetch_drivers'
     );
 
-    logger.info('SMS_API', `Found ${drivers?.length || 0} active drivers`);
+    DebugLogger.info('SMS_API', `Found ${drivers?.length || 0} active drivers`);
 
     if (!drivers?.length) {
       return res.status(404).json({ error: 'No active drivers found' });
@@ -230,23 +234,25 @@ export default async function handler(
 
     // For trial accounts, only send to verified numbers
     const smsPromises = [];
-    for (const driver of drivers) {
-      const phone = driver.mobile_number?.startsWith('+') 
-        ? driver.mobile_number 
-        : `+63${driver.mobile_number?.replace(/^0+/, '')}`;
+    for (let i = 0; i < drivers.length; i += BATCH_SIZE) {
+      const batch = drivers.slice(i, i + BATCH_SIZE);
+      for (const driver of batch) {
+        const phone = driver.mobile_number?.startsWith('+') 
+          ? driver.mobile_number 
+          : `+63${driver.mobile_number?.replace(/^0+/, '')}`;
 
-      if (isTrialAccount) {
-        const isVerified = await isVerifiedNumber(twilioClient, phone);
-        if (!isVerified) {
-          logger.info('SMS_API', `Skipping unverified number in trial mode: ${phone}`);
-          continue;
+        if (isTrialAccount) {
+          const isVerified = await isVerifiedNumber(twilioClient, phone);
+          if (!isVerified) {
+            DebugLogger.info('SMS_API', `Skipping unverified number in trial mode: ${phone}`);
+            continue;
+          }
         }
-      }
 
-      logger.info('SMS_API', `Sending SMS to driver: ${driver.id} at ${phone}`);
-      smsPromises.push(
-        twilioClient.messages.create({
-          body: `New booking received!
+        DebugLogger.info('SMS_API', `Sending SMS to driver: ${driver.id} at ${phone}`);
+        smsPromises.push(
+          twilioClient.messages.create({
+            body: `New booking received!
 Booking ID: ${bookingId}
 From: ${booking.from_location}
 To: ${booking.to_location}
@@ -257,14 +263,18 @@ Reply with code ${acceptanceCode} to accept this booking.
 Or visit your dashboard: ${process.env.NEXT_PUBLIC_APP_URL}/driver/dashboard
 
 This offer expires in 30 minutes.`,
-          to: phone,
-          from: process.env.TWILIO_PHONE_NUMBER
-        })
-      );
+            to: phone,
+            from: process.env.TWILIO_PHONE_NUMBER
+          })
+        );
+      }
+      if (i + BATCH_SIZE < drivers.length) {
+        await delay(BATCH_DELAY);
+      }
     }
 
     if (smsPromises.length === 0) {
-      logger.info('SMS_API', 'No verified numbers to send SMS to');
+      DebugLogger.info('SMS_API', 'No verified numbers to send SMS to');
       return res.status(200).json({ 
         success: true, 
         messagesSent: 0,
@@ -272,12 +282,31 @@ This offer expires in 30 minutes.`,
       });
     }
 
-    const smsResults = await Promise.all(smsPromises);
-    logger.info('SMS_API', 'SMS sent successfully:', smsResults.map(r => ({ 
-      sid: r.sid, 
-      status: r.status,
-      to: r.to 
-    })));
+    const smsResults = await Promise.all(smsPromises.map(async (promise) => {
+      try {
+        const result = await promise;
+        return {
+          success: true,
+          data: result
+        };
+      } catch (error: any) {
+        DebugLogger.error('SMS_API', 'SMS send failed', {
+          error: error.message,
+          code: error.code,
+          status: error.status
+        });
+        return {
+          success: false,
+          error: error
+        };
+      }
+    }));
+
+    // Track failed messages
+    const failedMessages = smsResults.filter(r => !r.success);
+    if (failedMessages.length > 0) {
+      DebugLogger.warn('SMS_API', `${failedMessages.length} messages failed to send`);
+    }
 
     // Store the acceptance code in driver_notifications
     await withRetry(
@@ -316,16 +345,28 @@ This offer expires in 30 minutes.`,
       'update_booking_status'
     );
 
+    // Track message status
+    const { error } = await supabase
+      .from('sms_logs')
+      .insert(smsResults.map(result => ({
+        message_sid: result.success ? result.data.sid : null,
+        status: result.success ? 'sent' : 'failed',
+        error: result.success ? null : result.error.message,
+        driver_id: result.driverId,
+        booking_id: bookingId,
+        sent_at: new Date().toISOString()
+      })));
+
     return res.status(200).json({ 
       success: true, 
       messagesSent: smsResults.length 
     });
   } catch (error: any) {
-    logger.error('SMS_API', 'Handler failed', error as Error);
+    DebugLogger.error('SMS_API', 'Handler failed', error as Error);
     return res.status(500).json({
       error: 'Failed to send notifications',
       details: error.message,
-      logs: logger.getLogs('error', 'SMS_API')
+      logs: DebugLogger.getLogs('error', 'SMS_API')
     });
   }
 } 

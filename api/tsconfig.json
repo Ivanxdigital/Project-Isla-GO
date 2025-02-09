@@ -2,14 +2,18 @@
   "compilerOptions": {
     "target": "es2017",
     "module": "commonjs",
+    "outDir": "../.vercel/output/functions",
+    "rootDir": "..",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "outDir": "../dist/api",
-    "rootDir": ".",
-    "types": ["node"]
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true
   },
-  "include": ["./**/*.ts"],
+  "include": [
+    "./**/*",
+    "../src/utils/debug-logger.ts"
+  ],
   "exclude": ["node_modules"]
 } 
