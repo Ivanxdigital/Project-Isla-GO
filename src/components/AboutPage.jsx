@@ -1,30 +1,41 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircleIcon, UserGroupIcon, ClockIcon, CurrencyDollarIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import React, { useEffect } from 'react';
+import { motion, useAnimation } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
+import { 
+  CheckCircleIcon, 
+  UserGroupIcon, 
+  ClockIcon, 
+  CurrencyDollarIcon, 
+  ShieldCheckIcon,
+  MapIcon,
+  StarIcon,
+  TruckIcon
+} from '@heroicons/react/24/outline';
 
+// Enhanced animation variants
 const containerVariants = {
-  initial: {
-    opacity: 0
-  },
-  animate: {
+  hidden: { opacity: 0 },
+  visible: {
     opacity: 1,
     transition: {
       duration: 0.8,
       ease: [0.4, 0, 0.2, 1],
       when: "beforeChildren",
-      staggerChildren: 0.1
+      staggerChildren: 0.2
     }
   }
 };
 
 const itemVariants = {
-  initial: {
-    opacity: 0,
-    y: 20
+  hidden: { 
+    opacity: 0, 
+    y: 30,
+    scale: 0.95
   },
-  animate: {
+  visible: {
     opacity: 1,
     y: 0,
+    scale: 1,
     transition: {
       duration: 0.5,
       ease: [0.4, 0, 0.2, 1]
@@ -32,192 +43,214 @@ const itemVariants = {
   }
 };
 
+// Reusable animated section component
+const AnimatedSection = ({ children, className }) => {
+  const controls = useAnimation();
+  const [ref, inView] = useInView({
+    threshold: 0.2,
+    triggerOnce: true
+  });
+
+  useEffect(() => {
+    if (inView) {
+      controls.start('visible');
+    }
+  }, [controls, inView]);
+
+  return (
+    <motion.div
+      ref={ref}
+      initial="hidden"
+      animate={controls}
+      variants={containerVariants}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// Stats card component with hover effect
+const StatCard = ({ number, label, icon: Icon }) => (
+  <motion.div 
+    variants={itemVariants}
+    whileHover={{ scale: 1.05 }}
+    className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+  >
+    <div className="flex items-center space-x-4">
+      <div className="p-3 bg-blue-50 rounded-lg">
+        <Icon className="h-8 w-8 text-blue-600" />
+      </div>
+      <div>
+        <div className="text-3xl font-bold text-blue-600">{number}</div>
+        <div className="text-gray-600 font-medium">{label}</div>
+      </div>
+    </div>
+  </motion.div>
+);
+
+// Feature card component
+const FeatureCard = ({ icon: Icon, title, description }) => (
+  <motion.div 
+    variants={itemVariants}
+    whileHover={{ y: -5 }}
+    className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
+  >
+    <div className="flex items-start space-x-4">
+      <div className="flex-shrink-0">
+        <div className="p-3 bg-blue-50 rounded-lg">
+          <Icon className="h-6 w-6 text-blue-600" />
+        </div>
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+        <p className="text-gray-600 leading-relaxed">{description}</p>
+      </div>
+    </div>
+  </motion.div>
+);
+
 export default function AboutPage() {
   return (
-    <motion.div 
-      className="min-h-screen bg-gray-50 pt-16"
-      variants={containerVariants}
-      initial="initial"
-      animate="animate"
-    >
-      {/* Hero Section */}
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      {/* Hero Section with Parallax effect */}
       <motion.div 
-        variants={itemVariants}
-        className="bg-blue-600 text-white py-24"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="relative h-[60vh] md:h-[80vh] bg-blue-600 overflow-hidden"
       >
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl font-bold mb-4">Connecting Travelers with Local Drivers</h1>
-          <p className="text-xl">Your trusted transportation partner in Palawan</p>
+        {/* Background image with responsive sizing */}
+        <motion.div
+          initial={{ scale: 1.2 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.5 }}
+          className="absolute inset-0"
+        >
+          {/* Desktop image */}
+          <img
+            src="https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?fm=jpg&q=60&w=3000"
+            alt="Palawan landscape"
+            className="hidden md:block w-full h-full object-cover object-center"
+            loading="eager"
+            fetchPriority="high"
+          />
+          {/* Mobile image - same image but smaller size */}
+          <img
+            src="https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?fm=jpg&q=60&w=800"
+            alt="Palawan landscape"
+            className="md:hidden w-full h-full object-cover object-[center_center]"
+            loading="eager"
+            fetchPriority="high"
+          />
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-blue-900/50 to-blue-900/70" />
+        </motion.div>
+
+        {/* Hero content */}
+        <div className="relative h-full flex items-center justify-center text-center px-4">
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="max-w-4xl mx-auto"
+          >
+            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-lg">
+              Connecting Travelers with Local Drivers
+            </h1>
+            <p className="text-xl md:text-2xl text-white/90 drop-shadow">
+              Your trusted transportation partner in Palawan
+            </p>
+          </motion.div>
         </div>
       </motion.div>
 
       {/* Mission Statement */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <motion.div 
-          variants={itemVariants}
-          className="text-center mb-16"
-        >
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Our Mission</h2>
-          <p className="text-xl text-gray-600">
+      <AnimatedSection className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <motion.div variants={itemVariants} className="text-center mb-20">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Our Mission</h2>
+          <p className="text-xl text-gray-600 leading-relaxed max-w-3xl mx-auto">
             To provide safe, reliable, and affordable transportation solutions while empowering local drivers 
             and delivering exceptional experiences to travelers in Palawan.
           </p>
         </motion.div>
 
         {/* Core Values */}
-        <motion.div 
-          variants={itemVariants}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { title: 'Safety First', description: 'Rigorous driver verification and vehicle inspections' },
-            { title: 'Reliability', description: '24/7 support and guaranteed bookings' },
-            { title: 'Community', description: 'Supporting local drivers and authentic experiences' }
+            { 
+              icon: ShieldCheckIcon,
+              title: 'Safety First',
+              description: 'Rigorous driver verification and vehicle inspections ensure your safety.'
+            },
+            { 
+              icon: ClockIcon,
+              title: 'Reliability',
+              description: '24/7 support and guaranteed bookings for peace of mind.'
+            },
+            { 
+              icon: UserGroupIcon,
+              title: 'Community',
+              description: 'Supporting local drivers and authentic experiences in Palawan.'
+            }
           ].map((value) => (
-            <motion.div 
-              key={value.title}
-              variants={itemVariants}
-              className="text-center p-6 bg-white rounded-lg shadow-sm"
-            >
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{value.title}</h3>
-              <p className="text-gray-600">{value.description}</p>
-            </motion.div>
+            <FeatureCard key={value.title} {...value} />
           ))}
-        </motion.div>
+        </div>
+      </AnimatedSection>
 
-        {/* For Travelers Section */}
-        <motion.div 
-          variants={itemVariants}
-          className="mb-16"
-        >
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">For Travelers</h2>
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {[
-                {
-                  icon: <ShieldCheckIcon className="h-8 w-8 text-blue-600" />,
-                  title: 'Safe & Reliable',
-                  description: 'All our drivers are thoroughly vetted and vehicles regularly inspected for your safety.'
-                },
-                {
-                  icon: <ClockIcon className="h-8 w-8 text-blue-600" />,
-                  title: 'Advance Booking',
-                  description: 'Plan your entire trip by booking rides in advance with guaranteed availability.'
-                },
-                {
-                  icon: <CurrencyDollarIcon className="h-8 w-8 text-blue-600" />,
-                  title: 'Transparent Pricing',
-                  description: 'Clear, upfront pricing with no hidden fees or surge charges.'
-                },
-                {
-                  icon: <UserGroupIcon className="h-8 w-8 text-blue-600" />,
-                  title: 'Local Expertise',
-                  description: 'Experienced local drivers who know the best routes and can share local insights.'
-                }
-              ].map((feature) => (
-                <motion.div 
-                  key={feature.title}
-                  variants={itemVariants}
-                  className="flex items-start space-x-4"
-                >
-                  <div className="flex-shrink-0">{feature.icon}</div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                    <p className="text-gray-600">{feature.description}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* For Drivers Section */}
-        <motion.div 
-          variants={itemVariants}
-          className="mb-16"
-        >
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">For Drivers</h2>
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <div className="space-y-8">
-              {[
-                {
-                  title: 'Flexible Schedule',
-                  description: 'Choose your own working hours and manage your availability through our easy-to-use platform.'
-                },
-                {
-                  title: 'Steady Income',
-                  description: 'Access to a steady stream of tourists and advance bookings ensures reliable income opportunities.'
-                },
-                {
-                  title: 'Simple Payments',
-                  description: 'Receive payments directly to your account with our secure and transparent payment system.'
-                },
-                {
-                  title: 'Easy Onboarding',
-                  description: 'Quick and straightforward registration process with comprehensive training and support.'
-                }
-              ].map((benefit) => (
-                <motion.div 
-                  key={benefit.title}
-                  variants={itemVariants}
-                  className="flex items-start space-x-4"
-                >
-                  <div className="flex-shrink-0">
-                    <CheckCircleIcon className="h-6 w-6 text-green-500" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{benefit.title}</h3>
-                    <p className="text-gray-600">{benefit.description}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Statistics Section */}
-        <motion.div 
-          variants={itemVariants}
-          className="bg-blue-50 rounded-lg p-8 mb-16"
-        >
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Our Impact</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+      {/* Statistics Section with enhanced design */}
+      <AnimatedSection className="bg-blue-50 py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.h2 
+            variants={itemVariants}
+            className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12"
+          >
+            Our Impact
+          </motion.h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { number: '1,000+', label: 'Happy Travelers' },
-              { number: '50+', label: 'Professional Drivers' },
-              { number: '98%', label: 'Satisfaction Rate' }
+              { number: '1,000+', label: 'Happy Travelers', icon: UserGroupIcon },
+              { number: '50+', label: 'Professional Drivers', icon: TruckIcon },
+              { number: '98%', label: 'Satisfaction Rate', icon: StarIcon }
             ].map((stat) => (
-              <motion.div 
-                key={stat.label}
-                variants={itemVariants}
-              >
-                <div className="text-3xl font-bold text-blue-600 mb-2">{stat.number}</div>
-                <div className="text-gray-600">{stat.label}</div>
-              </motion.div>
+              <StatCard key={stat.label} {...stat} />
             ))}
           </div>
-        </motion.div>
+        </div>
+      </AnimatedSection>
 
-        {/* Call to Action */}
-        <motion.div 
-          variants={itemVariants}
-          className="text-center"
-        >
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Join Our Community</h2>
-          <p className="text-xl text-gray-600 mb-8">
-            Whether you're a traveler looking for reliable transportation or a driver wanting to grow your business,
-            we're here to help you succeed.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a href="/" className="inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-              Book a Ride
-            </a>
-            <a href="/drivers" className="inline-flex justify-center items-center px-6 py-3 border border-blue-600 text-base font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50">
-              Become a Driver
-            </a>
-          </div>
-        </motion.div>
-      </div>
-    </motion.div>
+      {/* Call to Action */}
+      <AnimatedSection className="py-20 bg-gradient-to-b from-white to-blue-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div variants={itemVariants}>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+              Join Our Community
+            </h2>
+            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+              Whether you're a traveler looking for reliable transportation or a driver wanting to grow your business,
+              we're here to help you succeed.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <motion.a
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                href="/"
+                className="px-8 py-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-300 shadow-lg hover:shadow-xl"
+              >
+                Book a Ride
+              </motion.a>
+              <motion.a
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                href="/drivers"
+                className="px-8 py-4 border-2 border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors duration-300"
+              >
+                Become a Driver
+              </motion.a>
+            </div>
+          </motion.div>
+        </div>
+      </AnimatedSection>
+    </div>
   );
 }

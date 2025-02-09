@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
 import type { Twilio } from 'twilio';
+import { logger } from '../src/utils/debug-logger';
 
 const isTrialAccount = true; // Since we confirmed it's a trial account
 
@@ -25,10 +26,64 @@ type SMSResponse = {
   warning?: string;
 };
 
+// Add these types at the top
+interface RetryConfig {
+  maxAttempts: number;
+  delayMs: number;
+  backoffFactor: number;
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxAttempts: 3,
+  delayMs: 1000,
+  backoffFactor: 2
+};
+
+// Add this helper function
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Add retry wrapper function
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  config: RetryConfig = DEFAULT_RETRY_CONFIG,
+  context: string
+): Promise<T> {
+  let lastError: any;
+  let attempt = 1;
+  let delayTime = config.delayMs;
+
+  while (attempt <= config.maxAttempts) {
+    try {
+      logger.debug('SMS_API', `Attempt ${attempt} for ${context}`);
+      const result = await operation();
+      if (attempt > 1) {
+        logger.info('SMS_API', `Succeeded on attempt ${attempt} for ${context}`);
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+      logger.error('SMS_API', `Attempt ${attempt} failed for ${context}`, error as Error);
+      
+      if (attempt === config.maxAttempts) {
+        break;
+      }
+
+      logger.debug('SMS_API', `Waiting ${delayTime}ms before retry`);
+      await delay(delayTime);
+      delayTime *= config.backoffFactor;
+      attempt++;
+    }
+  }
+
+  throw new Error(`Failed after ${config.maxAttempts} attempts: ${lastError.message}`);
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  logger.info('SMS_API', 'Handler started', { method: req.method });
+
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -97,7 +152,7 @@ export default async function handler(
     }
 
     const { bookingId } = req.body;
-    console.log('Received bookingId:', bookingId);
+    logger.debug('SMS_API', 'Processing booking', { bookingId });
 
     if (!bookingId) {
       return res.status(400).json({ error: 'bookingId is required' });
@@ -112,22 +167,26 @@ export default async function handler(
       hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
     });
 
-    // Fetch booking details with customer info
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        profiles (
-          full_name
-        )
-      `)
-      .eq('id', bookingId)
-      .single();
-
-    if (bookingError) {
-      console.error('Booking fetch error:', bookingError);
-      return res.status(404).json({ error: 'Booking not found', details: bookingError });
-    }
+    // Get booking details with retry
+    const { data: booking } = await withRetry(
+      async () => {
+        const result = await supabase
+          .from('bookings')
+          .select(`
+            *,
+            profiles (
+              full_name
+            )
+          `)
+          .eq('id', bookingId)
+          .single();
+        
+        if (result.error) throw result.error;
+        return result;
+      },
+      undefined,
+      'fetch_booking'
+    );
 
     // Fetch profile separately if user_id exists
     let customerName = 'Anonymous Customer';
@@ -143,20 +202,24 @@ export default async function handler(
       }
     }
 
-    console.log('Booking fetched:', booking);
+    logger.info('SMS_API', 'Booking fetched', { booking });
 
-    // Fetch available drivers
-    const { data: drivers, error: driversError } = await supabase
-      .from('drivers')
-      .select('*')
-      .eq('status', 'active');
+    // Get drivers with retry
+    const { data: drivers } = await withRetry(
+      async () => {
+        const result = await supabase
+          .from('drivers')
+          .select('*')
+          .eq('status', 'active');
+        
+        if (result.error) throw result.error;
+        return result;
+      },
+      undefined,
+      'fetch_drivers'
+    );
 
-    if (driversError) {
-      console.error('Error fetching drivers:', driversError);
-      throw driversError;
-    }
-
-    console.log(`Found ${drivers?.length || 0} active drivers`);
+    logger.info('SMS_API', `Found ${drivers?.length || 0} active drivers`);
 
     if (!drivers?.length) {
       return res.status(404).json({ error: 'No active drivers found' });
@@ -175,12 +238,12 @@ export default async function handler(
       if (isTrialAccount) {
         const isVerified = await isVerifiedNumber(twilioClient, phone);
         if (!isVerified) {
-          console.log(`Skipping unverified number in trial mode: ${phone}`);
+          logger.info('SMS_API', `Skipping unverified number in trial mode: ${phone}`);
           continue;
         }
       }
 
-      console.log(`Sending SMS to driver: ${driver.id} at ${phone}`);
+      logger.info('SMS_API', `Sending SMS to driver: ${driver.id} at ${phone}`);
       smsPromises.push(
         twilioClient.messages.create({
           body: `New booking received!
@@ -201,7 +264,7 @@ This offer expires in 30 minutes.`,
     }
 
     if (smsPromises.length === 0) {
-      console.log('No verified numbers to send SMS to');
+      logger.info('SMS_API', 'No verified numbers to send SMS to');
       return res.status(200).json({ 
         success: true, 
         messagesSent: 0,
@@ -210,47 +273,59 @@ This offer expires in 30 minutes.`,
     }
 
     const smsResults = await Promise.all(smsPromises);
-    console.log('SMS sent successfully:', smsResults.map(r => ({ 
+    logger.info('SMS_API', 'SMS sent successfully:', smsResults.map(r => ({ 
       sid: r.sid, 
       status: r.status,
       to: r.to 
     })));
 
     // Store the acceptance code in driver_notifications
-    await supabase
-      .from('driver_notifications')
-      .insert(drivers.map(driver => ({
-        driver_id: driver.id,
-        booking_id: bookingId,
-        status: 'PENDING',
-        acceptance_code: acceptanceCode,
-        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min expiry
-      })));
+    await withRetry(
+      async () => {
+        const { error } = await supabase
+          .from('driver_notifications')
+          .insert(drivers.map(driver => ({
+            driver_id: driver.id,
+            booking_id: bookingId,
+            status: 'PENDING',
+            acceptance_code: acceptanceCode,
+            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min expiry
+          })));
+        
+        if (error) throw error;
+      },
+      undefined,
+      'update_notification_tracking'
+    );
 
     // Update booking status
-    const { error: updateError } = await supabase
-      .from('bookings')
-      .update({ 
-        driver_notification_sent: true,
-        driver_notification_sent_at: new Date().toISOString(),
-        status: 'PENDING_DRIVER_ACCEPTANCE'
-      })
-      .eq('id', bookingId);
-
-    if (updateError) {
-      console.error('Booking update error:', updateError);
-    }
+    await withRetry(
+      async () => {
+        const { error: updateError } = await supabase
+          .from('bookings')
+          .update({ 
+            driver_notification_sent: true,
+            driver_notification_sent_at: new Date().toISOString(),
+            status: 'PENDING_DRIVER_ACCEPTANCE'
+          })
+          .eq('id', bookingId);
+        
+        if (updateError) throw updateError;
+      },
+      undefined,
+      'update_booking_status'
+    );
 
     return res.status(200).json({ 
       success: true, 
       messagesSent: smsResults.length 
     });
   } catch (error: any) {
-    console.error('Detailed error:', error);
-    return res.status(500).json({ 
-      error: 'Failed to send SMS',
+    logger.error('SMS_API', 'Handler failed', error as Error);
+    return res.status(500).json({
+      error: 'Failed to send notifications',
       details: error.message,
-      stack: error.stack
+      logs: logger.getLogs('error', 'SMS_API')
     });
   }
 } 

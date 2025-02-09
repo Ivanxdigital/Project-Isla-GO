@@ -6,3 +6,4 @@ globs:
 # When creating, altering or adding new features to my web apps or any code. Always keep in mind the following:
 - [currentdatabaseschema.md](mdc:information/currentdatabaseschema.md) which is the current database schema.
 - Always ask for more context that you may need from me before generating any code to avoid errors.
+- [info.md](mdc:info.md) For the general context of our project always refer back to this.

@@ -13,6 +13,34 @@ export default function PaymentSuccess() {
   const [paymentStatus, setPaymentStatus] = useState('processing');
   const [error, setError] = useState(null);
   
+  // Add new function to handle driver notifications
+  const notifyDrivers = async (bookingId) => {
+    try {
+      console.log('Initiating driver notifications for booking:', bookingId);
+      
+      const response = await fetch('/api/send-driver-sms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ bookingId }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send driver notifications');
+      }
+
+      console.log('Driver notifications sent successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('Error sending driver notifications:', error);
+      // Don't throw - we want to continue with success flow
+      setError('Payment successful but driver notification failed. Our team will handle this manually.');
+    }
+  };
+
   useEffect(() => {
     const bookingId = sessionStorage.getItem('lastBookingId');
     console.log('Retrieved bookingId:', bookingId);
@@ -29,7 +57,7 @@ export default function PaymentSuccess() {
         // Get booking details including PayMongo session ID
         const { data: booking, error } = await supabase
           .from('bookings')
-          .select('payment_status, status, confirmation_email_sent, payment_session_id')
+          .select('payment_status, status, confirmation_email_sent, payment_session_id, driver_notification_sent')
           .eq('id', bookingId)
           .single();
 
@@ -57,6 +85,12 @@ export default function PaymentSuccess() {
               } catch (emailError) {
                 console.error('Failed to send confirmation email:', emailError);
               }
+            }
+            
+            // Send driver notifications if not already sent
+            if (!booking.driver_notification_sent) {
+              console.log('Initiating driver notifications...');
+              await notifyDrivers(bookingId);
             }
             
             sessionStorage.removeItem('lastBookingId');
@@ -88,21 +122,37 @@ export default function PaymentSuccess() {
             console.log('Payment confirmed as paid');
             setPaymentStatus('success');
             
-            if (!booking.confirmation_email_sent) {
-              try {
-                console.log('Initiating confirmation email send...');
+            // Sequential processing of post-payment actions
+            try {
+              // 1. Send confirmation email
+              if (!booking.confirmation_email_sent) {
+                console.log('Sending confirmation email...');
                 await sendBookingConfirmationEmail(bookingId);
-                console.log('Confirmation email sent successfully');
-              } catch (emailError) {
-                console.error('Detailed email error:', {
-                  error: emailError,
-                  message: emailError.message,
-                  stack: emailError.stack
-                });
-                // Don't throw the error - we still want to show success
-                // but maybe show a warning to the user
-                setError('Payment successful but confirmation email failed to send. Our team will contact you shortly.');
               }
+
+              // 2. Send driver notifications
+              if (!booking.driver_notification_sent) {
+                console.log('Sending driver notifications...');
+                await notifyDrivers(bookingId);
+              }
+
+              // 3. Update booking status
+              const { error: updateError } = await supabase
+                .from('bookings')
+                .update({ 
+                  status: 'PENDING_DRIVER_ACCEPTANCE',
+                  driver_notification_sent: true,
+                  driver_notification_sent_at: new Date().toISOString()
+                })
+                .eq('id', bookingId);
+
+              if (updateError) {
+                console.error('Error updating booking status:', updateError);
+              }
+
+            } catch (processError) {
+              console.error('Error in post-payment processing:', processError);
+              setError('Payment successful but there were some issues. Our team will contact you.');
             }
             
             sessionStorage.removeItem('lastBookingId');
