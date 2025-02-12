@@ -22,6 +22,11 @@ export default defineConfig({
         target: process.env.VITE_SUPABASE_URL,
         changeOrigin: true,
         secure: false
+      },
+      '/api': {
+        target: 'http://localhost:3001',  // Your API server URL
+        changeOrigin: true,
+        secure: false,
       }
     }
   },

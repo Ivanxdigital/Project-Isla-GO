@@ -6,6 +6,7 @@ import { supabase } from '../utils/supabase.js';
 import { sendBookingConfirmationEmail } from '../utils/email.js';
 import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo.js';
 import { sendBookingNotificationToDrivers } from '../utils/twilio.js';
+import { toast } from 'react-hot-toast';
 
 export default function PaymentSuccess() {
   const { t } = useTranslation();
@@ -13,102 +14,82 @@ export default function PaymentSuccess() {
   const [paymentStatus, setPaymentStatus] = useState('processing');
   const [error, setError] = useState(null);
   
-  // Add new function to handle driver notifications
   const notifyDrivers = async (bookingId) => {
     try {
-      console.log('Initiating driver notifications for booking:', bookingId);
+      console.log('Sending notification for booking:', bookingId);
       
-      const response = await fetch('/api/send-driver-sms', {
+      // Use environment-specific URL
+      const apiUrl = import.meta.env.PROD 
+        ? '/api/send-driver-sms'  // Production URL
+        : 'http://localhost:3001/api/send-driver-sms';  // Development URL - use your actual dev server port
+      
+      console.log('Using API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ bookingId }),
+        body: JSON.stringify({ bookingId })
       });
 
-      const result = await response.json();
+      // Log response details for debugging
+      console.log('Response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to send driver notifications');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || 'Failed to send notifications');
       }
 
-      console.log('Driver notifications sent successfully:', result);
-      return result;
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error('Error sending driver notifications:', error);
-      // Don't throw - we want to continue with success flow
-      setError('Payment successful but driver notification failed. Our team will handle this manually.');
+      console.error('Error sending driver notifications:', {
+        error,
+        message: error.message,
+        stack: error.stack
+      });
+      throw error;
     }
   };
 
-  useEffect(() => {
-    const bookingId = sessionStorage.getItem('lastBookingId');
-    console.log('Retrieved bookingId:', bookingId);
+  const pollPaymentStatus = async () => {
+    try {
+      const bookingId = sessionStorage.getItem('lastBookingId');
+      console.log('Polling payment status for booking:', bookingId);
 
-    if (!bookingId) {
-      setError('No booking found');
-      return;
-    }
+      if (!bookingId) {
+        setError('No booking found');
+        return;
+      }
 
-    const pollPaymentStatus = async () => {
-      try {
-        console.log('Polling payment status for booking:', bookingId);
-        
-        // Get booking details including PayMongo session ID
-        const { data: booking, error } = await supabase
-          .from('bookings')
-          .select('payment_status, status, confirmation_email_sent, payment_session_id, driver_notification_sent')
-          .eq('id', bookingId)
-          .single();
+      // Get booking details including PayMongo session ID
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .select('payment_status, status, confirmation_email_sent, payment_session_id, driver_notification_sent')
+        .eq('id', bookingId)
+        .single();
 
-        if (error) {
-          console.error('Supabase query error:', error);
-          throw error;
-        }
+      if (bookingError) {
+        console.error('Error fetching booking:', bookingError);
+        throw bookingError;
+      }
 
-        console.log('Current booking status:', booking);
+      console.log('Current booking status:', booking);
 
-        // Check PayMongo session status
-        if (booking.payment_session_id) {
-          const paymongoSession = await verifyPaymentSession(booking.payment_session_id);
-          console.log('PayMongo session status:', paymongoSession.attributes.status);
-
-          // If payment is already marked as paid in our database, process success
-          if (booking.payment_status === 'paid') {
-            console.log('Payment already marked as paid');
-            setPaymentStatus('success');
+      if (booking.payment_status === 'paid') {
+        try {
+          if (!booking.driver_notification_sent) {
+            console.log('Sending driver notifications...');
+            await notifyDrivers(bookingId);
             
-            if (!booking.confirmation_email_sent) {
-              try {
-                console.log('Sending confirmation email...');
-                await sendBookingConfirmationEmail(bookingId);
-              } catch (emailError) {
-                console.error('Failed to send confirmation email:', emailError);
-              }
-            }
-            
-            // Send driver notifications if not already sent
-            if (!booking.driver_notification_sent) {
-              console.log('Initiating driver notifications...');
-              await notifyDrivers(bookingId);
-            }
-            
-            sessionStorage.removeItem('lastBookingId');
-            setTimeout(() => navigate('/'), 3000);
-            return;
-          }
-
-          // Map PayMongo status to our status
-          const mappedStatus = mapPaymentStatus(paymongoSession.attributes.status);
-          
-          // Update booking status if it's different
-          if (mappedStatus !== booking.payment_status) {
+            // Update booking status after successful notification
             const { error: updateError } = await supabase
               .from('bookings')
               .update({ 
-                payment_status: mappedStatus,
-                status: mappedStatus === 'paid' ? 'confirmed' : booking.status,
-                updated_at: new Date().toISOString()
+                driver_notification_sent: true,
+                driver_notification_sent_at: new Date().toISOString(),
+                status: 'PENDING_DRIVER_ACCEPTANCE'
               })
               .eq('id', bookingId);
 
@@ -116,78 +97,29 @@ export default function PaymentSuccess() {
               console.error('Error updating booking status:', updateError);
             }
           }
-
-          // Update local state based on PayMongo status
-          if (mappedStatus === 'paid') {
-            console.log('Payment confirmed as paid');
-            setPaymentStatus('success');
-            
-            // Sequential processing of post-payment actions
-            try {
-              // 1. Send confirmation email
-              if (!booking.confirmation_email_sent) {
-                console.log('Sending confirmation email...');
-                await sendBookingConfirmationEmail(bookingId);
-              }
-
-              // 2. Send driver notifications
-              if (!booking.driver_notification_sent) {
-                console.log('Sending driver notifications...');
-                await notifyDrivers(bookingId);
-              }
-
-              // 3. Update booking status
-              const { error: updateError } = await supabase
-                .from('bookings')
-                .update({ 
-                  status: 'PENDING_DRIVER_ACCEPTANCE',
-                  driver_notification_sent: true,
-                  driver_notification_sent_at: new Date().toISOString()
-                })
-                .eq('id', bookingId);
-
-              if (updateError) {
-                console.error('Error updating booking status:', updateError);
-              }
-
-            } catch (processError) {
-              console.error('Error in post-payment processing:', processError);
-              setError('Payment successful but there were some issues. Our team will contact you.');
-            }
-            
-            sessionStorage.removeItem('lastBookingId');
-            setTimeout(() => navigate('/'), 3000);
-          } else if (mappedStatus === 'failed') {
-            console.log('Payment marked as failed');
-            setPaymentStatus('failed');
-            setError('Payment failed. Please try again.');
-          }
+          
+          setPaymentStatus('success');
+          sessionStorage.removeItem('lastBookingId');
+          setTimeout(() => navigate('/'), 3000);
+        } catch (notificationError) {
+          console.error('Driver notification failed:', notificationError);
+          toast.error('Payment successful but failed to notify drivers. Our team will handle this manually.');
+          // Continue with success flow even if notification fails
+          setPaymentStatus('success');
         }
-      } catch (err) {
-        console.error('Error polling payment status:', err);
-        setError('Failed to check payment status');
+      } else if (booking.payment_status === 'failed') {
+        setPaymentStatus('failed');
+        setError('Payment failed. Please try again.');
       }
-    };
+    } catch (error) {
+      console.error('Error polling payment status:', error);
+      setError(error.message);
+      setPaymentStatus('error');
+    }
+  };
 
-    // Initial check
+  useEffect(() => {
     pollPaymentStatus();
-
-    // Poll every 3 seconds
-    const pollInterval = setInterval(pollPaymentStatus, 3000);
-
-    // Set timeout to stop polling after 5 minutes
-    const timeoutId = setTimeout(() => {
-      clearInterval(pollInterval);
-      if (paymentStatus === 'processing') {
-        console.log('Payment verification timed out');
-        setError('Payment verification timed out. Please contact support.');
-      }
-    }, 5 * 60 * 1000);
-
-    return () => {
-      clearInterval(pollInterval);
-      clearTimeout(timeoutId);
-    };
   }, [navigate]);
 
   useEffect(() => {

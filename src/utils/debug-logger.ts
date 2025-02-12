@@ -9,7 +9,7 @@ interface LogEntry {
   error?: Error;
 }
 
-class DebugLogger {
+export class DebugLogger {
   private static instance: DebugLogger;
   private logs: LogEntry[] = [];
   private readonly MAX_LOGS = 1000;

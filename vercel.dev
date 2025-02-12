@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/api/send-driver-sms",
+      "dest": "/api/send-driver-sms.ts"
+    }
+  ]
+} 

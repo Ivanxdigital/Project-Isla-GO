@@ -3,6 +3,7 @@ import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
 import type { Twilio } from 'twilio';
 import { DebugLogger } from '../src/utils/debug-logger';
+import { MessageInstance } from 'twilio/lib/rest/api/v2010/account/message';
 
 const isTrialAccount = true; // Since we confirmed it's a trial account
 
@@ -82,11 +83,24 @@ async function withRetry<T>(
 const BATCH_SIZE = 50;
 const BATCH_DELAY = 1000; // 1 second
 
+// Add interfaces for better type safety
+interface SMSResult {
+  success: boolean;
+  data?: MessageInstance;
+  error?: any;
+  driverId?: string;
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  DebugLogger.info('SMS_API', 'Handler started', { method: req.method });
+  console.log('API Handler started', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+    body: req.body
+  });
 
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -282,13 +296,15 @@ This offer expires in 30 minutes.`,
       });
     }
 
-    const smsResults = await Promise.all(smsPromises.map(async (promise) => {
+    // Update the SMS sending code
+    const smsResults = await Promise.all(smsPromises.map(async (promise, index) => {
       try {
         const result = await promise;
         return {
           success: true,
-          data: result
-        };
+          data: result,
+          driverId: drivers[index].id // Add driver ID to the result
+        } as SMSResult;
       } catch (error: any) {
         DebugLogger.error('SMS_API', 'SMS send failed', {
           error: error.message,
@@ -297,8 +313,9 @@ This offer expires in 30 minutes.`,
         });
         return {
           success: false,
-          error: error
-        };
+          error: error,
+          driverId: drivers[index].id // Add driver ID even for failures
+        } as SMSResult;
       }
     }));
 
@@ -345,13 +362,13 @@ This offer expires in 30 minutes.`,
       'update_booking_status'
     );
 
-    // Track message status
+    // Update the SMS logs insertion
     const { error } = await supabase
       .from('sms_logs')
       .insert(smsResults.map(result => ({
-        message_sid: result.success ? result.data.sid : null,
+        message_sid: result.data?.sid || null,
         status: result.success ? 'sent' : 'failed',
-        error: result.success ? null : result.error.message,
+        error: result.success ? null : result.error?.message,
         driver_id: result.driverId,
         booking_id: bookingId,
         sent_at: new Date().toISOString()
@@ -359,13 +376,20 @@ This offer expires in 30 minutes.`,
 
     return res.status(200).json({ 
       success: true, 
-      messagesSent: smsResults.length 
+      messagesSent: smsResults.length,
+      timestamp: new Date().toISOString()
     });
   } catch (error: any) {
-    DebugLogger.error('SMS_API', 'Handler failed', error as Error);
+    console.error('API Handler failed:', {
+      error,
+      stack: error.stack,
+      body: req.body
+    });
+    
     return res.status(500).json({
       error: 'Failed to send notifications',
       details: error.message,
+      timestamp: new Date().toISOString(),
       logs: DebugLogger.getLogs('error', 'SMS_API')
     });
   }
