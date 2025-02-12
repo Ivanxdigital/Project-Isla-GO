@@ -1,100 +1,60 @@
-type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LogEntry {
   timestamp: string;
   level: LogLevel;
-  component: string;
+  context: string;
   message: string;
   data?: any;
-  error?: Error;
 }
 
-export class DebugLogger {
-  private static instance: DebugLogger;
-  private logs: LogEntry[] = [];
-  private readonly MAX_LOGS = 1000;
+class Logger {
+  private static logs: LogEntry[] = [];
+  private static maxLogs = 1000;
 
-  private constructor() {}
-
-  static getInstance(): DebugLogger {
-    if (!DebugLogger.instance) {
-      DebugLogger.instance = new DebugLogger();
-    }
-    return DebugLogger.instance;
+  static debug(context: string, message: string, data?: any) {
+    this.log('debug', context, message, data);
   }
 
-  private createLogEntry(
-    level: LogLevel,
-    component: string,
-    message: string,
-    data?: any,
-    error?: Error
-  ): LogEntry {
-    return {
+  static info(context: string, message: string, data?: any) {
+    this.log('info', context, message, data);
+  }
+
+  static warn(context: string, message: string, data?: any) {
+    this.log('warn', context, message, data);
+  }
+
+  static error(context: string, message: string, data?: any) {
+    this.log('error', context, message, data);
+  }
+
+  private static log(level: LogLevel, context: string, message: string, data?: any) {
+    const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
-      component,
+      context,
       message,
-      data,
-      error
+      data
     };
-  }
 
-  private addLog(entry: LogEntry) {
+    console[level](`[${context}] ${message}`, data);
+    
     this.logs.unshift(entry);
-    if (this.logs.length > this.MAX_LOGS) {
+    if (this.logs.length > this.maxLogs) {
       this.logs.pop();
     }
-
-    // Also log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      const consoleData = { ...entry };
-      switch (entry.level) {
-        case 'error':
-          console.error(`[${entry.component}]`, entry.message, entry.data || '', entry.error || '');
-          break;
-        case 'warn':
-          console.warn(`[${entry.component}]`, entry.message, entry.data || '');
-          break;
-        case 'debug':
-          console.debug(`[${entry.component}]`, entry.message, entry.data || '');
-          break;
-        default:
-          console.log(`[${entry.component}]`, entry.message, entry.data || '');
-      }
-    }
   }
 
-  info(component: string, message: string, data?: any) {
-    this.addLog(this.createLogEntry('info', component, message, data));
-  }
-
-  warn(component: string, message: string, data?: any) {
-    this.addLog(this.createLogEntry('warn', component, message, data));
-  }
-
-  error(component: string, message: string, error?: Error, data?: any) {
-    this.addLog(this.createLogEntry('error', component, message, data, error));
-  }
-
-  debug(component: string, message: string, data?: any) {
-    this.addLog(this.createLogEntry('debug', component, message, data));
-  }
-
-  getLogs(level?: LogLevel, component?: string): LogEntry[] {
+  static getLogs(level?: LogLevel, context?: string): LogEntry[] {
     return this.logs.filter(log => 
       (!level || log.level === level) && 
-      (!component || log.component === component)
+      (!context || log.context === context)
     );
   }
 
-  clearLogs() {
+  static clearLogs() {
     this.logs = [];
-  }
-
-  exportLogs(): string {
-    return JSON.stringify(this.logs, null, 2);
   }
 }
 
-export const logger = DebugLogger.getInstance(); 
+export const DebugLogger = Logger; 
