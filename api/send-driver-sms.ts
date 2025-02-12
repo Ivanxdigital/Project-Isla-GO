@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Twilio } from 'twilio';
 import { DebugLogger } from '../src/utils/debug-logger';
 import { MessageInstance } from 'twilio/lib/rest/api/v2010/account/message';
+import { supabase } from '../utils/supabase';
 
 const isTrialAccount = true; // Since we confirmed it's a trial account
 
@@ -91,6 +92,20 @@ interface SMSResult {
   driverId?: string;
 }
 
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+
+const client = twilio(accountSid, authToken);
+
+// Simple logger function
+const logger = {
+  debug: (...args: any[]) => console.log('[DEBUG]', ...args),
+  info: (...args: any[]) => console.log('[INFO]', ...args),
+  warn: (...args: any[]) => console.warn('[WARN]', ...args),
+  error: (...args: any[]) => console.error('[ERROR]', ...args)
+};
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -135,35 +150,6 @@ export default async function handler(
     };
 
     console.log('Environment check:', envCheck);
-
-    // Initialize clients inside try block with better error handling
-    let twilioClient: Twilio;
-    try {
-      twilioClient = twilio(
-        process.env.TWILIO_ACCOUNT_SID!,
-        process.env.TWILIO_AUTH_TOKEN!
-      );
-      
-      // Test the credentials
-      await twilioClient.api.accounts(process.env.TWILIO_ACCOUNT_SID!).fetch();
-      console.log('Twilio credentials verified successfully');
-    } catch (error: any) {
-      console.error('Twilio initialization error:', {
-        error,
-        sid: process.env.TWILIO_ACCOUNT_SID?.substring(0, 5) + '...',
-        hasToken: !!process.env.TWILIO_AUTH_TOKEN,
-        hasPhoneNumber: !!process.env.TWILIO_PHONE_NUMBER
-      });
-      return res.status(500).json({ 
-        error: 'Failed to initialize Twilio client',
-        details: error.message
-      });
-    }
-
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
 
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'Method not allowed' });
@@ -256,7 +242,7 @@ export default async function handler(
           : `+63${driver.mobile_number?.replace(/^0+/, '')}`;
 
         if (isTrialAccount) {
-          const isVerified = await isVerifiedNumber(twilioClient, phone);
+          const isVerified = await isVerifiedNumber(client, phone);
           if (!isVerified) {
             DebugLogger.info('SMS_API', `Skipping unverified number in trial mode: ${phone}`);
             continue;
@@ -265,7 +251,7 @@ export default async function handler(
 
         DebugLogger.info('SMS_API', `Sending SMS to driver: ${driver.id} at ${phone}`);
         smsPromises.push(
-          twilioClient.messages.create({
+          client.messages.create({
             body: `New booking received!
 Booking ID: ${bookingId}
 From: ${booking.from_location}
@@ -278,7 +264,7 @@ Or visit your dashboard: ${process.env.NEXT_PUBLIC_APP_URL}/driver/dashboard
 
 This offer expires in 30 minutes.`,
             to: phone,
-            from: process.env.TWILIO_PHONE_NUMBER
+            from: twilioPhoneNumber
           })
         );
       }
