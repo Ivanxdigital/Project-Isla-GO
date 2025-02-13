@@ -15,9 +15,11 @@ export default function HomePage() {
   }, [location]);
 
   return (
-    <div className="min-h-screen">
-      <HeroSection />
-      <div id="booking">
+    <div className="flex flex-col">
+      <div className="-mt-16 w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+        <HeroSection />
+      </div>
+      <div id="booking" className="relative bg-white w-full">
         <BookingForm />
       </div>
       <WhyIslaGO />

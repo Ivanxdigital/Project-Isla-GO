@@ -170,56 +170,58 @@ export default function Dashboard() {
   };
 
   return (
-    <div className={`p-6 transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '100ms' }}>
-          <h2 className="text-lg font-semibold mb-2">Total Bookings</h2>
-          <p className="text-3xl font-bold">{stats.totalBookings}</p>
+    <div className={`px-0 py-6 transition-opacity duration-500 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+      <div className="px-6">
+        <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '100ms' }}>
+            <h2 className="text-lg font-semibold mb-2">Total Bookings</h2>
+            <p className="text-3xl font-bold">{stats.totalBookings}</p>
+          </div>
+          <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '200ms' }}>
+            <h2 className="text-lg font-semibold mb-2">Today's Bookings</h2>
+            <p className="text-3xl font-bold">{stats.todayBookings}</p>
+          </div>
+          <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '300ms' }}>
+            <h2 className="text-lg font-semibold mb-2">Active Drivers</h2>
+            <p className="text-3xl font-bold">{stats.activeDrivers}</p>
+          </div>
+          <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '400ms' }}>
+            <h2 className="text-lg font-semibold mb-2">Today's Revenue</h2>
+            <p className="text-3xl font-bold">₱{stats.todayRevenue.toLocaleString()}</p>
+          </div>
+          <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '500ms' }}>
+            <h2 className="text-lg font-semibold mb-2">Pending Applications</h2>
+            <p className="text-3xl font-bold">{stats.pendingApplications}</p>
+          </div>
         </div>
-        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '200ms' }}>
-          <h2 className="text-lg font-semibold mb-2">Today's Bookings</h2>
-          <p className="text-3xl font-bold">{stats.todayBookings}</p>
-        </div>
-        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '300ms' }}>
-          <h2 className="text-lg font-semibold mb-2">Active Drivers</h2>
-          <p className="text-3xl font-bold">{stats.activeDrivers}</p>
-        </div>
-        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '400ms' }}>
-          <h2 className="text-lg font-semibold mb-2">Today's Revenue</h2>
-          <p className="text-3xl font-bold">₱{stats.todayRevenue.toLocaleString()}</p>
-        </div>
-        <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '500ms' }}>
-          <h2 className="text-lg font-semibold mb-2">Pending Applications</h2>
-          <p className="text-3xl font-bold">{stats.pendingApplications}</p>
-        </div>
-      </div>
 
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">User Role Management</h2>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <form onSubmit={handleUpdateRole} className="flex gap-4 items-end">
-            <div className="flex-1">
-              <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
-                User ID
-              </label>
-              <input
-                type="text"
-                id="userId"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                placeholder="Enter user ID"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={updating}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-            >
-              {updating ? 'Updating...' : 'Make Driver'}
-            </button>
-          </form>
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-4">User Role Management</h2>
+          <div className="bg-white p-6 rounded-lg shadow">
+            <form onSubmit={handleUpdateRole} className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
+                  User ID
+                </label>
+                <input
+                  type="text"
+                  id="userId"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                  placeholder="Enter user ID"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={updating}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {updating ? 'Updating...' : 'Make Driver'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

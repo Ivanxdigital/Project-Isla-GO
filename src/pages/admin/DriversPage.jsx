@@ -775,175 +775,177 @@ export default function DriversPage() {
   );
 
   return (
-    <div className="p-6">
-      <StatsDashboard />
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Drivers Management</h1>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <button
-            type="button"
-            className="block rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-500"
-          >
-            Export Drivers
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-8 flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full sm:w-auto rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="suspended">Suspended</option>
-          </select>
-
-          <div className="relative w-full sm:w-auto">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-            </div>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-              placeholder="Search drivers..."
-            />
+    <div className="px-0 py-6">
+      <div className="px-6">
+        <h1 className="text-2xl font-bold mb-6">Manage Drivers</h1>
+        <StatsDashboard />
+        <div className="sm:flex sm:items-center sm:justify-between">
+          <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+            <button
+              type="button"
+              className="block rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-500"
+            >
+              Export Drivers
+            </button>
           </div>
         </div>
-      </div>
 
-      <div className="mt-8">
-        <div className="w-full">
-          <div className="min-w-full align-middle">
-            <div className="shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-              <div className="min-w-full">
-                {loading ? (
-                  <div className="p-4 text-center text-gray-500">Loading drivers...</div>
-                ) : (
-                  <>
-                    {/* Desktop view */}
-                    <table className="min-w-full divide-y divide-gray-300 hidden md:table">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                            Driver
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            License Info
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            Contact
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            Status
-                          </th>
-                          <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                            <span className="sr-only">Actions</span>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
-                        {filteredDrivers.map((driver) => {
-                          const StatusIcon = STATUS_BADGES[driver.driver?.status]?.icon;
-                          return (
-                            <tr key={driver.id}>
-                              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
+        <div className="mt-8 flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full sm:w-auto rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="suspended">Suspended</option>
+            </select>
+
+            <div className="relative w-full sm:w-auto">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                placeholder="Search drivers..."
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <div className="w-full">
+            <div className="min-w-full align-middle">
+              <div className="shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                <div className="min-w-full">
+                  {loading ? (
+                    <div className="p-4 text-center text-gray-500">Loading drivers...</div>
+                  ) : (
+                    <>
+                      {/* Desktop view */}
+                      <table className="min-w-full divide-y divide-gray-300 hidden md:table">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                              Driver
+                            </th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                              License Info
+                            </th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                              Contact
+                            </th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                              Status
+                            </th>
+                            <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                              <span className="sr-only">Actions</span>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {filteredDrivers.map((driver) => {
+                            const StatusIcon = STATUS_BADGES[driver.driver?.status]?.icon;
+                            return (
+                              <tr key={driver.id}>
+                                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
+                                  <div className="font-medium text-gray-900">{driver.user?.full_name}</div>
+                                  <div className="text-gray-500">Joined {new Date(driver.created_at).toLocaleDateString()}</div>
+                                </td>
+                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                  <div>{driver.license_number}</div>
+                                  <div>Expires: {new Date(driver.license_expiration).toLocaleDateString()}</div>
+                                </td>
+                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                  <div>{driver.user?.mobile_number}</div>
+                                  {driver.user?.messenger_contact && (
+                                    <div className="text-xs">
+                                      {driver.user.messenger_type}: {driver.user.messenger_contact}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="whitespace-nowrap px-3 py-4 text-sm">
+                                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGES[driver.driver?.status]?.class}`}>
+                                    {StatusIcon && <StatusIcon className="mr-1 h-4 w-4" />}
+                                    {driver.driver?.status || 'pending'}
+                                  </span>
+                                </td>
+                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                  <div className="flex justify-end">
+                                    <DriverActions driver={driver} />
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+
+                      {/* Mobile view */}
+                      <div className="md:hidden">
+                        {filteredDrivers.map((driver) => (
+                          <div key={driver.id} className="bg-white p-4 border-b border-gray-200">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
                                 <div className="font-medium text-gray-900">{driver.user?.full_name}</div>
-                                <div className="text-gray-500">Joined {new Date(driver.created_at).toLocaleDateString()}</div>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                <div>{driver.license_number}</div>
-                                <div>Expires: {new Date(driver.license_expiration).toLocaleDateString()}</div>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                <div>{driver.user?.mobile_number}</div>
+                                <div className="text-sm text-gray-500">
+                                  Joined {new Date(driver.created_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <DriverActions driver={driver} />
+                            </div>
+                            
+                            <div className="mt-3 space-y-2">
+                              <div>
+                                <div className="text-sm font-medium text-gray-500">License Info</div>
+                                <div className="text-sm text-gray-900">{driver.license_number}</div>
+                                <div className="text-sm text-gray-900">
+                                  Expires: {new Date(driver.license_expiration).toLocaleDateString()}
+                                </div>
+                              </div>
+                              
+                              <div>
+                                <div className="text-sm font-medium text-gray-500">Contact</div>
+                                <div className="text-sm text-gray-900">{driver.user?.mobile_number}</div>
                                 {driver.user?.messenger_contact && (
-                                  <div className="text-xs">
+                                  <div className="text-xs text-gray-500">
                                     {driver.user.messenger_type}: {driver.user.messenger_contact}
                                   </div>
                                 )}
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm">
-                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGES[driver.driver?.status]?.class}`}>
-                                  {StatusIcon && <StatusIcon className="mr-1 h-4 w-4" />}
+                              </div>
+                              
+                              <div>
+                                <div className="text-sm font-medium text-gray-500">Status</div>
+                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                  STATUS_BADGES[driver.driver?.status]?.class
+                                }`}>
                                   {driver.driver?.status || 'pending'}
                                 </span>
-                              </td>
-                              <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                <div className="flex justify-end">
-                                  <DriverActions driver={driver} />
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-
-                    {/* Mobile view */}
-                    <div className="md:hidden">
-                      {filteredDrivers.map((driver) => (
-                        <div key={driver.id} className="bg-white p-4 border-b border-gray-200">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <div className="font-medium text-gray-900">{driver.user?.full_name}</div>
-                              <div className="text-sm text-gray-500">
-                                Joined {new Date(driver.created_at).toLocaleDateString()}
                               </div>
                             </div>
-                            <DriverActions driver={driver} />
                           </div>
-                          
-                          <div className="mt-3 space-y-2">
-                            <div>
-                              <div className="text-sm font-medium text-gray-500">License Info</div>
-                              <div className="text-sm text-gray-900">{driver.license_number}</div>
-                              <div className="text-sm text-gray-900">
-                                Expires: {new Date(driver.license_expiration).toLocaleDateString()}
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <div className="text-sm font-medium text-gray-500">Contact</div>
-                              <div className="text-sm text-gray-900">{driver.user?.mobile_number}</div>
-                              {driver.user?.messenger_contact && (
-                                <div className="text-xs text-gray-500">
-                                  {driver.user.messenger_type}: {driver.user.messenger_contact}
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div>
-                              <div className="text-sm font-medium text-gray-500">Status</div>
-                              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                STATUS_BADGES[driver.driver?.status]?.class
-                              }`}>
-                                {driver.driver?.status || 'pending'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {!loading && filteredDrivers.length === 0 && (
+                    <div className="text-center py-10">
+                      <p className="text-sm text-gray-500">No drivers found</p>
                     </div>
-                  </>
-                )}
-                {!loading && filteredDrivers.length === 0 && (
-                  <div className="text-center py-10">
-                    <p className="text-sm text-gray-500">No drivers found</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
+        {selectedDrivers.size > 0 && <BulkActionIndicator />}
+        <DocumentVerificationModal />
       </div>
-      {selectedDrivers.size > 0 && <BulkActionIndicator />}
-      <DocumentVerificationModal />
     </div>
   );
 }

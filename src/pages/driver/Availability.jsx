@@ -5,6 +5,11 @@ import { supabase } from '../../utils/supabase';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarIcon, ClockIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import rrulePlugin from '@fullcalendar/rrule';
 
 export default function DriverAvailability() {
   const { user } = useAuth();
@@ -13,6 +18,10 @@ export default function DriverAvailability() {
   const [saving, setSaving] = useState(false);
   const [availability, setAvailability] = useState({});
   const [selectedDay, setSelectedDay] = useState(0); // 0 = Sunday
+  const [events, setEvents] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState('Puerto Princesa');
+  const [recurrenceRule, setRecurrenceRule] = useState(null);
+  const [exceptionDates, setExceptionDates] = useState([]);
 
   const locations = ['Puerto Princesa', 'El Nido', 'San Vicente'];
   const daysOfWeek = [
@@ -52,7 +61,7 @@ export default function DriverAvailability() {
 
   useEffect(() => {
     fetchAvailability();
-  }, [user, selectedDay]);
+  }, [user, selectedDay, selectedLocation]);
 
   const fetchAvailability = async () => {
     try {
@@ -60,20 +69,26 @@ export default function DriverAvailability() {
         .from('driver_availability')
         .select('*')
         .eq('driver_id', user.id)
-        .eq('day_of_week', selectedDay);
+        .eq('location', selectedLocation);
 
       if (error) throw error;
 
-      // Convert array to object for easier manipulation
-      const availObj = {};
-      data.forEach(slot => {
-        if (!availObj[slot.location]) {
-          availObj[slot.location] = {};
-        }
-        availObj[slot.location][slot.time_slot] = slot.is_available;
-      });
+      const calendarEvents = data.map(slot => ({
+        id: slot.id,
+        title: `Available: ${slot.location}`,
+        start: combineDateTime(slot.day_of_week, slot.time_slot),
+        end: addHour(combineDateTime(slot.day_of_week, slot.time_slot)),
+        backgroundColor: slot.is_available ? '#10B981' : '#EF4444',
+        extendedProps: {
+          location: slot.location,
+          isAvailable: slot.is_available,
+          recurrenceRule: slot.recurrence_rule,
+          exceptionDates: slot.exception_dates
+        },
+        ...(slot.recurrence_rule && { rrule: slot.recurrence_rule })
+      }));
 
-      setAvailability(availObj);
+      setEvents(calendarEvents);
     } catch (error) {
       console.error('Error fetching availability:', error);
       toast.error('Failed to load availability');
@@ -188,6 +203,53 @@ export default function DriverAvailability() {
     }
   };
 
+  const handleDateSelect = async (selectInfo) => {
+    const isRecurring = window.confirm('Would you like this availability to repeat weekly?');
+    
+    try {
+      const event = {
+        driver_id: user.id,
+        day_of_week: selectInfo.start.getDay(),
+        time_slot: selectInfo.start.toTimeString().slice(0, 5),
+        location: selectedLocation,
+        is_available: true,
+        recurrence_rule: isRecurring ? 'FREQ=WEEKLY' : null,
+        exception_dates: []
+      };
+
+      const { error } = await supabase
+        .from('driver_availability')
+        .insert([event]);
+
+      if (error) throw error;
+
+      toast.success('Availability slot added');
+      await fetchAvailability();
+    } catch (error) {
+      console.error('Error adding availability:', error);
+      toast.error('Failed to add availability slot');
+    }
+  };
+
+  const handleEventClick = async (clickInfo) => {
+    if (window.confirm('Would you like to remove this availability slot?')) {
+      try {
+        const { error } = await supabase
+          .from('driver_availability')
+          .delete()
+          .eq('id', clickInfo.event.id);
+
+        if (error) throw error;
+
+        toast.success('Availability slot removed');
+        await fetchAvailability();
+      } catch (error) {
+        console.error('Error removing availability:', error);
+        toast.error('Failed to remove availability slot');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -214,84 +276,79 @@ export default function DriverAvailability() {
         <p className="text-blue-100 text-sm sm:text-base">Select your available time slots for each location</p>
       </div>
 
-      {/* Day selector - Made scrollable on mobile */}
-      <div className="mb-6 sm:mb-8 bg-white rounded-lg shadow-md p-4">
-        <div className="flex items-center mb-4">
-          <CalendarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 mr-2" />
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Select Day</h2>
-        </div>
-        <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
-          {daysOfWeek.map((day, index) => (
-            <motion.button
-              key={day}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setSelectedDay(index)}
-              className={`flex-shrink-0 px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-all duration-200 text-sm sm:text-base ${
-                selectedDay === index
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              }`}
-            >
-              {day}
-            </motion.button>
-          ))}
-        </div>
+      {/* Location Selector */}
+      <div className="mb-6 flex space-x-4">
+        {locations.map(location => (
+          <button
+            key={location}
+            onClick={() => setSelectedLocation(location)}
+            className={`px-4 py-2 rounded-lg transition-all ${
+              selectedLocation === location
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {location}
+          </button>
+        ))}
       </div>
 
-      {/* Time slots grid - Single column on mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
-        <AnimatePresence>
-          {locations.map((location, idx) => (
-            <motion.div
-              key={location}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-white rounded-lg shadow-lg overflow-hidden"
-            >
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-3 sm:p-4 border-b">
-                <div className="flex items-center">
-                  <MapPinIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mr-2" />
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-800">{location}</h2>
-                </div>
-              </div>
-              <div className="p-4 sm:p-6">
-                <div className="space-y-1 sm:space-y-2 max-h-[300px] sm:max-h-[400px] overflow-y-auto custom-scrollbar">
-                  {timeSlots.map(time => (
-                    <motion.label
-                      key={`${location}-${time}`}
-                      whileHover={{ backgroundColor: 'rgba(59, 130, 246, 0.05)' }}
-                      className="flex items-center space-x-3 p-2 sm:p-3 rounded-lg cursor-pointer border border-transparent hover:border-blue-100 transition-all duration-200"
-                    >
-                      <div className="relative">
-                        <input
-                          type="checkbox"
-                          checked={!!availability[location]?.[time]}
-                          onChange={() => handleTimeSlotToggle(location, time)}
-                          disabled={saving}
-                          className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded transition-all duration-200"
-                        />
-                        {saving && (
-                          <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="absolute inset-0 bg-gray-200 rounded animate-pulse"
-                          />
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <ClockIcon className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-                        <span className="text-xs sm:text-sm font-medium text-gray-700">{time}</span>
-                      </div>
-                    </motion.label>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+      {/* Calendar */}
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, rrulePlugin]}
+          initialView="timeGridWeek"
+          headerToolbar={{
+            left: 'prev,next today',
+            center: 'title',
+            right: 'timeGridWeek,timeGridDay'
+          }}
+          editable={true}
+          selectable={true}
+          selectMirror={true}
+          dayMaxEvents={true}
+          weekends={true}
+          events={events}
+          select={handleDateSelect}
+          eventClick={handleEventClick}
+          height="auto"
+          slotMinTime="06:00:00"
+          slotMaxTime="22:00:00"
+          eventContent={renderEventContent}
+        />
       </div>
     </motion.div>
   );
-} 
+}
+
+// Helper functions
+function combineDateTime(dayOfWeek, timeSlot) {
+  const date = new Date();
+  // Get the current day of week
+  const currentDay = date.getDay();
+  // Calculate days to add to get to the target day
+  const daysToAdd = (dayOfWeek - currentDay + 7) % 7;
+  // Set the date to the target day
+  date.setDate(date.getDate() + daysToAdd);
+  // Set the time
+  const [hours, minutes] = timeSlot.split(':');
+  date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+  return date;
+}
+
+function addHour(date) {
+  const newDate = new Date(date);
+  newDate.setHours(newDate.getHours() + 1);
+  return newDate;
+}
+
+const renderEventContent = (eventInfo) => {
+  return (
+    <div className="flex items-center space-x-2">
+      <span>{eventInfo.event.title}</span>
+      {eventInfo.event.extendedProps.recurrenceRule && (
+        <span className="text-xs text-gray-500">↻</span>
+      )}
+    </div>
+  );
+}; 

@@ -7,21 +7,14 @@ export const waitForGoogleMaps = () => {
       return;
     }
 
-    const maxAttempts = 20;
-    let attempts = 0;
+    const timeoutId = setTimeout(() => {
+      reject(new Error('Google Maps failed to load'));
+    }, 10000);
 
-    const checkGoogleMaps = () => {
-      attempts++;
-      if (window.google && window.google.maps) {
-        resolve(window.google.maps);
-      } else if (attempts >= maxAttempts) {
-        reject(new Error('Google Maps failed to load'));
-      } else {
-        setTimeout(checkGoogleMaps, 500);
-      }
+    window.initMap = () => {
+      clearTimeout(timeoutId);
+      resolve(window.google.maps);
     };
-
-    checkGoogleMaps();
   });
 };
 

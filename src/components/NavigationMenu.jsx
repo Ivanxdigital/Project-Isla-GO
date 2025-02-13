@@ -7,6 +7,7 @@ import { supabase } from '../utils/supabase';
 import { toast } from 'react-hot-toast';
 import { useDriverAuth } from '../contexts/DriverAuthContext';
 import { Menu, Transition } from '@headlessui/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Update mobile menu items styling
 const MobileMenuItem = ({ to, onClick, children, className }) => (
@@ -357,319 +358,332 @@ export default function NavigationMenu() {
   }, [isDriver, driverStatus]);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800/50 z-50 transition-all duration-300">
-      <style>{keyframes}</style>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo section - optimized for mobile */}
-          <div className="flex items-center flex-1">
-            <div className="flex-shrink-0 transition-transform duration-300 hover:scale-105" 
-                 style={{ animation: 'float 3s ease-in-out infinite' }}>
-              <Link to="/" className="flex items-center space-x-2">
-                <span style={gradientTextStyle} className="text-xl md:text-2xl font-extrabold tracking-tight">
-                  IslaGO
-                </span>
-                <svg className="w-4 h-4 md:w-5 md:h-5 text-blue-400 animate-pulse" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </Link>
+    <AnimatePresence mode="wait">
+      <motion.nav
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{
+          duration: 0.6,
+          ease: [0.22, 1, 0.36, 1],
+          opacity: { duration: 0.35 }
+        }}
+        className="fixed top-4 inset-x-0 mx-auto w-[95%] max-w-7xl bg-gray-900/85 backdrop-blur-xl rounded-2xl shadow-2xl shadow-gray-950/20 border border-gray-800/50 z-[100] transition-all duration-300"
+      >
+        <style>{keyframes}</style>
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo section */}
+            <div className="flex items-center flex-shrink-0">
+              <div className="transition-transform duration-300 hover:scale-105" 
+                   style={{ animation: 'float 3s ease-in-out infinite' }}>
+                <Link to="/" className="flex items-center space-x-2">
+                  <span style={gradientTextStyle} className="text-xl md:text-2xl font-extrabold tracking-tight">
+                    IslaGO
+                  </span>
+                  <svg className="w-4 h-4 md:w-5 md:h-5 text-blue-400 animate-pulse" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </Link>
+              </div>
             </div>
 
-            {/* Desktop menu - remains hidden on mobile */}
-            <div className="hidden md:flex md:items-center md:justify-center flex-1">
+            {/* Desktop menu */}
+            <div className="hidden md:flex md:items-center md:justify-center flex-1 px-8">
               <div className="flex space-x-8">
                 {menuItems.map((item) => (
                   <Link
                     key={item.name}
                     to={item.path}
-                    className="relative text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 group"
+                    className={`relative text-gray-300 hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 group hover:bg-gray-800/50 ${
+                      item.className || ''
+                    }`}
                   >
                     <span className="relative z-10">{item.name}</span>
-                    <span className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-blue-400 to-emerald-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left"></span>
+                    <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/10 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></span>
                   </Link>
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* Mobile menu button - better touch target */}
-          <div className="flex md:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none transition-all duration-200"
-              aria-label="Menu"
-            >
-              {isMenuOpen ? (
-                <XMarkIcon className="h-7 w-7" />
-              ) : (
-                <Bars3Icon className="h-7 w-7" />
-              )}
-            </button>
-          </div>
+            {/* Mobile menu button - better touch target */}
+            <div className="flex md:hidden">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="inline-flex items-center justify-center p-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none transition-all duration-200"
+                aria-label="Menu"
+              >
+                {isMenuOpen ? (
+                  <XMarkIcon className="h-7 w-7" />
+                ) : (
+                  <Bars3Icon className="h-7 w-7" />
+                )}
+              </button>
+            </div>
 
-          {/* Desktop auth buttons - hidden on mobile */}
-          <div className="hidden md:flex md:items-center">
-            <div className="flex items-center space-x-4 ml-8">
-              {user ? (
-                <div className="flex items-center space-x-4">
-                  <div className="relative">
-                    <div 
-                      id="profile-avatar"
-                      className="flex items-center space-x-3 cursor-pointer transition-transform duration-200 hover:scale-105"
-                      onClick={handleAvatarClick}
-                    >
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-emerald-400 p-0.5">
-                        <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
-                          {profile?.avatar_url ? (
-                            <img
-                              src={profile.avatar_url}
-                              alt="Profile"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <svg 
-                              className="w-full h-full text-gray-400 p-1.5" 
-                              fill="currentColor" 
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8c0 2.208-1.79 4-3.998 4-2.208 0-3.998-1.792-3.998-4s1.79-4 3.998-4c2.208 0 3.998 1.792 3.998 4z" />
-                            </svg>
-                          )}
+            {/* Desktop auth buttons - hidden on mobile */}
+            <div className="hidden md:flex md:items-center">
+              <div className="flex items-center space-x-4 ml-8">
+                {user ? (
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <div 
+                        id="profile-avatar"
+                        className="flex items-center space-x-3 cursor-pointer transition-transform duration-200 hover:scale-105"
+                        onClick={handleAvatarClick}
+                      >
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-emerald-400 p-0.5">
+                          <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                            {profile?.avatar_url ? (
+                              <img
+                                src={profile.avatar_url}
+                                alt="Profile"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <svg 
+                                className="w-full h-full text-gray-400 p-1.5" 
+                                fill="currentColor" 
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8c0 2.208-1.79 4-3.998 4-2.208 0-3.998-1.792-3.998-4s1.79-4 3.998-4c2.208 0 3.998 1.792 3.998 4z" />
+                              </svg>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Profile Dropdown with enhanced styling */}
-                    <Transition
-                      show={isProfileDropdownOpen}
-                      enter="transition-all duration-300 ease-out"
-                      enterFrom="transform opacity-0 scale-95 -translate-y-2"
-                      enterTo="transform opacity-100 scale-100 translate-y-0"
-                      leave="transition-all duration-200 ease-in"
-                      leaveFrom="transform opacity-100 scale-100 translate-y-0"
-                      leaveTo="transform opacity-0 scale-95 -translate-y-2"
-                      className="absolute right-0 w-48 mt-2 z-50"
-                    >
-                      <div className="bg-gray-900/95 backdrop-blur-xl rounded-lg shadow-lg ring-1 ring-gray-700 py-1">
-                        <div className="px-4 py-2 border-b border-gray-800">
-                          <p className="text-sm font-medium text-gray-200">
-                            {profile?.full_name || 'User'}
-                          </p>
-                        </div>
-                        
-                        <Link
-                          to="/profile"
-                          onClick={handleMenuItemClick}
-                          className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                        >
-                          Your Profile
-                        </Link>
-
-                        <Link
-                          to="/manage-bookings"
-                          onClick={handleMenuItemClick}
-                          className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                        >
-                          Manage Bookings
-                        </Link>
-
-                        {!adminLoading && isAdmin && (
+                      {/* Profile Dropdown with enhanced styling */}
+                      <Transition
+                        show={isProfileDropdownOpen}
+                        enter="transition-all duration-300 ease-out"
+                        enterFrom="transform opacity-0 scale-95 -translate-y-2"
+                        enterTo="transform opacity-100 scale-100 translate-y-0"
+                        leave="transition-all duration-200 ease-in"
+                        leaveFrom="transform opacity-100 scale-100 translate-y-0"
+                        leaveTo="transform opacity-0 scale-95 -translate-y-2"
+                        className="absolute right-0 w-48 mt-2 z-50"
+                      >
+                        <div className="bg-gray-900/95 backdrop-blur-xl rounded-lg shadow-lg ring-1 ring-gray-700 py-1">
+                          <div className="px-4 py-2 border-b border-gray-800">
+                            <p className="text-sm font-medium text-gray-200">
+                              {profile?.full_name || 'User'}
+                            </p>
+                          </div>
+                          
                           <Link
-                            to="/admin/dashboard"
+                            to="/profile"
                             onClick={handleMenuItemClick}
                             className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                           >
-                            Admin Dashboard
+                            Your Profile
                           </Link>
-                        )}
 
-                        {isDriver && (
-                          <>
-                            {driverStatus === 'pending' && (
-                              <Link
-                                to="/driver/pending"
-                                onClick={handleMenuItemClick}
-                                className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                              >
-                                <span className="text-sm text-yellow-600 flex items-center">
-                                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6z" clipRule="evenodd" />
-                                  </svg>
-                                  Application Pending
-                                </span>
-                              </Link>
-                            )}
-                            {driverStatus === 'active' && (
-                              <>
-                                <Link
-                                  to="/driver/dashboard"
-                                  onClick={handleMenuItemClick}
-                                  className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                                >
-                                  Driver Dashboard
-                                </Link>
-                                <Link
-                                  to="/driver/trips"
-                                  onClick={handleMenuItemClick}
-                                  className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                                >
-                                  My Trips
-                                </Link>
-                                <Link
-                                  to="/driver/profile"
-                                  onClick={handleMenuItemClick}
-                                  className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                                >
-                                  Driver Profile
-                                </Link>
-                                <Link
-                                  to="/driver/availability"
-                                  onClick={handleMenuItemClick}
-                                  className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                                >
-                                  Manage Availability
-                                </Link>
-                              </>
-                            )}
-                          </>
-                        )}
+                          <Link
+                            to="/manage-bookings"
+                            onClick={handleMenuItemClick}
+                            className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                          >
+                            Manage Bookings
+                          </Link>
 
-                        <button
-                          onClick={(e) => {
-                            handleMenuItemClick();
-                            handleSignOut(e);
-                          }}
-                          disabled={isSigningOut || adminLoading}
-                          className="w-full text-left block px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors duration-150"
-                        >
-                          {isSigningOut ? 'Signing Out...' : 'Sign Out'}
-                        </button>
-                      </div>
-                    </Transition>
+                          {!adminLoading && isAdmin && (
+                            <Link
+                              to="/admin/dashboard"
+                              onClick={handleMenuItemClick}
+                              className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                            >
+                              Admin Dashboard
+                            </Link>
+                          )}
+
+                          {isDriver && (
+                            <>
+                              {driverStatus === 'pending' && (
+                                <Link
+                                  to="/driver/pending"
+                                  onClick={handleMenuItemClick}
+                                  className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                                >
+                                  <span className="text-sm text-yellow-600 flex items-center">
+                                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6z" clipRule="evenodd" />
+                                    </svg>
+                                    Application Pending
+                                  </span>
+                                </Link>
+                              )}
+                              {driverStatus === 'active' && (
+                                <>
+                                  <Link
+                                    to="/driver/dashboard"
+                                    onClick={handleMenuItemClick}
+                                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                                  >
+                                    Driver Dashboard
+                                  </Link>
+                                  <Link
+                                    to="/driver/trips"
+                                    onClick={handleMenuItemClick}
+                                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                                  >
+                                    My Trips
+                                  </Link>
+                                  <Link
+                                    to="/driver/profile"
+                                    onClick={handleMenuItemClick}
+                                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                                  >
+                                    Driver Profile
+                                  </Link>
+                                  <Link
+                                    to="/driver/availability"
+                                    onClick={handleMenuItemClick}
+                                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                                  >
+                                    Manage Availability
+                                  </Link>
+                                </>
+                              )}
+                            </>
+                          )}
+
+                          <button
+                            onClick={(e) => {
+                              handleMenuItemClick();
+                              handleSignOut(e);
+                            }}
+                            disabled={isSigningOut || adminLoading}
+                            className="w-full text-left block px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors duration-150"
+                          >
+                            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+                          </button>
+                        </div>
+                      </Transition>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      className="text-gray-300 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-gray-800"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      to="/register"
+                      className="bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-emerald-500/20 transform hover:-translate-y-0.5"
+                    >
+                      Register
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile menu - enhanced for better touch interaction */}
+        <Transition
+          show={isMenuOpen}
+          enter="transition-all duration-300 ease-out"
+          enterFrom="transform opacity-0 -translate-y-2"
+          enterTo="transform opacity-100 translate-y-0"
+          leave="transition-all duration-200 ease-in"
+          leaveFrom="transform opacity-100 translate-y-0"
+          leaveTo="transform opacity-0 -translate-y-2"
+          className="md:hidden"
+        >
+          <div className="px-4 pt-3 pb-4 space-y-2 rounded-2xl">
+            {/* User Profile Section - enhanced for mobile */}
+            {user && (
+              <div className="p-4 mb-4 rounded-lg bg-gray-800/50 border border-gray-700/50">
+                <div className="flex items-center space-x-4">
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-emerald-400 p-0.5">
+                    <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                      {profile?.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <svg className="w-full h-full text-gray-400 p-2.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8c0 2.208-1.79 4-3.998 4-2.208 0-3.998-1.792-3.998-4s1.79-4 3.998-4c2.208 0 3.998 1.792 3.998 4z" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-200">
+                      {profile?.full_name || 'User'}
+                    </div>
+                    <p className="text-sm text-gray-400">View Profile</p>
                   </div>
                 </div>
-              ) : (
+              </div>
+            )}
+
+            {/* Mobile Menu Items - enhanced touch targets */}
+            <div className="space-y-2">
+              {menuItems.map((item) => (
+                <MobileMenuItem
+                  key={item.name}
+                  to={item.path}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.name}
+                </MobileMenuItem>
+              ))}
+              
+              {user ? (
                 <>
-                  <Link
+                  <MobileMenuItem
+                    to="/manage-bookings"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Manage Bookings
+                  </MobileMenuItem>
+
+                  {!adminLoading && isAdmin && (
+                    <MobileMenuItem
+                      to="/admin/dashboard"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Admin Dashboard
+                    </MobileMenuItem>
+                  )}
+
+                  <button
+                    onClick={handleSignOut}
+                    disabled={isSigningOut || adminLoading}
+                    className="w-full text-left px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-all duration-200"
+                  >
+                    {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+                  </button>
+                </>
+              ) : (
+                <div className="grid gap-2 pt-2">
+                  <MobileMenuItem
                     to="/login"
-                    className="text-gray-300 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-gray-800"
+                    onClick={() => setIsMenuOpen(false)}
                   >
                     Sign In
-                  </Link>
+                  </MobileMenuItem>
                   <Link
                     to="/register"
-                    className="bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-emerald-500/20 transform hover:-translate-y-0.5"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="block px-4 py-3 text-center text-white bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 rounded-lg transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-emerald-500/20"
                   >
                     Register
                   </Link>
-                </>
+                </div>
               )}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Mobile menu - enhanced for better touch interaction */}
-      <Transition
-        show={isMenuOpen}
-        enter="transition-all duration-300 ease-out"
-        enterFrom="transform opacity-0 -translate-y-2"
-        enterTo="transform opacity-100 translate-y-0"
-        leave="transition-all duration-200 ease-in"
-        leaveFrom="transform opacity-100 translate-y-0"
-        leaveTo="transform opacity-0 -translate-y-2"
-        className="md:hidden"
-      >
-        <div className="px-4 pt-3 pb-4 space-y-2 bg-gray-900/95 backdrop-blur-xl shadow-lg">
-          {/* User Profile Section - enhanced for mobile */}
-          {user && (
-            <div className="p-4 mb-4 rounded-lg bg-gray-800/50 border border-gray-700/50">
-              <div className="flex items-center space-x-4">
-                <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-emerald-400 p-0.5">
-                  <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
-                    {profile?.avatar_url ? (
-                      <img
-                        src={profile.avatar_url}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <svg className="w-full h-full text-gray-400 p-2.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8c0 2.208-1.79 4-3.998 4-2.208 0-3.998-1.792-3.998-4s1.79-4 3.998-4c2.208 0 3.998 1.792 3.998 4z" />
-                      </svg>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <div className="font-medium text-gray-200">
-                    {profile?.full_name || 'User'}
-                  </div>
-                  <p className="text-sm text-gray-400">View Profile</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Mobile Menu Items - enhanced touch targets */}
-          <div className="space-y-2">
-            {menuItems.map((item) => (
-              <MobileMenuItem
-                key={item.name}
-                to={item.path}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {item.name}
-              </MobileMenuItem>
-            ))}
-            
-            {user ? (
-              <>
-                <MobileMenuItem
-                  to="/manage-bookings"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Manage Bookings
-                </MobileMenuItem>
-
-                {!adminLoading && isAdmin && (
-                  <MobileMenuItem
-                    to="/admin/dashboard"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Admin Dashboard
-                  </MobileMenuItem>
-                )}
-
-                <button
-                  onClick={handleSignOut}
-                  disabled={isSigningOut || adminLoading}
-                  className="w-full text-left px-4 py-3 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-all duration-200"
-                >
-                  {isSigningOut ? 'Signing Out...' : 'Sign Out'}
-                </button>
-              </>
-            ) : (
-              <div className="grid gap-2 pt-2">
-                <MobileMenuItem
-                  to="/login"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Sign In
-                </MobileMenuItem>
-                <Link
-                  to="/register"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="block px-4 py-3 text-center text-white bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 rounded-lg transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-emerald-500/20"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </Transition>
-    </nav>
+        </Transition>
+      </motion.nav>
+    </AnimatePresence>
   );
 }

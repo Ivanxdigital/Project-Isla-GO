@@ -24,7 +24,7 @@ export default defineConfig({
         secure: false
       },
       '/api': {
-        target: 'http://localhost:3001',  // Your API server URL
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
       }

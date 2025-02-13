@@ -11,6 +11,7 @@ import {
   StarIcon,
   TruckIcon
 } from '@heroicons/react/24/outline';
+import PageContainer from './PageContainer';
 
 // Enhanced animation variants
 const containerVariants = {
@@ -113,11 +114,11 @@ const FeatureCard = ({ icon: Icon, title, description }) => (
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Hero Section with Parallax effect */}
+      {/* Hero Section - Make it full width and remove top padding */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="relative h-[60vh] md:h-[80vh] bg-blue-600 overflow-hidden"
+        className="relative h-[60vh] md:h-[80vh] bg-blue-600 overflow-hidden -mt-28" // Add negative margin to counter Layout padding
       >
         {/* Background image with responsive sizing */}
         <motion.div

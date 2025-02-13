@@ -1,67 +1,71 @@
 import React, { Suspense } from 'react';
-import { createBrowserRouter, RouterProvider, Navigate, useLocation, Outlet, Link, BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { 
+  createBrowserRouter, 
+  RouterProvider, 
+  useLocation, 
+  Outlet,
+  Link
+} from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { AdminAuthProvider } from './contexts/AdminAuthContext';
-import { AuthProvider } from './contexts/AuthContext';
-import { AdminRoute, StaffRoute } from './components/auth/ProtectedRoutes';
-import NavigationMenu from './components/NavigationMenu';
-import Footer from './components/Footer';
-import HomePage from './components/HomePage';
-import AboutPage from './components/AboutPage';
-import ContactPage from './components/ContactPage';
-import PaymentSuccess from './components/PaymentSuccess';
-import PaymentCancel from './components/PaymentCancel';
-import LoginPage from './components/LoginPage';
-import CompleteRegisterPage from './components/RegisterPage';
-import ManageBookings from './components/ManageBookings';
-import PageTransition from './components/PageTransition';
-import AdminLoginPage from './pages/admin/LoginPage';
-import AdminDashboard from './pages/admin/Dashboard';
-import BookingsPage from './pages/admin/BookingsPage';
-import DriversPage from './pages/admin/DriversPage';
-import VehiclesPage from './pages/admin/VehiclesPage';
-import RoutesPage from './pages/admin/RoutesPage';
-import AdminSettings from './pages/admin/Settings';
+import { AdminAuthProvider } from './contexts/AdminAuthContext.jsx';
+import { AuthProvider } from './contexts/AuthContext.jsx';
+import { AdminRoute, StaffRoute } from './components/auth/ProtectedRoutes.jsx';
+import NavigationMenu from './components/NavigationMenu.jsx';
+import Footer from './components/Footer.jsx';
+import HomePage from './components/HomePage.jsx';
+import AboutPage from './components/AboutPage.jsx';
+import ContactPage from './components/ContactPage.jsx';
+import PaymentSuccess from './components/PaymentSuccess.jsx';
+import PaymentCancel from './components/PaymentCancel.jsx';
+import LoginPage from './components/LoginPage.jsx';
+import CompleteRegisterPage from './components/RegisterPage.jsx';
+import ManageBookings from './components/ManageBookings.jsx';
+import PageTransition from './components/PageTransition.jsx';
+import AdminLoginPage from './pages/admin/LoginPage.jsx';
+import AdminDashboard from './pages/admin/Dashboard.jsx';
+import BookingsPage from './pages/admin/BookingsPage.jsx';
+import DriversPage from './pages/admin/DriversPage.jsx';
+import VehiclesPage from './pages/admin/VehiclesPage.jsx';
+import RoutesPage from './pages/admin/RoutesPage.jsx';
+import AdminSettings from './pages/admin/Settings.jsx';
 import { Toaster } from 'react-hot-toast';
-import ProfilePage from './components/ProfilePage';
-import PrivateRoute from './components/PrivateRoute';
-import DriverRegistration from './pages/DriverRegistration';
-import DriverRegister from './pages/driver/Register';
-import RegistrationSuccess from './pages/driver/RegistrationSuccess';
-import UserRegistration from './components/UserRegistration';
-import { supabase } from './utils/supabase';
-import BeforeRegister from './pages/driver/BeforeRegister';
-import DriverApplicationsPage from './pages/admin/DriverApplicationsPage';
-import Sidebar from './components/Sidebar';
-import { DriverAuthProvider } from './contexts/DriverAuthContext';
-import DriverRoute from './components/auth/DriverRoute';
-import DriverDashboard from './pages/driver/Dashboard';
-import DriverProfile from './pages/driver/Profile';
-import DriverTrips from './pages/driver/Trips';
-import DriverAvailability from './pages/driver/Availability';
-import AuthCallback from './components/AuthCallback';
-import TestDashboard from './pages/driver/test';
-import ErrorBoundary from './components/ErrorBoundary';
+import ProfilePage from './components/ProfilePage.jsx';
+import PrivateRoute from './components/PrivateRoute.jsx';
+import DriverRegistration from './pages/DriverRegistration.jsx';
+import DriverRegister from './pages/driver/Register.jsx';
+import RegistrationSuccess from './pages/driver/RegistrationSuccess.jsx';
+import UserRegistration from './components/UserRegistration.jsx';
+import { supabase } from './utils/supabase.ts';
+import BeforeRegister from './pages/driver/BeforeRegister.jsx';
+import DriverApplicationsPage from './pages/admin/DriverApplicationsPage.jsx';
+import Sidebar from './components/Sidebar.jsx';
+import { DriverAuthProvider } from './contexts/DriverAuthContext.jsx';
+import DriverRoute from './components/auth/DriverRoute.jsx';
+import DriverDashboard from './pages/driver/Dashboard.jsx';
+import DriverProfile from './pages/driver/Profile.jsx';
+import DriverTrips from './pages/driver/Trips.jsx';
+import DriverAvailability from './pages/driver/Availability.jsx';
+import AuthCallback from './components/AuthCallback.jsx';
+import TestDashboard from './pages/driver/test.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
+import Layout from './components/Layout.jsx';
 
 function RootLayout() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isHomePage = location.pathname === '/';
   
   return (
-    <>
-      <NavigationMenu />
-      <main className="min-h-screen relative pt-16">
-        {!isAdminRoute && (
-          <AnimatePresence mode="wait" initial={false}>
-            <PageTransition key={location.pathname} type="fade">
-              <Outlet />
-            </PageTransition>
-          </AnimatePresence>
-        )}
-        {isAdminRoute && <Outlet />}
-      </main>
-      <Footer />
-    </>
+    <Layout noTopPadding={isHomePage}>
+      {!isAdminRoute && (
+        <AnimatePresence mode="wait" initial={false}>
+          <PageTransition key={location.pathname} type="fade">
+            <Outlet />
+          </PageTransition>
+        </AnimatePresence>
+      )}
+      {isAdminRoute && <Outlet />}
+    </Layout>
   );
 }
 
@@ -85,8 +89,7 @@ function AdminLayout() {
 const routes = [
   {
     element: <RootLayout />,
-    loader: async () => {
-      // You can add any initial data loading here
+    loader: () => {
       return null;
     },
     children: [
@@ -308,16 +311,29 @@ const router = createBrowserRouter(routes);
 
 function App() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <AuthProvider>
-        <AdminAuthProvider>
-          <DriverAuthProvider>
-            <RouterProvider router={router} />
-            <Toaster position="top-right" reverseOrder={false} />
-          </DriverAuthProvider>
-        </AdminAuthProvider>
-      </AuthProvider>
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      }>
+        <AuthProvider>
+          <AdminAuthProvider>
+            <DriverAuthProvider>
+              <Toaster position="top-right" />
+              <RouterProvider 
+                router={router} 
+                fallbackElement={
+                  <div className="flex items-center justify-center min-h-screen">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                } 
+              />
+            </DriverAuthProvider>
+          </AdminAuthProvider>
+        </AuthProvider>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

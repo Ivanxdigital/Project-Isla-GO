@@ -76,49 +76,51 @@ export default function Settings() {
   };
 
   return (
-    <div className="p-4 sm:p-6">
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
-      <div className="max-w-4xl mx-auto">
-        {/* Admin Role Management Section */}
-        <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-8">
-          <h2 className="text-xl font-semibold mb-4">Admin Role Management</h2>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-gray-600">
-                Current User ID: {user?.id}
-              </p>
-              <p className="text-gray-600">
-                Current Role: {currentRole || 'No role assigned'}
-              </p>
-              <p className="text-gray-600">
-                Admin Status: {isAdmin ? 'Admin' : 'Not Admin'}
-              </p>
+    <div className="px-0 py-6">
+      <div className="px-6">
+        <h1 className="text-2xl font-bold mb-6">Settings</h1>
+        <div className="max-w-4xl mx-auto">
+          {/* Admin Role Management Section */}
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-8">
+            <h2 className="text-xl font-semibold mb-4">Admin Role Management</h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-gray-600">
+                  Current User ID: {user?.id}
+                </p>
+                <p className="text-gray-600">
+                  Current Role: {currentRole || 'No role assigned'}
+                </p>
+                <p className="text-gray-600">
+                  Admin Status: {isAdmin ? 'Admin' : 'Not Admin'}
+                </p>
+              </div>
+              
+              {!isAdmin && (
+                <button
+                  onClick={makeUserAdmin}
+                  disabled={loading}
+                  className="bg-ai-600 text-white px-4 py-2 rounded hover:bg-ai-700 disabled:opacity-50 transition-colors duration-200"
+                >
+                  {loading ? 'Processing...' : 'Make Current User Admin'}
+                </button>
+              )}
+              
+              {error && (
+                <p className="text-red-600 bg-red-50 p-3 rounded">{error}</p>
+              )}
+              {success && (
+                <p className="text-green-600 bg-green-50 p-3 rounded">
+                  Successfully added admin role! Redirecting to dashboard...
+                </p>
+              )}
             </div>
-            
-            {!isAdmin && (
-              <button
-                onClick={makeUserAdmin}
-                disabled={loading}
-                className="bg-ai-600 text-white px-4 py-2 rounded hover:bg-ai-700 disabled:opacity-50 transition-colors duration-200"
-              >
-                {loading ? 'Processing...' : 'Make Current User Admin'}
-              </button>
-            )}
-            
-            {error && (
-              <p className="text-red-600 bg-red-50 p-3 rounded">{error}</p>
-            )}
-            {success && (
-              <p className="text-green-600 bg-green-50 p-3 rounded">
-                Successfully added admin role! Redirecting to dashboard...
-              </p>
-            )}
           </div>
-        </div>
 
-        {/* Other settings sections */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <p>Settings will go here</p>
+          {/* Other settings sections */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <p>Settings will go here</p>
+          </div>
         </div>
       </div>
     </div>

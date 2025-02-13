@@ -47,7 +47,7 @@ export const createPaymentSession = async (amount, description) => {
           show_line_items: true,
           description: description,
           reference_number: Date.now().toString(),
-          success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+          success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&bookingId=${bookingId}`,
           cancel_url: `${baseUrl}/payment/cancel`,
           billing: {
             address: {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { waitForGoogleMaps } from '../utils/googleMaps.js';
+import { waitForGoogleMaps } from '../utils/googleMaps';
 
 // Palawan bounds
 const PALAWAN_BOUNDS = {
@@ -143,8 +143,13 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
     `;
     document.head.appendChild(style);
 
-    waitForGoogleMaps()
-      .then(() => {
+    const initializeAutocomplete = async () => {
+      try {
+        await waitForGoogleMaps();
+        if (!window.google?.maps) {
+          console.warn('Google Maps API not loaded. Please check if any content blockers are enabled.');
+          return;
+        }
         setIsLoading(false);
         
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
@@ -173,10 +178,12 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
             });
           }
         });
-      })
-      .catch(error => {
-        console.error('Failed to load Google Maps:', error);
-      });
+      } catch (error) {
+        console.error('Error initializing Google Maps:', error);
+      }
+    };
+
+    initializeAutocomplete();
 
     return () => {
       if (autocompleteRef.current) {

@@ -83,7 +83,7 @@ export default function HeroSection() {
   }, [titleNumber, titles]);
 
   return (
-    <div className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500">
+    <div className="hero-container relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500">
       {/* Geometric Patterns */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Overlay with slight darkness */}
@@ -135,7 +135,7 @@ export default function HeroSection() {
         />
       </div>
 
-      {/* Content Container */}
+      {/* Content Container - remove bottom padding */}
       <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="text-center space-y-8">
           {/* Animated Text Above */}
