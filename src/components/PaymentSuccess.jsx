@@ -15,12 +15,20 @@ export default function PaymentSuccess() {
   // Get both bookingId and sessionId from URL
   const params = new URLSearchParams(location.search);
   const bookingId = params.get('bookingId');
-  const sessionId = params.get('session_id');
+  const rawSessionId = params.get('session_id');
+  
+  // Ensure the session ID is properly formatted
+  const sessionId = rawSessionId?.startsWith('cs_') ? rawSessionId : null;
 
   const pollPaymentStatus = async () => {
     try {
       console.log('Polling payment status for booking:', bookingId);
+      console.log('Session ID:', sessionId);
       
+      if (!sessionId) {
+        throw new Error('Invalid session ID format');
+      }
+
       // First verify the payment session with PayMongo
       const sessionData = await verifyPaymentSession(sessionId);
       const paymentStatus = mapPaymentStatus(sessionData.attributes.status);

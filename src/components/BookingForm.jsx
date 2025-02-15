@@ -440,7 +440,7 @@ export default function BookingForm() {
         } : null,
         payment_method: paymentMethod.toLowerCase(),
         total_amount: calculatePrice(),
-        payment_session_id: sessionStorage.getItem('paymentIntentId'),
+        payment_session_id: null,
         status: 'pending',
         payment_status: 'pending'
       };
@@ -460,7 +460,8 @@ export default function BookingForm() {
 
           const session = await createPaymentSession(
             amountInCents,
-            description
+            description,
+            bookingData.id  // Pass the booking ID here
           );
 
           if (!session?.attributes?.checkout_url) {

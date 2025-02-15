@@ -21,13 +21,14 @@ function base64Encode(str) {
 const baseUrl = globalThis.location.origin;
 
 // Create a payment session
-export const createPaymentSession = async (amount, description) => {
+export const createPaymentSession = async (amount, description, bookingId) => {
   try {
     if (!amount || amount <= 0) throw new Error('Invalid amount provided');
     if (!description) throw new Error('Description is required');
+    if (!bookingId) throw new Error('Booking ID is required');
     if (!PAYMONGO_SECRET_KEY) throw new Error('PayMongo secret key is not configured');
 
-    console.log('Creating payment session:', { baseUrl, amount, description });
+    console.log('Creating payment session:', { baseUrl, amount, description, bookingId });
 
     const encodedAuth = base64Encode(PAYMONGO_SECRET_KEY + ':');
 
@@ -46,9 +47,9 @@ export const createPaymentSession = async (amount, description) => {
           show_description: true,
           show_line_items: true,
           description: description,
-          reference_number: Date.now().toString(),
-          success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&bookingId=${bookingId}`,
-          cancel_url: `${baseUrl}/payment/cancel`,
+          reference_number: `ISLAGO-${bookingId}-${Date.now()}`,
+          success_url: `${baseUrl}/payment/success?session_id=cs_{CHECKOUT_SESSION_ID}&bookingId=${bookingId}`,
+          cancel_url: `${baseUrl}/payment/cancel?bookingId=${bookingId}`,
           billing: {
             address: {
               country: 'PH'
@@ -97,10 +98,7 @@ export const createPaymentSession = async (amount, description) => {
 
     // If the payment is immediately successful, update the status
     if (responseData.data.attributes.status === 'active') {
-      const bookingId = sessionStorage.getItem('lastBookingId');
-      if (bookingId) {
-        await updatePaymentStatus(bookingId, 'paid');
-      }
+      await updatePaymentStatus(bookingId, 'paid');
     }
 
     return responseData.data;
