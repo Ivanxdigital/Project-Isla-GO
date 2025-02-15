@@ -82,6 +82,17 @@ export default function HeroSection() {
     return () => clearTimeout(timeoutId);
   }, [titleNumber, titles]);
 
+  const scrollToBooking = (e) => {
+    e.preventDefault();
+    const bookingSection = document.getElementById('booking');
+    if (bookingSection) {
+      bookingSection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   return (
     <div className="hero-container relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500">
       {/* Geometric Patterns */}
@@ -190,13 +201,13 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8"
           >
-            <a
-              href="#booking"
-              className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-gray-100 transition-colors duration-200"
+            <button
+              onClick={scrollToBooking}
+              className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-gray-100 transition-all duration-200 transform hover:scale-105"
             >
               Book Now
               <ArrowRightIcon className="ml-2 -mr-1 h-5 w-5" aria-hidden="true" />
-            </a>
+            </button>
             <a
               href="/about"
               className="inline-flex items-center px-8 py-3 border-2 border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-blue-600 transition-colors duration-200"
