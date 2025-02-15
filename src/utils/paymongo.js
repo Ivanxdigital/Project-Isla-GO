@@ -32,7 +32,7 @@ export const createPaymentSession = async (amount, description, bookingId) => {
 
     const encodedAuth = base64Encode(PAYMONGO_SECRET_KEY + ':');
 
-    // Create the session with success_url included in initial payload
+    // Create the session with success_url that includes the session ID placeholder
     const payload = {
       data: {
         attributes: {
@@ -48,7 +48,7 @@ export const createPaymentSession = async (amount, description, bookingId) => {
           show_line_items: true,
           description: description,
           reference_number: `ISLAGO-${bookingId}-${Date.now()}`,
-          success_url: `${baseUrl}/payment/success?session_id=cs_{CHECKOUT_SESSION_ID}&bookingId=${bookingId}`,
+          success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}&bookingId=${bookingId}`,
           cancel_url: `${baseUrl}/payment/cancel?bookingId=${bookingId}`,
           billing: {
             address: {
@@ -93,8 +93,28 @@ export const createPaymentSession = async (amount, description, bookingId) => {
     const sessionId = responseData.data.id;
     const paymentIntentId = responseData.data.attributes.payment_intent_id;
 
+    // Store session information in sessionStorage
     sessionStorage.setItem('paymentSessionId', sessionId);
     sessionStorage.setItem('paymentIntentId', paymentIntentId);
+    sessionStorage.setItem('bookingId', bookingId);
+    sessionStorage.setItem('paymentAmount', amount.toString());
+
+    // Update the booking with the session ID
+    try {
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ 
+          payment_session_id: sessionId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+
+      if (updateError) {
+        console.error('Error updating booking with session ID:', updateError);
+      }
+    } catch (error) {
+      console.error('Error updating booking:', error);
+    }
 
     // If the payment is immediately successful, update the status
     if (responseData.data.attributes.status === 'active') {

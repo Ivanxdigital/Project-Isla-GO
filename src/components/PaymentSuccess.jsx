@@ -12,28 +12,65 @@ export default function PaymentSuccess() {
   const [status, setStatus] = useState('processing');
   const [error, setError] = useState(null);
   
-  // Get both bookingId and sessionId from URL
-  const params = new URLSearchParams(location.search);
-  const bookingId = params.get('bookingId');
-  const rawSessionId = params.get('session_id');
-  
-  // Ensure the session ID is properly formatted
-  const sessionId = rawSessionId?.startsWith('cs_') ? rawSessionId : null;
-
   const pollPaymentStatus = async () => {
     try {
-      console.log('Polling payment status for booking:', bookingId);
-      console.log('Session ID:', sessionId);
-      
+      // Get parameters from URL or sessionStorage
+      const urlParams = new URLSearchParams(location.search);
+      let sessionId = urlParams.get('session_id');
+      let bookingId = urlParams.get('bookingId');
+
+      console.log('Initial parameters:', { sessionId, bookingId, urlParams: Object.fromEntries(urlParams) });
+
+      // If not in URL, try sessionStorage
       if (!sessionId) {
-        throw new Error('Invalid session ID format');
+        sessionId = sessionStorage.getItem('paymentSessionId');
+        console.log('Retrieved session ID from storage:', sessionId);
+      }
+      if (!bookingId) {
+        bookingId = sessionStorage.getItem('bookingId');
+        console.log('Retrieved booking ID from storage:', bookingId);
       }
 
+      // If still no session ID but we have booking ID, try to get it from the database
+      if (!sessionId && bookingId) {
+        console.log('Attempting to fetch session ID from database for booking:', bookingId);
+        const { data: booking, error } = await supabase
+          .from('bookings')
+          .select('payment_session_id')
+          .eq('id', bookingId)
+          .single();
+
+        if (!error && booking?.payment_session_id) {
+          sessionId = booking.payment_session_id;
+          console.log('Retrieved session ID from database:', sessionId);
+        }
+      }
+
+      console.log('Payment verification starting...', {
+        bookingId,
+        sessionId,
+        url: location.search
+      });
+
+      if (!sessionId || !bookingId) {
+        console.error('Missing required parameters:', { sessionId, bookingId });
+        throw new Error('Missing booking or session information');
+      }
+
+      // Add 'cs_' prefix if not present
+      const fullSessionId = sessionId.startsWith('cs_') ? sessionId : `cs_${sessionId}`;
+
       // First verify the payment session with PayMongo
-      const sessionData = await verifyPaymentSession(sessionId);
-      const paymentStatus = mapPaymentStatus(sessionData.attributes.status);
+      console.log('Verifying payment session:', fullSessionId);
+      const sessionData = await verifyPaymentSession(fullSessionId);
       
-      console.log('Payment session status:', paymentStatus);
+      if (!sessionData) {
+        throw new Error('Failed to retrieve session data');
+      }
+
+      console.log('Session data received:', sessionData);
+      const paymentStatus = mapPaymentStatus(sessionData.attributes.status);
+      console.log('Mapped payment status:', paymentStatus);
 
       if (paymentStatus === 'paid') {
         // Update booking status in Supabase
@@ -42,22 +79,28 @@ export default function PaymentSuccess() {
           .update({ 
             status: 'confirmed',
             payment_status: 'paid',
-            payment_session_id: sessionId
+            payment_session_id: fullSessionId,
+            updated_at: new Date().toISOString()
           })
           .eq('id', bookingId);
 
-        if (updateError) throw updateError;
-
-        // Try to send notifications
-        try {
-          console.log('Sending driver notifications...');
-          await notifyDrivers(bookingId);
-        } catch (notifyError) {
-          console.error('Driver notification failed:', notifyError);
-          // Don't fail the whole process if notifications fail
+        if (updateError) {
+          console.error('Error updating booking:', updateError);
+          throw updateError;
         }
 
+        // Try to send notifications but don't wait for them
+        notifyDrivers(bookingId).catch(console.error);
+
         setStatus('success');
+        
+        // Only clear storage after successful update
+        setTimeout(() => {
+          sessionStorage.removeItem('paymentSessionId');
+          sessionStorage.removeItem('paymentIntentId');
+          sessionStorage.removeItem('bookingId');
+          sessionStorage.removeItem('paymentAmount');
+        }, 5000); // Wait 5 seconds before clearing
       } else if (paymentStatus === 'failed') {
         setStatus('failed');
         setError('Payment verification failed');
@@ -71,37 +114,94 @@ export default function PaymentSuccess() {
 
   const notifyDrivers = async (bookingId) => {
     try {
-      console.log('Sending notification for booking:', bookingId);
-      console.log('Using API URL:', '/api/send-driver-sms');
-
-      const response = await fetch('/api/send-driver-sms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ bookingId }),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`API error: ${text}`);
+      // Check if we've already tried to notify for this booking
+      const notificationKey = `notification_sent_${bookingId}`;
+      if (sessionStorage.getItem(notificationKey)) {
+        console.log('Notification already sent for booking:', bookingId);
+        return;
       }
 
-      return await response.json();
+      console.log('Attempting to send notification for booking:', bookingId);
+      
+      // Mark as notified immediately to prevent retries
+      sessionStorage.setItem(notificationKey, 'true');
+
+      // Only proceed with API call if the endpoint exists
+      if (import.meta.env.VITE_ENABLE_DRIVER_NOTIFICATIONS === 'true') {
+        const response = await fetch('/api/send-driver-sms', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ bookingId }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Driver notification sent successfully:', result);
+        return result;
+      } else {
+        console.log('Driver notifications are disabled');
+        return null;
+      }
     } catch (error) {
-      console.error('Error sending driver notifications:', error);
-      throw error;
+      console.warn('Error sending driver notifications:', error);
+      // Don't throw the error, just log it
+      return null;
     }
   };
 
   useEffect(() => {
-    if (bookingId && sessionId) {
-      pollPaymentStatus();
-    } else {
-      setError('Missing booking or session information');
-      setStatus('error');
-    }
-  }, [bookingId, sessionId]);
+    let mounted = true;
+    let pollInterval;
+    let retryCount = 0;
+    const maxRetries = 5;
+    
+    const startPolling = async () => {
+      if (mounted) {
+        try {
+          await pollPaymentStatus();
+          
+          // If status is still processing and we haven't exceeded max retries,
+          // poll every 5 seconds
+          if (mounted && status === 'processing' && retryCount < maxRetries) {
+            pollInterval = setInterval(() => {
+              retryCount++;
+              if (retryCount >= maxRetries) {
+                clearInterval(pollInterval);
+                setStatus('error');
+                setError('Payment verification timed out');
+              } else {
+                pollPaymentStatus();
+              }
+            }, 5000);
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+          if (retryCount < maxRetries) {
+            // Wait 2 seconds before retrying
+            setTimeout(startPolling, 2000);
+            retryCount++;
+          } else {
+            setStatus('error');
+            setError('Payment verification failed after multiple attempts');
+          }
+        }
+      }
+    };
+    
+    startPolling();
+    
+    return () => {
+      mounted = false;
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [location.search]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
