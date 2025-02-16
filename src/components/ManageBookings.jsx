@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabase';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
 
 // Helper function to compute the hotel pickup time based on the departure time and an offset (default is 60 minutes)
 function getHotelPickupTime(departureTime, offset = 60) {
@@ -39,6 +40,7 @@ const getStaticMapUrl = (location) => {
 
 export default function ManageBookings() {
   const { user } = useAuth();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('upcoming');
   const [bookings, setBookings] = useState({ upcoming: [], past: [] });
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,15 @@ export default function ManageBookings() {
       fetchBookings();
     }
   }, [user]);
+
+  // Add effect to handle success message
+  useEffect(() => {
+    if (location.state?.message) {
+      toast[location.state.type || 'success'](location.state.message);
+      // Clear the message from location state to prevent showing it again on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const fetchBookings = async () => {
     try {

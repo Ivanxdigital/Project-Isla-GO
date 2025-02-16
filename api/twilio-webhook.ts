@@ -1,72 +1,103 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import twilio from 'twilio';
+import { validateRequest } from 'twilio/lib/webhooks/webhooks.js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+// Message statuses we want to track
+const IMPORTANT_STATUSES = [
+  'delivered',
+  'undelivered',
+  'failed',
+  'sent'
+];
 
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
   // Verify the request is from Twilio
-  const twilioSignature = req.headers['x-twilio-signature'];
-  const twilioAuth = twilio.validateRequest(
+  const twilioSignature = req.headers['x-twilio-signature'] as string;
+  const url = `${process.env.VERCEL_URL}/api/twilio-webhook`;
+  
+  const isValid = validateRequest(
     process.env.TWILIO_AUTH_TOKEN!,
-    twilioSignature as string,
-    `${process.env.VERCEL_URL}/api/twilio-webhook`,
+    twilioSignature,
+    url,
     req.body
   );
 
-  if (!twilioAuth) {
-    return res.status(403).json({ error: 'Invalid Twilio signature' });
+  if (!isValid) {
+    console.error('Invalid Twilio signature');
+    return res.status(403).json({ error: 'Invalid signature' });
   }
 
   try {
-    const { Body: message, From: phoneNumber } = req.body;
-    
-    // Check if this is a "YES" response
-    if (message.trim().toUpperCase() === 'YES') {
-      const supabase = createClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
+    const {
+      MessageSid,
+      MessageStatus,
+      ErrorCode,
+      ErrorMessage
+    } = req.body;
 
-      // Find the driver by phone number
-      const { data: driver } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('mobile_number', phoneNumber)
-        .single();
+    // Only process statuses we care about
+    if (!IMPORTANT_STATUSES.includes(MessageStatus)) {
+      return res.status(200).send('OK');
+    }
 
-      if (driver) {
-        // Update the booking status
-        const { error: updateError } = await supabase
-          .from('bookings')
-          .update({ 
-            driver_id: driver.id,
-            status: 'assigned'
-          })
-          .eq('status', 'pending')
-          .is('driver_id', null);
+    // Find the notification by message SID
+    const { data: notification, error: findError } = await supabase
+      .from('driver_notifications')
+      .select('*')
+      .eq('message_sid', MessageSid)
+      .single();
 
-        if (!updateError) {
-          // Send confirmation to the driver
-          const twilioClient = twilio(
-            process.env.TWILIO_ACCOUNT_SID!,
-            process.env.TWILIO_AUTH_TOKEN!
-          );
+    if (findError || !notification) {
+      console.error('Could not find notification for message:', MessageSid);
+      return res.status(200).send('OK');
+    }
 
-          await twilioClient.messages.create({
-            body: 'Booking confirmed! Please check your dashboard for details.',
-            to: phoneNumber,
-            from: process.env.TWILIO_PHONE_NUMBER
-          });
-        }
+    // Update the notification status
+    const { error: updateError } = await supabase
+      .from('driver_notifications')
+      .update({
+        delivery_status: MessageStatus,
+        error_code: ErrorCode || null,
+        error_message: ErrorMessage || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', notification.id);
+
+    if (updateError) {
+      console.error('Error updating notification:', updateError);
+    }
+
+    // If message failed, try to notify another driver
+    if (MessageStatus === 'failed' || MessageStatus === 'undelivered') {
+      // Trigger new driver notification
+      try {
+        await fetch(`${process.env.VERCEL_URL}/api/send-driver-sms`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: notification.booking_id })
+        });
+      } catch (error) {
+        console.error('Error triggering new notification:', error);
       }
     }
 
+    // Send empty TwiML response
     res.setHeader('Content-Type', 'text/xml');
-    return res.send('<Response></Response>'); // Empty response to acknowledge receipt
+    return res.send('<Response></Response>');
   } catch (error) {
     console.error('Webhook error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 } 

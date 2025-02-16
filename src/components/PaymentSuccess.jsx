@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../utils/supabase.ts';
@@ -9,63 +9,68 @@ import toast from 'react-hot-toast';
 export default function PaymentSuccess() {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const [status, setStatus] = useState('processing');
   const [error, setError] = useState(null);
+  const [pollingAttempts, setPollingAttempts] = useState(0);
+  const MAX_POLLING_ATTEMPTS = 10; // Increase max attempts
+  const POLLING_INTERVAL = 3000; // 3 seconds between attempts
   
   const pollPaymentStatus = async () => {
     try {
-      // Get parameters from URL or sessionStorage
+      // Get booking ID from URL
       const urlParams = new URLSearchParams(location.search);
-      let sessionId = urlParams.get('session_id');
-      let bookingId = urlParams.get('bookingId');
+      const bookingId = urlParams.get('bookingId');
 
-      console.log('Initial parameters:', { sessionId, bookingId, urlParams: Object.fromEntries(urlParams) });
+      console.log('Initial parameters:', { bookingId, attempt: pollingAttempts + 1 });
 
-      // If not in URL, try sessionStorage
-      if (!sessionId) {
-        sessionId = sessionStorage.getItem('paymentSessionId');
-        console.log('Retrieved session ID from storage:', sessionId);
-      }
       if (!bookingId) {
-        bookingId = sessionStorage.getItem('bookingId');
-        console.log('Retrieved booking ID from storage:', bookingId);
+        console.error('Missing booking ID');
+        throw new Error('Missing booking information');
       }
 
-      // If still no session ID but we have booking ID, try to get it from the database
-      if (!sessionId && bookingId) {
-        console.log('Attempting to fetch session ID from database for booking:', bookingId);
-        const { data: booking, error } = await supabase
-          .from('bookings')
-          .select('payment_session_id')
-          .eq('id', bookingId)
-          .single();
+      // Get the session ID from the database using the booking ID
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .select('payment_session_id, status, payment_status')
+        .eq('id', bookingId)
+        .single();
 
-        if (!error && booking?.payment_session_id) {
-          sessionId = booking.payment_session_id;
-          console.log('Retrieved session ID from database:', sessionId);
-        }
+      if (bookingError) {
+        console.error('Error fetching booking:', bookingError);
+        throw new Error('Failed to retrieve booking information');
       }
 
+      // If the booking is already marked as paid, we can skip verification
+      if (booking?.payment_status === 'paid' && booking?.status === 'confirmed') {
+        console.log('Booking already confirmed:', bookingId);
+        setStatus('success');
+        return true; // Signal successful verification
+      }
+
+      if (!booking?.payment_session_id) {
+        // If we don't have a session ID yet, we'll try again
+        console.log('No payment session found yet, will retry...');
+        return false; // Signal to continue polling
+      }
+
+      const sessionId = booking.payment_session_id;
       console.log('Payment verification starting...', {
         bookingId,
         sessionId,
-        url: location.search
+        attempt: pollingAttempts + 1
       });
-
-      if (!sessionId || !bookingId) {
-        console.error('Missing required parameters:', { sessionId, bookingId });
-        throw new Error('Missing booking or session information');
-      }
 
       // Add 'cs_' prefix if not present
       const fullSessionId = sessionId.startsWith('cs_') ? sessionId : `cs_${sessionId}`;
 
-      // First verify the payment session with PayMongo
+      // Verify the payment session with PayMongo
       console.log('Verifying payment session:', fullSessionId);
       const sessionData = await verifyPaymentSession(fullSessionId);
       
       if (!sessionData) {
-        throw new Error('Failed to retrieve session data');
+        console.log('No session data received, will retry...');
+        return false; // Signal to continue polling
       }
 
       console.log('Session data received:', sessionData);
@@ -79,7 +84,6 @@ export default function PaymentSuccess() {
           .update({ 
             status: 'confirmed',
             payment_status: 'paid',
-            payment_session_id: fullSessionId,
             updated_at: new Date().toISOString()
           })
           .eq('id', bookingId);
@@ -94,21 +98,36 @@ export default function PaymentSuccess() {
 
         setStatus('success');
         
-        // Only clear storage after successful update
+        // Add a slight delay before redirecting to ensure the success message is seen
         setTimeout(() => {
-          sessionStorage.removeItem('paymentSessionId');
-          sessionStorage.removeItem('paymentIntentId');
-          sessionStorage.removeItem('bookingId');
-          sessionStorage.removeItem('paymentAmount');
-        }, 5000); // Wait 5 seconds before clearing
+          navigate('/bookings', { 
+            state: { 
+              message: 'Payment successful! You can view your booking details below.',
+              type: 'success'
+            }
+          });
+        }, 2000);
+        
+        return true; // Signal successful verification
       } else if (paymentStatus === 'failed') {
         setStatus('failed');
         setError('Payment verification failed');
+        return true; // Signal to stop polling
+      } else if (paymentStatus === 'pending') {
+        console.log('Payment still pending, will retry...');
+        return false; // Signal to continue polling
       }
+
+      return false; // Continue polling by default
     } catch (error) {
       console.error('Error processing payment:', error);
-      setStatus('error');
-      setError(error.message);
+      // Only set error state if we've exceeded max attempts
+      if (pollingAttempts >= MAX_POLLING_ATTEMPTS - 1) {
+        setStatus('error');
+        setError(error.message);
+        return true; // Signal to stop polling
+      }
+      return false; // Signal to continue polling
     }
   };
 
@@ -156,52 +175,39 @@ export default function PaymentSuccess() {
 
   useEffect(() => {
     let mounted = true;
-    let pollInterval;
-    let retryCount = 0;
-    const maxRetries = 5;
-    
+    let timeoutId = null;
+
     const startPolling = async () => {
-      if (mounted) {
-        try {
-          await pollPaymentStatus();
-          
-          // If status is still processing and we haven't exceeded max retries,
-          // poll every 5 seconds
-          if (mounted && status === 'processing' && retryCount < maxRetries) {
-            pollInterval = setInterval(() => {
-              retryCount++;
-              if (retryCount >= maxRetries) {
-                clearInterval(pollInterval);
-                setStatus('error');
-                setError('Payment verification timed out');
-              } else {
-                pollPaymentStatus();
-              }
-            }, 5000);
-          }
-        } catch (error) {
-          console.error('Polling error:', error);
-          if (retryCount < maxRetries) {
-            // Wait 2 seconds before retrying
-            setTimeout(startPolling, 2000);
-            retryCount++;
-          } else {
-            setStatus('error');
-            setError('Payment verification failed after multiple attempts');
-          }
+      if (!mounted) return;
+
+      try {
+        const isComplete = await pollPaymentStatus();
+        
+        if (!isComplete && pollingAttempts < MAX_POLLING_ATTEMPTS && mounted) {
+          setPollingAttempts(prev => prev + 1);
+          timeoutId = setTimeout(startPolling, POLLING_INTERVAL);
+        } else if (pollingAttempts >= MAX_POLLING_ATTEMPTS && mounted) {
+          setStatus('error');
+          setError('Payment verification timed out. Please contact support if payment was completed.');
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+        if (mounted) {
+          setStatus('error');
+          setError(error.message);
         }
       }
     };
-    
+
     startPolling();
-    
+
     return () => {
       mounted = false;
-      if (pollInterval) {
-        clearInterval(pollInterval);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
-  }, [location.search]);
+  }, []); // Empty dependency array since we manage polling internally
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">

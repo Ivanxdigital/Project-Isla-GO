@@ -21,6 +21,11 @@ interface Booking {
   user_id?: string;
 }
 
+// Generate a unique acceptance code
+const generateAcceptanceCode = () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+};
+
 // Add this function to verify numbers
 const isVerifiedNumber = async (twilioClient: twilio.Twilio, phoneNumber: string): Promise<boolean> => {
   try {
@@ -34,6 +39,7 @@ const isVerifiedNumber = async (twilioClient: twilio.Twilio, phoneNumber: string
 
 const BATCH_SIZE = 50;
 const BATCH_DELAY = 1000;
+const MAX_RETRIES = 3;
 
 interface SMSResult {
   success: boolean;
@@ -53,6 +59,25 @@ if (!accountSid || !authToken || !twilioPhoneNumber) {
 }
 
 const client = twilio(accountSid, authToken);
+
+// Add these validation functions after the interfaces
+const validatePhoneNumber = (phoneNumber: string): string => {
+  // Remove any non-digit characters
+  let cleaned = phoneNumber.replace(/\D/g, '');
+  
+  // Ensure it starts with country code
+  if (!cleaned.startsWith('63')) {
+    cleaned = '63' + cleaned.replace(/^0+/, '');
+  }
+  
+  // Add the plus sign
+  return '+' + cleaned;
+};
+
+const validateMessageLength = (message: string): boolean => {
+  // Twilio's SMS length limit is 1600 characters
+  return message.length <= 1600;
+};
 
 export default async function handler(
   req: VercelRequest,
@@ -80,81 +105,135 @@ export default async function handler(
       throw new Error(`Error fetching booking: ${bookingError?.message || 'Not found'}`);
     }
 
-    // Get drivers
-    const { data: drivers, error: driversError } = await supabase
-      .from('drivers')
-      .select('*')
-      .eq('status', 'active');
-
-    if (driversError || !drivers) {
-      throw new Error(`Error fetching drivers: ${driversError?.message || 'No drivers found'}`);
-    }
-
-    DebugLogger.info('SMS_API', `Found ${drivers.length} active drivers`);
-
-    if (!drivers.length) {
-      return res.status(404).json({ error: 'No active drivers found' });
-    }
-
-    const acceptanceCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const smsPromises: Promise<MessageInstance>[] = [];
-
-    for (let i = 0; i < drivers.length; i += BATCH_SIZE) {
-      const batch = drivers.slice(i, i + BATCH_SIZE);
-      
-      for (const driver of batch) {
-        const phone = driver.mobile_number?.startsWith('+') 
-          ? driver.mobile_number 
-          : `+63${driver.mobile_number?.replace(/^0+/, '')}`;
-
-        if (isTrialAccount) {
-          const isVerified = await isVerifiedNumber(client, phone);
-          if (!isVerified) {
-            DebugLogger.info('SMS_API', `Skipping unverified number in trial mode: ${phone}`);
-            continue;
-          }
-        }
-
-        smsPromises.push(
-          client.messages.create({
-            body: `New booking received!
-Booking ID: ${bookingId}
+    // Add message template validation
+    const messageTemplate = `New booking alert!
 From: ${booking.from_location}
 To: ${booking.to_location}
 Date: ${new Date(booking.departure_date).toLocaleDateString()}
 Time: ${booking.departure_time}
 
-Reply with code ${acceptanceCode} to accept this booking.
-This offer expires in 30 minutes.`,
-            to: phone,
-            from: twilioPhoneNumber
-          })
-        );
+Reply with code {acceptanceCode} to accept this booking.
+This offer expires in 30 minutes.`;
+
+    if (!validateMessageLength(messageTemplate)) {
+      throw new Error('Message template exceeds maximum length');
+    }
+
+    // Get drivers that haven't been notified yet
+    const { data: drivers, error: driversError } = await supabase
+      .from('drivers')
+      .select('*')
+      .eq('status', 'active')
+      .not('id', 'in', (
+        supabase
+          .from('driver_notifications')
+          .select('driver_id')
+          .eq('booking_id', bookingId)
+          .in('status', ['SENT', 'ACCEPTED'])
+      ));
+
+    if (driversError) {
+      throw new Error(`Error fetching drivers: ${driversError?.message}`);
+    }
+
+    DebugLogger.info('SMS_API', `Found ${drivers?.length || 0} drivers to notify`);
+
+    if (!drivers?.length) {
+      return res.status(200).json({ 
+        success: true, 
+        message: 'No new drivers to notify' 
+      });
+    }
+
+    const acceptanceCode = generateAcceptanceCode();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 30); // Code expires in 30 minutes
+
+    const results: SMSResult[] = [];
+
+    for (let i = 0; i < drivers.length; i += BATCH_SIZE) {
+      const batch = drivers.slice(i, i + BATCH_SIZE);
+      
+      for (const driver of batch) {
+        const phone = validatePhoneNumber(driver.mobile_number);
+
+        // Add trial account message prefix
+        const messageBody = isTrialAccount 
+          ? `[Test] ${messageTemplate.replace('{acceptanceCode}', acceptanceCode)}`
+          : messageTemplate.replace('{acceptanceCode}', acceptanceCode);
+
+        if (isTrialAccount) {
+          const isVerified = await isVerifiedNumber(client, phone);
+          if (!isVerified) {
+            DebugLogger.info('SMS_API', `Skipping unverified number in trial mode: ${phone}`);
+            // Record skipped notification
+            await supabase
+              .from('driver_notifications')
+              .insert({
+                driver_id: driver.id,
+                booking_id: bookingId,
+                acceptance_code: acceptanceCode,
+                status: 'SKIPPED',
+                expires_at: expiresAt.toISOString(),
+                error: 'Unverified number in trial mode'
+              });
+            continue;
+          }
+        }
+
+        let success = false;
+        let error = null;
+        let messageData = null;
+
+        // Try sending SMS with retries
+        for (let attempt = 0; attempt < MAX_RETRIES && !success; attempt++) {
+          try {
+            const message = await client.messages.create({
+              body: messageBody,
+              to: phone,
+              from: twilioPhoneNumber,
+              statusCallback: `${process.env.VERCEL_URL}/api/twilio-webhook` // Add status callback
+            });
+
+            success = true;
+            messageData = message;
+          } catch (err) {
+            error = err;
+            if (attempt < MAX_RETRIES - 1) {
+              await delay(Math.pow(2, attempt) * 1000); // Exponential backoff
+            }
+          }
+        }
+
+        // Record the notification attempt
+        const { error: notificationError } = await supabase
+          .from('driver_notifications')
+          .insert({
+            driver_id: driver.id,
+            booking_id: bookingId,
+            acceptance_code: acceptanceCode,
+            status: success ? 'SENT' : 'FAILED',
+            expires_at: expiresAt.toISOString(),
+            error: error ? JSON.stringify(error) : null,
+            message_sid: messageData?.sid
+          });
+
+        if (notificationError) {
+          console.error('Error recording notification:', notificationError);
+        }
+
+        results.push({
+          success,
+          data: messageData,
+          error,
+          driverId: driver.id
+        });
       }
 
       if (i + BATCH_SIZE < drivers.length) {
         await delay(BATCH_DELAY);
       }
     }
-
-    if (smsPromises.length === 0) {
-      return res.status(200).json({ 
-        success: true, 
-        messagesSent: 0,
-        warning: 'No verified numbers found'
-      });
-    }
-
-    const results = await Promise.all(
-      smsPromises.map(async (promise) => {
-        try {
-          const result = await promise;
-          return { success: true, data: result };
-        } catch (error) {
-          return { success: false, error };
-        }
-      })
-    );
 
     // Update booking status
     await supabase
@@ -166,10 +245,14 @@ This offer expires in 30 minutes.`,
       })
       .eq('id', bookingId);
 
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.filter(r => !r.success).length;
+
     return res.status(200).json({ 
       success: true, 
-      messagesSent: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length
+      messagesSent: successCount,
+      failed: failureCount,
+      totalDrivers: drivers.length
     });
 
   } catch (error) {
