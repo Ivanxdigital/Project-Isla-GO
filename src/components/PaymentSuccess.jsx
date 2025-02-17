@@ -45,6 +45,11 @@ export default function PaymentSuccess() {
       if (booking?.payment_status === 'paid' && booking?.status === 'confirmed') {
         console.log('Booking already confirmed:', bookingId);
         setStatus('success');
+        
+        // Try to send notifications even if booking is confirmed
+        console.log('Attempting to send notifications for confirmed booking');
+        await notifyDrivers(bookingId);
+        
         return true; // Signal successful verification
       }
 
@@ -140,22 +145,35 @@ export default function PaymentSuccess() {
         return;
       }
 
-      console.log('Attempting to send notification for booking:', bookingId);
+      console.log('Starting driver notification process for booking:', bookingId);
       
       // Mark as notified immediately to prevent retries
       sessionStorage.setItem(notificationKey, 'true');
 
+      // Get the base URL for the API
+      const baseUrl = process.env.NODE_ENV === 'development'
+        ? process.env.VITE_API_URL || 'http://localhost:3001'
+        : '';
+
+      const apiUrl = `${baseUrl}/api/send-driver-sms`;
+
+      console.log('Sending notification request to:', apiUrl);
+
       // Call the SMS API endpoint
-      const response = await fetch('/api/send-driver-sms', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include credentials for CORS
         body: JSON.stringify({ bookingId }),
       });
 
+      console.log('API response status:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('API error response:', errorData);
         throw new Error(`API error: ${errorData.error || response.status}`);
       }
 

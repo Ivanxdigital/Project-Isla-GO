@@ -94,16 +94,57 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ): Promise<VercelResponse> {
+  // Add CORS headers
+  const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173']; // Add your production domain when ready
+  const origin = req.headers.origin;
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  // Handle OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  console.log('Request received:', {
+    method: req.method,
+    headers: req.headers,
+    body: req.body
+  });
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  console.log('SMS API called with body:', req.body);
 
   try {
     const { bookingId } = req.body;
 
     if (!bookingId) {
+      console.error('Missing bookingId in request');
       return res.status(400).json({ error: 'bookingId is required' });
     }
+
+    // Validate Twilio configuration
+    if (!accountSid || !authToken || !twilioPhoneNumber) {
+      console.error('Missing Twilio configuration:', {
+        hasAccountSid: !!accountSid,
+        hasAuthToken: !!authToken,
+        hasPhoneNumber: !!twilioPhoneNumber
+      });
+      return res.status(500).json({ error: 'SMS service not properly configured' });
+    }
+
+    console.log('Fetching booking details for ID:', bookingId);
 
     // Get booking details
     const { data: booking, error: bookingError } = await supabase
@@ -112,9 +153,20 @@ export default async function handler(
       .eq('id', bookingId)
       .single();
 
-    if (bookingError || !booking) {
-      throw new Error(`Error fetching booking: ${bookingError?.message || 'Not found'}`);
+    if (bookingError) {
+      console.error('Booking fetch error:', bookingError);
+      return res.status(404).json({ 
+        error: 'Failed to retrieve booking',
+        details: bookingError.message
+      });
     }
+
+    if (!booking) {
+      console.error('Booking not found:', bookingId);
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    console.log('Booking details found:', booking);
 
     // Add message template validation
     const messageTemplate = `New booking alert!
@@ -136,23 +188,26 @@ This offer expires in 30 minutes.`;
       .select('*')
       .eq('status', 'active')
       .not('id', 'in', (
-        supabase
+        await supabase
           .from('driver_notifications')
           .select('driver_id')
           .eq('booking_id', bookingId)
           .in('status', ['SENT', 'ACCEPTED'])
-      ));
+      ).data?.map(n => n.driver_id) || []);
 
     if (driversError) {
+      console.error('Error fetching drivers:', driversError);
       throw new Error(`Error fetching drivers: ${driversError?.message}`);
     }
 
-    DebugLogger.info('SMS_API', `Found ${drivers?.length || 0} drivers to notify`);
+    console.log('Found drivers:', drivers);
 
     if (!drivers?.length) {
+      console.log('No eligible drivers found to notify');
       return res.status(200).json({ 
         success: true, 
-        message: 'No new drivers to notify' 
+        message: 'No new drivers to notify',
+        messagesSent: 0
       });
     }
 
