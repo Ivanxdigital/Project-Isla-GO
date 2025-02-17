@@ -145,29 +145,34 @@ export default function PaymentSuccess() {
       // Mark as notified immediately to prevent retries
       sessionStorage.setItem(notificationKey, 'true');
 
-      // Only proceed with API call if the endpoint exists
-      if (import.meta.env.VITE_ENABLE_DRIVER_NOTIFICATIONS === 'true') {
-        const response = await fetch('/api/send-driver-sms', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ bookingId }),
-        });
+      // Call the SMS API endpoint
+      const response = await fetch('/api/send-driver-sms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ bookingId }),
+      });
 
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('Driver notification sent successfully:', result);
-        return result;
-      } else {
-        console.log('Driver notifications are disabled');
-        return null;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`API error: ${errorData.error || response.status}`);
       }
+
+      const result = await response.json();
+      console.log('Driver notification result:', result);
+      
+      if (result.messagesSent === 0) {
+        console.warn('No messages were sent to drivers');
+        toast.warning('No available drivers found at the moment. Our team will contact you shortly.');
+      } else {
+        toast.success(`Notification sent to ${result.messagesSent} drivers`);
+      }
+      
+      return result;
     } catch (error) {
-      console.warn('Error sending driver notifications:', error);
+      console.error('Error sending driver notifications:', error);
+      toast.error('Unable to notify drivers. Our team will contact you shortly.');
       // Don't throw the error, just log it
       return null;
     }

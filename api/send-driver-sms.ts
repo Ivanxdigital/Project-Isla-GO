@@ -1,8 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import twilio from 'twilio';
-import { DebugLogger } from '../src/utils/debug-logger';
 import { MessageInstance } from 'twilio/lib/rest/api/v2010/account/message';
-import { supabase } from '../src/utils/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Create Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Simple debug logger implementation
+const DebugLogger = {
+  info: (context: string, message: string) => {
+    console.log(`[${context}] ${message}`);
+  }
+};
 
 const isTrialAccount = true;
 
@@ -224,7 +235,7 @@ This offer expires in 30 minutes.`;
 
         results.push({
           success,
-          data: messageData,
+          data: messageData || undefined,
           error,
           driverId: driver.id
         });
