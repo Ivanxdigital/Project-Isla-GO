@@ -452,6 +452,132 @@ export default function NavigationMenu() {
                 </button>
               </div>
 
+              {/* Add Mobile Menu */}
+              <AnimatePresence>
+                {isMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-full left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 md:hidden"
+                  >
+                    <div className="px-2 pt-2 pb-3 space-y-1">
+                      {menuItems.map((item) => (
+                        <MobileMenuItem
+                          key={item.name}
+                          to={item.path}
+                          onClick={() => setIsMenuOpen(false)}
+                          className={item.className}
+                        >
+                          {item.name}
+                        </MobileMenuItem>
+                      ))}
+                      
+                      {!user ? (
+                        <>
+                          <MobileMenuItem
+                            to="/login"
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            Sign In
+                          </MobileMenuItem>
+                          <Link
+                            to="/register"
+                            onClick={() => setIsMenuOpen(false)}
+                            className="block w-full text-center px-4 py-2 mt-3 bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white rounded-lg font-medium transition-all duration-200"
+                          >
+                            Register
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          <MobileMenuItem
+                            to="/profile"
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            Your Profile
+                          </MobileMenuItem>
+                          <MobileMenuItem
+                            to="/manage-bookings"
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            Manage Bookings
+                          </MobileMenuItem>
+                          
+                          {!adminLoading && isAdmin && (
+                            <MobileMenuItem
+                              to="/admin/dashboard"
+                              onClick={() => setIsMenuOpen(false)}
+                            >
+                              Admin Dashboard
+                            </MobileMenuItem>
+                          )}
+
+                          {isDriver && (
+                            <>
+                              {driverStatus === 'pending' && (
+                                <MobileMenuItem
+                                  to="/driver/pending"
+                                  onClick={() => setIsMenuOpen(false)}
+                                  className="text-yellow-600"
+                                >
+                                  <span className="flex items-center">
+                                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6z" clipRule="evenodd" />
+                                    </svg>
+                                    Application Pending
+                                  </span>
+                                </MobileMenuItem>
+                              )}
+                              {driverStatus === 'active' && (
+                                <>
+                                  <MobileMenuItem
+                                    to="/driver/dashboard"
+                                    onClick={() => setIsMenuOpen(false)}
+                                  >
+                                    Driver Dashboard
+                                  </MobileMenuItem>
+                                  <MobileMenuItem
+                                    to="/driver/trips"
+                                    onClick={() => setIsMenuOpen(false)}
+                                  >
+                                    My Trips
+                                  </MobileMenuItem>
+                                  <MobileMenuItem
+                                    to="/driver/profile"
+                                    onClick={() => setIsMenuOpen(false)}
+                                  >
+                                    Driver Profile
+                                  </MobileMenuItem>
+                                  <MobileMenuItem
+                                    to="/driver/availability"
+                                    onClick={() => setIsMenuOpen(false)}
+                                  >
+                                    Manage Availability
+                                  </MobileMenuItem>
+                                </>
+                              )}
+                            </>
+                          )}
+
+                          <button
+                            onClick={(e) => {
+                              setIsMenuOpen(false);
+                              handleSignOut(e);
+                            }}
+                            disabled={isSigningOut || adminLoading}
+                            className="w-full text-left block px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors duration-150 rounded-lg mt-2"
+                          >
+                            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Desktop auth buttons - hidden on mobile */}
               <div className="hidden md:flex md:items-center">
                 <div className="flex items-center space-x-4 ml-8">

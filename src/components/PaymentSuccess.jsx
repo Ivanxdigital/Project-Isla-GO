@@ -165,7 +165,6 @@ export default function PaymentSuccess() {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Include credentials for CORS
         body: JSON.stringify({ bookingId }),
       });
 
