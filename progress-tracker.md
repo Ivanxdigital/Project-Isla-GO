@@ -624,6 +624,69 @@
 - Fix infinite scrolling behavior
 - Improve overall layout structure and flow
 
+### 2024-03-XX - Payment System Database Schema Alignment
+**Files Modified:**
+- `src/utils/paymongo.js`
+- `src/components/PaymentSuccess.jsx`
+- `api/send-driver-sms.ts`
+- `api/twilio-webhook.ts`
+
+**Changes Made:**
+1. Aligned Payment System with Database Schema
+   - Implemented proper usage of the `payments` table
+   - Added payment record creation with PayMongo sessions
+   - Enhanced payment status tracking across tables
+   - Improved data consistency between payments and bookings
+
+2. Enhanced Payment Flow
+   - Updated payment verification to check both tables
+   - Added proper joins between payments and bookings
+   - Implemented proper status synchronization
+   - Enhanced error handling and recovery
+
+3. Improved Payment Webhook Handling
+   - Updated webhook to handle both payment and booking records
+   - Added proper transaction-like behavior
+   - Enhanced error handling and logging
+   - Improved status synchronization
+
+4. Technical Improvements
+   - Added proper database constraints adherence
+   - Enhanced data consistency checks
+   - Improved error handling and recovery
+   - Added detailed logging throughout the process
+
+**Technical Details:**
+- Payment Record Creation:
+  ```javascript
+  {
+    booking_id: bookingId,
+    amount: amount / 100,
+    status: 'pending',
+    provider: 'paymongo',
+    provider_session_id: sessionId,
+    provider_payment_id: paymentIntentId
+  }
+  ```
+
+- Status Synchronization:
+  - Payments table status updates
+  - Booking table payment_status updates
+  - Proper status mapping from PayMongo
+  - Consistent status tracking
+
+- Error Handling:
+  - Comprehensive error logging
+  - Transaction-like updates
+  - Proper error recovery
+  - User-friendly error messages
+
+**Purpose:**
+- Align with database schema design
+- Improve data consistency
+- Enhance payment tracking
+- Ensure proper error handling
+
 ## Pending Tasks
 - [x] Add retry mechanism for failed notifications
 - [ ] Monitor driver notification success rates

@@ -29,81 +29,43 @@ export default function PaymentSuccess() {
         throw new Error('Missing booking information');
       }
 
-      // Get the session ID from the database using the booking ID
-      const { data: booking, error: bookingError } = await supabase
-        .from('bookings')
-        .select('payment_session_id, status, payment_status')
-        .eq('id', bookingId)
+      // Get both payment and booking records
+      const { data: records, error: fetchError } = await supabase
+        .from('payments')
+        .select(`
+          id,
+          status as payment_status,
+          provider_session_id,
+          bookings (
+            id,
+            status as booking_status,
+            payment_status
+          )
+        `)
+        .eq('booking_id', bookingId)
         .single();
 
-      if (bookingError) {
-        console.error('Error fetching booking:', bookingError);
-        throw new Error('Failed to retrieve booking information');
+      if (fetchError) {
+        console.error('Error fetching records:', fetchError);
+        throw new Error('Failed to retrieve payment information');
       }
 
-      // If the booking is already marked as paid, we can skip verification
-      if (booking?.payment_status === 'paid' && booking?.status === 'confirmed') {
-        console.log('Booking already confirmed:', bookingId);
+      // If we have no records, keep polling
+      if (!records) {
+        console.log('No payment records found yet, will retry...');
+        return false;
+      }
+
+      // If the payment is already marked as paid, we can stop polling
+      if (records.payment_status === 'paid' && records.bookings?.booking_status === 'confirmed') {
+        console.log('Payment confirmed:', bookingId);
         setStatus('success');
         
         // Try to send notifications even if booking is confirmed
         console.log('Attempting to send notifications for confirmed booking');
         await notifyDrivers(bookingId);
         
-        return true; // Signal successful verification
-      }
-
-      if (!booking?.payment_session_id) {
-        // If we don't have a session ID yet, we'll try again
-        console.log('No payment session found yet, will retry...');
-        return false; // Signal to continue polling
-      }
-
-      const sessionId = booking.payment_session_id;
-      console.log('Payment verification starting...', {
-        bookingId,
-        sessionId,
-        attempt: pollingAttempts + 1
-      });
-
-      // Add 'cs_' prefix if not present
-      const fullSessionId = sessionId.startsWith('cs_') ? sessionId : `cs_${sessionId}`;
-
-      // Verify the payment session with PayMongo
-      console.log('Verifying payment session:', fullSessionId);
-      const sessionData = await verifyPaymentSession(fullSessionId);
-      
-      if (!sessionData) {
-        console.log('No session data received, will retry...');
-        return false; // Signal to continue polling
-      }
-
-      console.log('Session data received:', sessionData);
-      const paymentStatus = mapPaymentStatus(sessionData.attributes.status);
-      console.log('Mapped payment status:', paymentStatus);
-
-      if (paymentStatus === 'paid') {
-        // Update booking status in Supabase
-        const { error: updateError } = await supabase
-          .from('bookings')
-          .update({ 
-            status: 'confirmed',
-            payment_status: 'paid',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', bookingId);
-
-        if (updateError) {
-          console.error('Error updating booking:', updateError);
-          throw updateError;
-        }
-
-        // Try to send notifications but don't wait for them
-        notifyDrivers(bookingId).catch(console.error);
-
-        setStatus('success');
-        
-        // Add a slight delay before redirecting to ensure the success message is seen
+        // Add a slight delay before redirecting
         setTimeout(() => {
           navigate('/bookings', { 
             state: { 
@@ -113,26 +75,94 @@ export default function PaymentSuccess() {
           });
         }, 2000);
         
-        return true; // Signal successful verification
+        return true;
+      }
+
+      if (!records.provider_session_id) {
+        console.log('No payment session found yet, will retry...');
+        return false;
+      }
+
+      // Add 'cs_' prefix if not present
+      const fullSessionId = records.provider_session_id.startsWith('cs_') 
+        ? records.provider_session_id 
+        : `cs_${records.provider_session_id}`;
+
+      // Verify the payment session with PayMongo
+      console.log('Verifying payment session:', fullSessionId);
+      const sessionData = await verifyPaymentSession(fullSessionId);
+      
+      if (!sessionData) {
+        console.log('No session data received, will retry...');
+        return false;
+      }
+
+      console.log('Session data received:', sessionData);
+      const paymentStatus = mapPaymentStatus(sessionData.attributes.status);
+      console.log('Mapped payment status:', paymentStatus);
+
+      if (paymentStatus === 'paid') {
+        // Update both payment and booking records
+        const [paymentUpdate, bookingUpdate] = await Promise.all([
+          supabase
+            .from('payments')
+            .update({ 
+              status: 'paid',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', records.id),
+          
+          supabase
+            .from('bookings')
+            .update({ 
+              status: 'confirmed',
+              payment_status: 'paid',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', bookingId)
+        ]);
+
+        if (paymentUpdate.error) {
+          console.error('Error updating payment:', paymentUpdate.error);
+        }
+        if (bookingUpdate.error) {
+          console.error('Error updating booking:', bookingUpdate.error);
+        }
+
+        // Try to send notifications but don't wait for them
+        notifyDrivers(bookingId).catch(console.error);
+
+        setStatus('success');
+        
+        // Add a slight delay before redirecting
+        setTimeout(() => {
+          navigate('/bookings', { 
+            state: { 
+              message: 'Payment successful! You can view your booking details below.',
+              type: 'success'
+            }
+          });
+        }, 2000);
+        
+        return true;
       } else if (paymentStatus === 'failed') {
         setStatus('failed');
         setError('Payment verification failed');
-        return true; // Signal to stop polling
+        return true;
       } else if (paymentStatus === 'pending') {
         console.log('Payment still pending, will retry...');
-        return false; // Signal to continue polling
+        return false;
       }
 
-      return false; // Continue polling by default
+      return false;
     } catch (error) {
       console.error('Error processing payment:', error);
-      // Only set error state if we've exceeded max attempts
       if (pollingAttempts >= MAX_POLLING_ATTEMPTS - 1) {
         setStatus('error');
         setError(error.message);
-        return true; // Signal to stop polling
+        return true;
       }
-      return false; // Signal to continue polling
+      return false;
     }
   };
 

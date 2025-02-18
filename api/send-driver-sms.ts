@@ -94,11 +94,21 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ): Promise<VercelResponse> {
+  // Add detailed environment variable logging
+  console.log('Environment check:', {
+    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasTwilioSid: !!process.env.TWILIO_ACCOUNT_SID,
+    hasTwilioToken: !!process.env.TWILIO_AUTH_TOKEN,
+    hasTwilioPhone: !!process.env.TWILIO_PHONE_NUMBER,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    twilioPhone: process.env.TWILIO_PHONE_NUMBER
+  });
+
   // Add CORS headers
-  const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173']; // Add your production domain when ready
+  const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173'];
   const origin = req.headers.origin;
   
-  // Set CORS headers
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -108,7 +118,6 @@ export default async function handler(
     );
   }
 
-  // Handle OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -124,8 +133,6 @@ export default async function handler(
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  console.log('SMS API called with body:', req.body);
 
   try {
     const { bookingId } = req.body;
@@ -145,29 +152,74 @@ export default async function handler(
       return res.status(500).json({ error: 'SMS service not properly configured' });
     }
 
+    // Validate Supabase configuration
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase configuration:', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey
+      });
+      return res.status(500).json({ error: 'Database configuration missing' });
+    }
+
     console.log('Fetching booking details for ID:', bookingId);
 
-    // Get booking details
-    const { data: booking, error: bookingError } = await supabase
+    // Get booking details with error logging
+    const bookingQuery = await supabase
       .from('bookings')
       .select('*')
       .eq('id', bookingId)
       .single();
 
-    if (bookingError) {
-      console.error('Booking fetch error:', bookingError);
+    console.log('Booking query result:', {
+      data: bookingQuery.data,
+      error: bookingQuery.error
+    });
+
+    if (bookingQuery.error) {
+      console.error('Booking fetch error:', bookingQuery.error);
       return res.status(404).json({ 
         error: 'Failed to retrieve booking',
-        details: bookingError.message
+        details: bookingQuery.error.message
       });
     }
 
-    if (!booking) {
+    if (!bookingQuery.data) {
       console.error('Booking not found:', bookingId);
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    console.log('Booking details found:', booking);
+    // Get drivers with detailed logging
+    const driversQuery = await supabase
+      .from('drivers')
+      .select('*')
+      .eq('status', 'active');
+
+    console.log('Drivers query result:', {
+      count: driversQuery.data?.length,
+      error: driversQuery.error
+    });
+
+    if (driversQuery.error) {
+      console.error('Error fetching drivers:', driversQuery.error);
+      return res.status(500).json({ 
+        error: 'Failed to fetch drivers',
+        details: driversQuery.error.message
+      });
+    }
+
+    const drivers = driversQuery.data || [];
+    console.log('Found drivers:', drivers);
+
+    if (!drivers.length) {
+      console.log('No active drivers found');
+      return res.status(200).json({ 
+        success: true, 
+        message: 'No active drivers available',
+        messagesSent: 0
+      });
+    }
+
+    const booking = bookingQuery.data;
 
     // Add message template validation
     const messageTemplate = `New booking alert!
@@ -181,35 +233,6 @@ This offer expires in 30 minutes.`;
 
     if (!validateMessageLength(messageTemplate)) {
       throw new Error('Message template exceeds maximum length');
-    }
-
-    // Get drivers that haven't been notified yet
-    const { data: drivers, error: driversError } = await supabase
-      .from('drivers')
-      .select('*')
-      .eq('status', 'active')
-      .not('id', 'in', (
-        await supabase
-          .from('driver_notifications')
-          .select('driver_id')
-          .eq('booking_id', bookingId)
-          .in('status', ['SENT', 'ACCEPTED'])
-      ).data?.map(n => n.driver_id) || []);
-
-    if (driversError) {
-      console.error('Error fetching drivers:', driversError);
-      throw new Error(`Error fetching drivers: ${driversError?.message}`);
-    }
-
-    console.log('Found drivers:', drivers);
-
-    if (!drivers?.length) {
-      console.log('No eligible drivers found to notify');
-      return res.status(200).json({ 
-        success: true, 
-        message: 'No new drivers to notify',
-        messagesSent: 0
-      });
     }
 
     const acceptanceCode = generateAcceptanceCode();

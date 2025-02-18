@@ -93,11 +93,22 @@ export const createPaymentSession = async (amount, description, bookingId) => {
     const sessionId = responseData.data.id;
     const paymentIntentId = responseData.data.attributes.payment_intent_id;
 
-    // Store session information in sessionStorage
-    sessionStorage.setItem('paymentSessionId', sessionId);
-    sessionStorage.setItem('paymentIntentId', paymentIntentId);
-    sessionStorage.setItem('bookingId', bookingId);
-    sessionStorage.setItem('paymentAmount', amount.toString());
+    // Create payment record in payments table
+    const { error: paymentError } = await supabase
+      .from('payments')
+      .insert({
+        booking_id: bookingId,
+        amount: amount / 100, // Convert from cents to actual amount
+        status: 'pending',
+        provider: 'paymongo',
+        provider_session_id: sessionId,
+        provider_payment_id: paymentIntentId
+      });
+
+    if (paymentError) {
+      console.error('Error creating payment record:', paymentError);
+      throw paymentError;
+    }
 
     // Update the booking with the session ID
     try {
@@ -116,9 +127,24 @@ export const createPaymentSession = async (amount, description, bookingId) => {
       console.error('Error updating booking:', error);
     }
 
-    // If the payment is immediately successful, update the status
+    // Store session information in sessionStorage
+    sessionStorage.setItem('paymentSessionId', sessionId);
+    sessionStorage.setItem('paymentIntentId', paymentIntentId);
+    sessionStorage.setItem('bookingId', bookingId);
+    sessionStorage.setItem('paymentAmount', amount.toString());
+
+    // If the payment is immediately successful, update both payment and booking status
     if (responseData.data.attributes.status === 'active') {
-      await updatePaymentStatus(bookingId, 'paid');
+      await Promise.all([
+        updatePaymentStatus(bookingId, 'paid'),
+        supabase
+          .from('payments')
+          .update({ 
+            status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('provider_session_id', sessionId)
+      ]);
     }
 
     return responseData.data;
@@ -191,30 +217,39 @@ export const handlePayMongoWebhook = async (event) => {
     if (event.type === 'checkout.session.completed') {
       const sessionId = event.data.id;
       
-      // Find the booking with this session ID
-      const { data: booking, error } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('payment_session_id', sessionId)
+      // Update payment record
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .update({ 
+          status: 'paid',
+          updated_at: new Date().toISOString()
+        })
+        .eq('provider_session_id', sessionId)
+        .select('booking_id')
         .single();
 
-      if (error) {
-        console.error('Error finding booking:', error);
+      if (paymentError) {
+        console.error('Error updating payment:', paymentError);
         return;
       }
 
-      // Update the booking status
-      const { error: updateError } = await supabase
+      if (!payment?.booking_id) {
+        console.error('No booking ID found for payment');
+        return;
+      }
+
+      // Update booking status
+      const { error: bookingError } = await supabase
         .from('bookings')
         .update({ 
           payment_status: 'paid',
           status: 'confirmed',
           updated_at: new Date().toISOString()
         })
-        .eq('id', booking.id);
+        .eq('id', payment.booking_id);
 
-      if (updateError) {
-        console.error('Error updating booking:', updateError);
+      if (bookingError) {
+        console.error('Error updating booking:', bookingError);
       }
     }
   } catch (error) {
@@ -225,16 +260,41 @@ export const handlePayMongoWebhook = async (event) => {
 // Add this function to directly update payment status
 export const updatePaymentStatus = async (bookingId, status) => {
   try {
-    const { error } = await supabase
-      .from('bookings')
-      .update({ 
-        payment_status: status,
-        status: status === 'paid' ? 'confirmed' : status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', bookingId);
+    // Get the payment record for this booking
+    const { data: payment, error: fetchError } = await supabase
+      .from('payments')
+      .select('id, provider_session_id')
+      .eq('booking_id', bookingId)
+      .single();
 
-    if (error) throw error;
+    if (fetchError) {
+      console.error('Error fetching payment:', fetchError);
+      throw fetchError;
+    }
+
+    // Update both payment and booking records
+    const [paymentUpdate, bookingUpdate] = await Promise.all([
+      supabase
+        .from('payments')
+        .update({ 
+          status: status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', payment.id),
+      
+      supabase
+        .from('bookings')
+        .update({ 
+          payment_status: status,
+          status: status === 'paid' ? 'confirmed' : status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId)
+    ]);
+
+    if (paymentUpdate.error) throw paymentUpdate.error;
+    if (bookingUpdate.error) throw bookingUpdate.error;
+
     return true;
   } catch (error) {
     console.error('Error updating payment status:', error);
