@@ -20,6 +20,15 @@ function base64Encode(str) {
 // Replace window with globalThis
 const baseUrl = globalThis.location.origin;
 
+// Add this at the top of the file
+const VALID_PAYMENT_STATUSES = {
+  PENDING: 'pending',
+  PAID: 'paid',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled',
+  REFUNDED: 'refunded'
+};
+
 // Create a payment session
 export const createPaymentSession = async (amount, description, bookingId) => {
   try {
@@ -124,7 +133,7 @@ export const createPaymentSession = async (amount, description, bookingId) => {
         .from('payments')
         .update({
           amount: amount / 100,
-          status: 'pending',
+          status: VALID_PAYMENT_STATUSES.PENDING,
           provider: 'paymongo',
           provider_session_id: sessionId,
           provider_payment_id: paymentIntentId,
@@ -148,7 +157,7 @@ export const createPaymentSession = async (amount, description, bookingId) => {
           booking_id: bookingId,
           user_id: bookingData.user_id,
           amount: amount / 100,
-          status: 'pending',
+          status: VALID_PAYMENT_STATUSES.PENDING,
           provider: 'paymongo',
           provider_session_id: sessionId,
           provider_payment_id: paymentIntentId,
@@ -189,11 +198,11 @@ export const createPaymentSession = async (amount, description, bookingId) => {
     // If the payment is immediately successful, update both payment and booking status
     if (responseData.data.attributes.status === 'active') {
       await Promise.all([
-        updatePaymentStatus(bookingId, 'paid'),
+        updatePaymentStatus(bookingId, VALID_PAYMENT_STATUSES.PAID),
         supabase
           .from('payments')
           .update({ 
-            status: 'paid',
+            status: VALID_PAYMENT_STATUSES.PAID,
             updated_at: new Date().toISOString()
           })
           .eq('provider_session_id', sessionId)
@@ -237,28 +246,31 @@ export const verifyPaymentSession = async (sessionId) => {
   }
 };
 
-// Map payment statuses
+// Map PayMongo statuses to our system statuses
 export const mapPaymentStatus = (paymongoStatus) => {
   switch (paymongoStatus?.toLowerCase()) {
     case 'paid':
     case 'completed':
     case 'succeeded':
     case 'active':
-      return 'paid';
+      return VALID_PAYMENT_STATUSES.PAID;
     case 'pending':
     case 'awaiting_payment_method':
     case 'processing':
-      return 'pending';
+      return VALID_PAYMENT_STATUSES.PENDING;
     case 'unpaid':
-      return 'pending';
+      return VALID_PAYMENT_STATUSES.PENDING;
     case 'failed':
+      return VALID_PAYMENT_STATUSES.FAILED;
     case 'expired':
     case 'cancelled':
+      return VALID_PAYMENT_STATUSES.CANCELLED;
     case 'voided':
-      return 'failed';
+    case 'refunded':
+      return VALID_PAYMENT_STATUSES.REFUNDED;
     default:
       console.warn('Unhandled PayMongo status:', paymongoStatus);
-      return 'pending';
+      return VALID_PAYMENT_STATUSES.PENDING;
   }
 };
 
@@ -274,7 +286,7 @@ export const handlePayMongoWebhook = async (event) => {
       const { data: payment, error: paymentError } = await supabase
         .from('payments')
         .update({ 
-          status: 'paid',
+          status: VALID_PAYMENT_STATUSES.PAID,
           updated_at: new Date().toISOString()
         })
         .eq('provider_session_id', sessionId)
@@ -295,7 +307,7 @@ export const handlePayMongoWebhook = async (event) => {
       const { error: bookingError } = await supabase
         .from('bookings')
         .update({ 
-          payment_status: 'paid',
+          payment_status: VALID_PAYMENT_STATUSES.PAID,
           status: 'confirmed',
           updated_at: new Date().toISOString()
         })
@@ -310,8 +322,12 @@ export const handlePayMongoWebhook = async (event) => {
   }
 };
 
-// Add this function to directly update payment status
+// Update the updatePaymentStatus function to use the correct status
 export const updatePaymentStatus = async (bookingId, status) => {
+  if (!Object.values(VALID_PAYMENT_STATUSES).includes(status)) {
+    throw new Error(`Invalid payment status: ${status}`);
+  }
+
   try {
     // Get the payment record for this booking
     const { data: payment, error: fetchError } = await supabase
@@ -339,7 +355,7 @@ export const updatePaymentStatus = async (bookingId, status) => {
         .from('bookings')
         .update({ 
           payment_status: status,
-          status: status === 'paid' ? 'confirmed' : status,
+          status: status === VALID_PAYMENT_STATUSES.PAID ? 'confirmed' : status,
           updated_at: new Date().toISOString()
         })
         .eq('id', bookingId)
