@@ -2,6 +2,64 @@
 
 ## Latest Changes
 
+### 2024-03-19 - Payment System Database Schema and RLS Fixes
+**Files Modified:**
+- `src/utils/paymongo.js`
+- Database Schema (payments table)
+
+**Changes Made:**
+1. Fixed Payments Table Schema
+   - Added `user_id` column to payments table
+   - Added proper foreign key reference to auth.users
+   - Enhanced RLS policies for proper access control
+   - Added proper timestamps for record tracking
+
+2. Enhanced Payment Record Handling
+   - Added check for existing payment records
+   - Implemented update logic for existing records
+   - Added proper error handling and logging
+   - Enhanced data consistency checks
+
+3. Improved Error Handling
+   - Added comprehensive error logging
+   - Enhanced error messages for debugging
+   - Added proper error recovery mechanisms
+   - Improved user feedback for failures
+
+4. Database Schema Updates
+   - Added proper foreign key constraints
+   - Enhanced RLS policies:
+     - Insert policy for authenticated users
+     - Select policy based on user_id
+     - Update policy based on user_id
+   - Added proper timestamps handling
+
+**Technical Details:**
+- Payments Table Schema:
+  ```sql
+  user_id uuid REFERENCES auth.users(id)
+  created_at timestamp with time zone
+  updated_at timestamp with time zone
+  ```
+
+- RLS Policies:
+  - Insert: Authenticated users only
+  - Select: Based on user ownership
+  - Update: Based on user ownership
+  - Proper foreign key constraints
+
+**Error Handling:**
+- Detailed error logging
+- User-friendly error messages
+- Proper error recovery
+- Enhanced debugging capability
+
+**Purpose:**
+- Fix payment record creation issues
+- Ensure proper data relationships
+- Enhance security with RLS
+- Improve error handling and recovery
+
 ### 2024-03-XX - SMS Notification System Implementation
 **Files Added/Modified:**
 - `api/send-driver-sms.ts`
