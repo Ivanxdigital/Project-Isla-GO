@@ -35,14 +35,8 @@ export default function PaymentSuccess() {
         .from('payments')
         .select(`
           id,
-          status as payment_status,
-          provider_session_id,
-          bookings (
-            id,
-            status as booking_status,
-            payment_status,
-            driver_notification_attempted
-          )
+          status,
+          provider_session_id
         `)
         .eq('booking_id', bookingId)
         .single();
@@ -59,18 +53,21 @@ export default function PaymentSuccess() {
       }
 
       // If the payment is already marked as paid, we can stop polling
-      if (records.payment_status === 'paid' && records.bookings?.booking_status === 'confirmed') {
+      if (records.status === 'paid') {
         console.log('Payment confirmed:', bookingId);
         
-        // If driver notifications haven't been sent yet, send them
-        if (!records.bookings.driver_notification_attempted) {
-          try {
-            await sendDriverNotifications(bookingId);
-            toast.success('Drivers have been notified of your booking');
-          } catch (error) {
-            console.error('Failed to notify drivers:', error);
-            toast.error('There was an issue notifying drivers. Our team will handle this manually.');
-          }
+        // Update booking status
+        const { error: bookingError } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'confirmed',
+            payment_status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', bookingId);
+
+        if (bookingError) {
+          console.error('Error updating booking:', bookingError);
         }
         
         setStatus('success');
@@ -112,31 +109,42 @@ export default function PaymentSuccess() {
       console.log('Mapped payment status:', paymentStatus);
 
       if (paymentStatus === 'paid') {
-        // Update both payment and booking records
-        const [paymentUpdate, bookingUpdate] = await Promise.all([
-          supabase
-            .from('payments')
-            .update({ 
-              status: 'paid',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', records.id),
-          
-          supabase
-            .from('bookings')
-            .update({ 
-              status: 'confirmed',
-              payment_status: 'paid',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', bookingId)
-        ]);
+        // Update payment record
+        const { error: paymentError } = await supabase
+          .from('payments')
+          .update({ 
+            status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', records.id);
 
-        if (paymentUpdate.error) {
-          console.error('Error updating payment:', paymentUpdate.error);
+        if (paymentError) {
+          console.error('Error updating payment:', paymentError);
+          throw new Error('Failed to update payment status');
         }
-        if (bookingUpdate.error) {
-          console.error('Error updating booking:', bookingUpdate.error);
+
+        // Update booking status
+        const { error: bookingError } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'confirmed',
+            payment_status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', bookingId);
+
+        if (bookingError) {
+          console.error('Error updating booking:', bookingError);
+          throw new Error('Failed to update booking status');
+        }
+
+        // Try to notify drivers
+        try {
+          await sendDriverNotifications(bookingId);
+          toast.success('Drivers have been notified of your booking');
+        } catch (error) {
+          console.error('Failed to notify drivers:', error);
+          toast.error('There was an issue notifying drivers. Our team will handle this manually.');
         }
 
         setStatus('success');
