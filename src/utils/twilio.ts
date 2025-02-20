@@ -8,7 +8,7 @@ export const sendDriverNotifications = async (bookingId: string): Promise<boolea
     // Get the base URL for the API
     const baseUrl = import.meta.env.DEV 
       ? 'http://localhost:3000/api'
-      : 'https://your-vercel-app.vercel.app/api';
+      : 'https://islago.vercel.app/api';
     
     // Call the Vercel function
     const response = await fetch(`${baseUrl}/send-driver-sms`, {
