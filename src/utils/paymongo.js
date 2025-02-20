@@ -93,38 +93,54 @@ export const createPaymentSession = async (amount, description, bookingId) => {
     const sessionId = responseData.data.id;
     const paymentIntentId = responseData.data.attributes.payment_intent_id;
 
+    // Get the user ID from the booking
+    const { data: bookingData, error: bookingError } = await supabase
+      .from('bookings')
+      .select('user_id')
+      .eq('id', bookingId)
+      .single();
+
+    if (bookingError) {
+      console.error('Error fetching booking:', bookingError);
+      throw new Error('Failed to fetch booking information');
+    }
+
     // Create payment record in payments table
-    const { error: paymentError } = await supabase
+    const { data: paymentData, error: paymentError } = await supabase
       .from('payments')
       .insert({
         booking_id: bookingId,
+        user_id: bookingData.user_id, // Add user_id to the payment record
         amount: amount / 100, // Convert from cents to actual amount
         status: 'pending',
         provider: 'paymongo',
         provider_session_id: sessionId,
-        provider_payment_id: paymentIntentId
-      });
+        provider_payment_id: paymentIntentId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
 
     if (paymentError) {
       console.error('Error creating payment record:', paymentError);
-      throw paymentError;
+      throw new Error(`Failed to create payment record: ${paymentError.message}`);
     }
 
-    // Update the booking with the session ID
-    try {
-      const { error: updateError } = await supabase
-        .from('bookings')
-        .update({ 
-          payment_session_id: sessionId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', bookingId);
+    console.log('Payment record created:', paymentData);
 
-      if (updateError) {
-        console.error('Error updating booking with session ID:', updateError);
-      }
-    } catch (error) {
-      console.error('Error updating booking:', error);
+    // Update the booking with the session ID
+    const { error: updateError } = await supabase
+      .from('bookings')
+      .update({ 
+        payment_session_id: sessionId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId);
+
+    if (updateError) {
+      console.error('Error updating booking with session ID:', updateError);
+      throw new Error(`Failed to update booking: ${updateError.message}`);
     }
 
     // Store session information in sessionStorage
