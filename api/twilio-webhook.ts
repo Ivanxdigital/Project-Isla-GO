@@ -1,103 +1,119 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import twilio from 'twilio';
-import { validateRequest } from 'twilio/lib/webhooks/webhooks.js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Initialize Supabase client
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Message statuses we want to track
-const IMPORTANT_STATUSES = [
-  'delivered',
-  'undelivered',
-  'failed',
-  'sent'
-];
-
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
-  // Verify the request is from Twilio
-  const twilioSignature = req.headers['x-twilio-signature'] as string;
-  const url = `${process.env.VERCEL_URL}/api/twilio-webhook`;
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   
-  const isValid = validateRequest(
-    process.env.TWILIO_AUTH_TOKEN!,
-    twilioSignature,
-    url,
-    req.body
-  );
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
+  }
 
-  if (!isValid) {
-    console.error('Invalid Twilio signature');
-    return res.status(403).json({ error: 'Invalid signature' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const {
-      MessageSid,
-      MessageStatus,
-      ErrorCode,
-      ErrorMessage
-    } = req.body;
+    // Parse the incoming form data from Twilio
+    const formData = await req.formData();
+    const messageBody = formData.get('Body')?.toString().trim().toUpperCase() || '';
+    const fromNumber = formData.get('From')?.toString() || '';
+    const messageId = formData.get('MessageSid')?.toString() || '';
 
-    // Only process statuses we care about
-    if (!IMPORTANT_STATUSES.includes(MessageStatus)) {
-      return res.status(200).send('OK');
-    }
-
-    // Find the notification by message SID
-    const { data: notification, error: findError } = await supabase
-      .from('driver_notifications')
-      .select('*')
-      .eq('message_sid', MessageSid)
+    // Find the driver by phone number
+    const { data: driver, error: driverError } = await supabase
+      .from('drivers')
+      .select('id')
+      .eq('mobile_number', fromNumber.replace('+63', ''))
       .single();
 
-    if (findError || !notification) {
-      console.error('Could not find notification for message:', MessageSid);
-      return res.status(200).send('OK');
+    if (driverError || !driver) {
+      console.error('Driver not found:', driverError);
+      return res.status(404).json({ error: 'Driver not found' });
     }
 
-    // Update the notification status
-    const { error: updateError } = await supabase
+    // Find pending notification for this driver
+    const { data: notification, error: notificationError } = await supabase
+      .from('driver_notifications')
+      .select('booking_id')
+      .eq('driver_id', driver.id)
+      .eq('status', 'PENDING')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (notificationError || !notification) {
+      console.error('No pending notification found:', notificationError);
+      return res.status(404).json({ error: 'No pending booking found' });
+    }
+
+    const accepted = messageBody === 'YES';
+    
+    // Update notification status
+    await supabase
       .from('driver_notifications')
       .update({
-        delivery_status: MessageStatus,
-        error_code: ErrorCode || null,
-        error_message: ErrorMessage || null,
-        updated_at: new Date().toISOString()
+        status: accepted ? 'ACCEPTED' : 'DECLINED',
+        response_time: new Date().toISOString(),
+        twilio_message_id: messageId
       })
-      .eq('id', notification.id);
+      .match({ driver_id: driver.id, booking_id: notification.booking_id });
 
-    if (updateError) {
-      console.error('Error updating notification:', updateError);
-    }
+    // If accepted, update booking and create assignment
+    if (accepted) {
+      // Update booking status
+      await supabase
+        .from('bookings')
+        .update({
+          status: 'assigned',
+          assigned_driver_id: driver.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', notification.booking_id);
 
-    // If message failed, try to notify another driver
-    if (MessageStatus === 'failed' || MessageStatus === 'undelivered') {
-      // Trigger new driver notification
-      try {
-        await fetch(`${process.env.VERCEL_URL}/api/send-driver-sms`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookingId: notification.booking_id })
+      // Create trip assignment
+      await supabase
+        .from('trip_assignments')
+        .insert({
+          booking_id: notification.booking_id,
+          driver_id: driver.id,
+          status: 'assigned'
         });
-      } catch (error) {
-        console.error('Error triggering new notification:', error);
-      }
+
+      // Send confirmation message
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+          <Message>You have been assigned to this booking. Our team will contact you with more details.</Message>
+        </Response>`;
+
+      res.setHeader('Content-Type', 'text/xml');
+      return res.status(200).send(twiml);
+    } else {
+      // Send decline acknowledgment
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+        <Response>
+          <Message>You have declined this booking. Thank you for your response.</Message>
+        </Response>`;
+
+      res.setHeader('Content-Type', 'text/xml');
+      return res.status(200).send(twiml);
     }
 
-    // Send empty TwiML response
-    res.setHeader('Content-Type', 'text/xml');
-    return res.send('<Response></Response>');
   } catch (error) {
-    console.error('Webhook error:', error);
-    return res.status(500).json({ 
+    console.error('Error processing webhook:', error);
+    return res.status(500).json({
       error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 } 

@@ -1,134 +1,38 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import twilio from 'twilio';
-import { MessageInstance } from 'twilio/lib/rest/api/v2010/account/message';
+import { Twilio } from 'twilio';
 import { createClient } from '@supabase/supabase-js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Create Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Initialize Twilio client
+const twilioClient = new Twilio(
+  process.env.TWILIO_ACCOUNT_SID!,
+  process.env.TWILIO_AUTH_TOKEN!
+);
 
-// Simple debug logger implementation
-const DebugLogger = {
-  info: (context: string, message: string) => {
-    console.log(`[${context}] ${message}`);
-  }
-};
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-const isTrialAccount = true;
-
-interface Driver {
-  id: string;
-  mobile_number: string;
-  status: string;
-}
-
-interface Booking {
-  id: string;
-  from_location: string;
-  to_location: string;
-  departure_date: string;
-  departure_time: string;
-  user_id?: string;
-}
-
-// Generate a unique acceptance code
-const generateAcceptanceCode = () => {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-};
-
-// Add this function to verify numbers
-const isVerifiedNumber = async (twilioClient: twilio.Twilio, phoneNumber: string): Promise<boolean> => {
-  try {
-    const verifiedNumbers = await twilioClient.outgoingCallerIds.list();
-    return verifiedNumbers.some(v => v.phoneNumber === phoneNumber);
-  } catch (error) {
-    console.error('Error checking verified numbers:', error);
-    return false;
-  }
-};
-
-const BATCH_SIZE = 50;
-const BATCH_DELAY = 1000;
-const MAX_RETRIES = 3;
-
-interface SMSResult {
-  success: boolean;
-  data?: MessageInstance;
-  error?: any;
-  driverId?: string;
-}
-
-const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
-
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-
-if (!accountSid || !authToken || !twilioPhoneNumber) {
-  throw new Error('Missing required Twilio environment variables');
-}
-
-const client = twilio(accountSid, authToken);
-
-// Add these validation functions after the interfaces
-const validatePhoneNumber = (phoneNumber: string): string => {
+// Helper function to format phone number
+const formatPhoneNumber = (number: string) => {
   // Remove any non-digit characters
-  let cleaned = phoneNumber.replace(/\D/g, '');
-  
-  // Ensure it starts with country code
-  if (!cleaned.startsWith('63')) {
-    cleaned = '63' + cleaned.replace(/^0+/, '');
-  }
-  
-  // Add the plus sign
-  return '+' + cleaned;
+  const cleaned = number.replace(/\D/g, '');
+  // Ensure number starts with country code (63 for Philippines)
+  return cleaned.startsWith('63') ? `+${cleaned}` : `+63${cleaned}`;
 };
 
-const validateMessageLength = (message: string): boolean => {
-  // Twilio's SMS length limit is 1600 characters
-  return message.length <= 1600;
-};
-
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-): Promise<VercelResponse> {
-  // Add detailed environment variable logging
-  console.log('Environment check:', {
-    hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    hasTwilioSid: !!process.env.TWILIO_ACCOUNT_SID,
-    hasTwilioToken: !!process.env.TWILIO_AUTH_TOKEN,
-    hasTwilioPhone: !!process.env.TWILIO_PHONE_NUMBER,
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    twilioPhone: process.env.TWILIO_PHONE_NUMBER
-  });
-
-  // Add CORS headers
-  const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173'];
-  const origin = req.headers.origin;
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-    );
-  }
-
+  // Handle preflight request
   if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return res.status(200).end();
   }
-
-  // Log the full request for debugging
-  console.log('Request received:', {
-    method: req.method,
-    headers: req.headers,
-    body: req.body,
-    origin: origin
-  });
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -138,218 +42,124 @@ export default async function handler(
     const { bookingId } = req.body;
 
     if (!bookingId) {
-      console.error('Missing bookingId in request');
-      return res.status(400).json({ error: 'bookingId is required' });
+      return res.status(400).json({ error: 'Booking ID is required' });
     }
 
-    // Validate Twilio configuration
-    if (!accountSid || !authToken || !twilioPhoneNumber) {
-      console.error('Missing Twilio configuration:', {
-        hasAccountSid: !!accountSid,
-        hasAuthToken: !!authToken,
-        hasPhoneNumber: !!twilioPhoneNumber
-      });
-      return res.status(500).json({ error: 'SMS service not properly configured' });
-    }
-
-    // Validate Supabase configuration
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Missing Supabase configuration:', {
-        hasUrl: !!supabaseUrl,
-        hasKey: !!supabaseKey
-      });
-      return res.status(500).json({ error: 'Database configuration missing' });
-    }
-
-    console.log('Fetching booking details for ID:', bookingId);
-
-    // Get booking details with error logging
-    const bookingQuery = await supabase
+    // Get booking details
+    const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('*')
+      .select(`
+        *,
+        customers (
+          first_name,
+          last_name,
+          mobile_number
+        )
+      `)
       .eq('id', bookingId)
       .single();
 
-    console.log('Booking query result:', {
-      data: bookingQuery.data,
-      error: bookingQuery.error
-    });
-
-    if (bookingQuery.error) {
-      console.error('Booking fetch error:', bookingQuery.error);
-      return res.status(404).json({ 
-        error: 'Failed to retrieve booking',
-        details: bookingQuery.error.message
-      });
-    }
-
-    if (!bookingQuery.data) {
-      console.error('Booking not found:', bookingId);
+    if (bookingError || !booking) {
+      console.error('Error fetching booking:', bookingError);
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // Get drivers with detailed logging
-    const driversQuery = await supabase
+    // Get available drivers
+    const { data: drivers, error: driversError } = await supabase
       .from('drivers')
       .select('*')
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .eq('documents_verified', true)
+      .eq('is_available', true)
+      .not('mobile_number', 'is', null);
 
-    console.log('Drivers query result:', {
-      count: driversQuery.data?.length,
-      error: driversQuery.error
-    });
-
-    if (driversQuery.error) {
-      console.error('Error fetching drivers:', driversQuery.error);
-      return res.status(500).json({ 
-        error: 'Failed to fetch drivers',
-        details: driversQuery.error.message
-      });
+    if (driversError) {
+      console.error('Error fetching drivers:', driversError);
+      return res.status(500).json({ error: 'Failed to fetch drivers' });
     }
 
-    const drivers = driversQuery.data || [];
-    console.log('Found drivers:', drivers);
-
-    if (!drivers.length) {
-      console.log('No active drivers found');
-      return res.status(200).json({ 
-        success: true, 
-        message: 'No active drivers available',
-        messagesSent: 0
-      });
+    if (!drivers?.length) {
+      return res.status(404).json({ error: 'No available drivers found' });
     }
 
-    const booking = bookingQuery.data;
-
-    // Add message template validation
-    const messageTemplate = `New booking alert!
+    // Create message content
+    const messageContent = `
+New Booking Alert!
 From: ${booking.from_location}
 To: ${booking.to_location}
-Date: ${new Date(booking.departure_date).toLocaleDateString()}
+Date: ${booking.departure_date}
 Time: ${booking.departure_time}
+Service: ${booking.service_type}
+Customer: ${booking.customers.first_name} ${booking.customers.last_name}
 
-Reply with code {acceptanceCode} to accept this booking.
-This offer expires in 30 minutes.`;
+Reply YES to accept this booking.
+`.trim();
 
-    if (!validateMessageLength(messageTemplate)) {
-      throw new Error('Message template exceeds maximum length');
-    }
+    // Send SMS to each driver
+    const notificationPromises = drivers.map(async (driver) => {
+      try {
+        // Format phone number
+        const formattedNumber = formatPhoneNumber(driver.mobile_number);
 
-    const acceptanceCode = generateAcceptanceCode();
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 30); // Code expires in 30 minutes
+        // Send SMS via Twilio
+        const message = await twilioClient.messages.create({
+          body: messageContent,
+          to: formattedNumber,
+          from: process.env.TWILIO_PHONE_NUMBER
+        });
 
-    const results: SMSResult[] = [];
-
-    for (let i = 0; i < drivers.length; i += BATCH_SIZE) {
-      const batch = drivers.slice(i, i + BATCH_SIZE);
-      
-      for (const driver of batch) {
-        const phone = validatePhoneNumber(driver.mobile_number);
-
-        // Add trial account message prefix
-        const messageBody = isTrialAccount 
-          ? `[Test] ${messageTemplate.replace('{acceptanceCode}', acceptanceCode)}`
-          : messageTemplate.replace('{acceptanceCode}', acceptanceCode);
-
-        if (isTrialAccount) {
-          const isVerified = await isVerifiedNumber(client, phone);
-          if (!isVerified) {
-            DebugLogger.info('SMS_API', `Skipping unverified number in trial mode: ${phone}`);
-            // Record skipped notification
-            await supabase
-              .from('driver_notifications')
-              .insert({
-                driver_id: driver.id,
-                booking_id: bookingId,
-                acceptance_code: acceptanceCode,
-                status: 'SKIPPED',
-                expires_at: expiresAt.toISOString(),
-                error: 'Unverified number in trial mode'
-              });
-            continue;
-          }
-        }
-
-        let success = false;
-        let error = null;
-        let messageData = null;
-
-        // Try sending SMS with retries
-        for (let attempt = 0; attempt < MAX_RETRIES && !success; attempt++) {
-          try {
-            const message = await client.messages.create({
-              body: messageBody,
-              to: phone,
-              from: twilioPhoneNumber,
-              statusCallback: `${process.env.VERCEL_URL}/api/twilio-webhook` // Add status callback
-            });
-
-            success = true;
-            messageData = message;
-          } catch (err) {
-            error = err;
-            if (attempt < MAX_RETRIES - 1) {
-              await delay(Math.pow(2, attempt) * 1000); // Exponential backoff
-            }
-          }
-        }
-
-        // Record the notification attempt
-        const { error: notificationError } = await supabase
+        // Create notification record
+        await supabase
           .from('driver_notifications')
           .insert({
-            driver_id: driver.id,
             booking_id: bookingId,
-            acceptance_code: acceptanceCode,
-            status: success ? 'SENT' : 'FAILED',
-            expires_at: expiresAt.toISOString(),
-            error: error ? JSON.stringify(error) : null,
-            message_sid: messageData?.sid
+            driver_id: driver.id,
+            status: 'PENDING',
+            twilio_message_id: message.sid
           });
 
-        if (notificationError) {
-          console.error('Error recording notification:', notificationError);
-        }
-
-        results.push({
-          success,
-          data: messageData || undefined,
-          error,
-          driverId: driver.id
-        });
+        return {
+          driverId: driver.id,
+          success: true,
+          messageId: message.sid
+        };
+      } catch (error) {
+        console.error(`Failed to send SMS to driver ${driver.id}:`, error);
+        return {
+          driverId: driver.id,
+          success: false,
+          error: error.message
+        };
       }
+    });
 
-      if (i + BATCH_SIZE < drivers.length) {
-        await delay(BATCH_DELAY);
-      }
-    }
+    // Wait for all notifications to be sent
+    const results = await Promise.all(notificationPromises);
 
     // Update booking status
     await supabase
       .from('bookings')
-      .update({ 
-        driver_notification_sent: true,
-        driver_notification_sent_at: new Date().toISOString(),
-        status: 'PENDING_DRIVER_ACCEPTANCE'
+      .update({
+        status: 'finding_driver',
+        driver_notification_attempted: true,
+        driver_notification_attempted_at: new Date().toISOString(),
+        driver_notification_success: results.some(r => r.success)
       })
       .eq('id', bookingId);
 
-    const successCount = results.filter(r => r.success).length;
-    const failureCount = results.filter(r => !r.success).length;
-
-    return res.status(200).json({ 
-      success: true, 
-      messagesSent: successCount,
-      failed: failureCount,
-      totalDrivers: drivers.length
+    // Return results
+    return res.status(200).json({
+      success: true,
+      notified: results.filter(r => r.success).length,
+      total: drivers.length,
+      results
     });
 
   } catch (error) {
-    console.error('SMS notification error:', error);
-    return res.status(500).json({ 
-      error: 'Failed to send notifications',
-      details: error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error processing request:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
     });
   }
 } 

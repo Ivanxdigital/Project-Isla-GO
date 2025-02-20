@@ -4,6 +4,7 @@ import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outl
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../utils/supabase.ts';
 import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo.js';
+import { sendDriverNotifications } from '../utils/twilio.ts';
 import toast from 'react-hot-toast';
 
 export default function PaymentSuccess() {
@@ -13,9 +14,9 @@ export default function PaymentSuccess() {
   const [status, setStatus] = useState('processing');
   const [error, setError] = useState(null);
   const [pollingAttempts, setPollingAttempts] = useState(0);
-  const MAX_POLLING_ATTEMPTS = 10; // Increase max attempts
+  const MAX_POLLING_ATTEMPTS = 10;
   const POLLING_INTERVAL = 3000; // 3 seconds between attempts
-  
+
   const pollPaymentStatus = async () => {
     try {
       // Get booking ID from URL
@@ -39,7 +40,8 @@ export default function PaymentSuccess() {
           bookings (
             id,
             status as booking_status,
-            payment_status
+            payment_status,
+            driver_notification_attempted
           )
         `)
         .eq('booking_id', bookingId)
@@ -59,11 +61,19 @@ export default function PaymentSuccess() {
       // If the payment is already marked as paid, we can stop polling
       if (records.payment_status === 'paid' && records.bookings?.booking_status === 'confirmed') {
         console.log('Payment confirmed:', bookingId);
-        setStatus('success');
         
-        // Try to send notifications even if booking is confirmed
-        console.log('Attempting to send notifications for confirmed booking');
-        await notifyDrivers(bookingId);
+        // If driver notifications haven't been sent yet, send them
+        if (!records.bookings.driver_notification_attempted) {
+          try {
+            await sendDriverNotifications(bookingId);
+            toast.success('Drivers have been notified of your booking');
+          } catch (error) {
+            console.error('Failed to notify drivers:', error);
+            toast.error('There was an issue notifying drivers. Our team will handle this manually.');
+          }
+        }
+        
+        setStatus('success');
         
         // Add a slight delay before redirecting
         setTimeout(() => {
@@ -129,9 +139,6 @@ export default function PaymentSuccess() {
           console.error('Error updating booking:', bookingUpdate.error);
         }
 
-        // Try to send notifications but don't wait for them
-        notifyDrivers(bookingId).catch(console.error);
-
         setStatus('success');
         
         // Add a slight delay before redirecting
@@ -163,65 +170,6 @@ export default function PaymentSuccess() {
         return true;
       }
       return false;
-    }
-  };
-
-  const notifyDrivers = async (bookingId) => {
-    try {
-      // Check if we've already tried to notify for this booking
-      const notificationKey = `notification_sent_${bookingId}`;
-      if (sessionStorage.getItem(notificationKey)) {
-        console.log('Notification already sent for booking:', bookingId);
-        return;
-      }
-
-      console.log('Starting driver notification process for booking:', bookingId);
-      
-      // Mark as notified immediately to prevent retries
-      sessionStorage.setItem(notificationKey, 'true');
-
-      // Get the base URL for the API
-      const baseUrl = process.env.NODE_ENV === 'development'
-        ? process.env.VITE_API_URL || 'http://localhost:3001'
-        : '';
-
-      const apiUrl = `${baseUrl}/api/send-driver-sms`;
-
-      console.log('Sending notification request to:', apiUrl);
-
-      // Call the SMS API endpoint
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ bookingId }),
-      });
-
-      console.log('API response status:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API error response:', errorData);
-        throw new Error(`API error: ${errorData.error || response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('Driver notification result:', result);
-      
-      if (result.messagesSent === 0) {
-        console.warn('No messages were sent to drivers');
-        toast.warning('No available drivers found at the moment. Our team will contact you shortly.');
-      } else {
-        toast.success(`Notification sent to ${result.messagesSent} drivers`);
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('Error sending driver notifications:', error);
-      toast.error('Unable to notify drivers. Our team will contact you shortly.');
-      // Don't throw the error, just log it
-      return null;
     }
   };
 
