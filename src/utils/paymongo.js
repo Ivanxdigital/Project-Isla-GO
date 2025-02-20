@@ -105,29 +105,66 @@ export const createPaymentSession = async (amount, description, bookingId) => {
       throw new Error('Failed to fetch booking information');
     }
 
-    // Create payment record in payments table
-    const { data: paymentData, error: paymentError } = await supabase
+    // Check if a payment record already exists for this booking
+    const { data: existingPayment, error: existingPaymentError } = await supabase
       .from('payments')
-      .insert({
-        booking_id: bookingId,
-        user_id: bookingData.user_id, // Add user_id to the payment record
-        amount: amount / 100, // Convert from cents to actual amount
-        status: 'pending',
-        provider: 'paymongo',
-        provider_session_id: sessionId,
-        provider_payment_id: paymentIntentId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
+      .select('*')
+      .eq('booking_id', bookingId)
       .single();
 
-    if (paymentError) {
-      console.error('Error creating payment record:', paymentError);
-      throw new Error(`Failed to create payment record: ${paymentError.message}`);
+    if (existingPaymentError && existingPaymentError.code !== 'PGRST116') {
+      console.error('Error checking existing payment:', existingPaymentError);
+      throw new Error('Failed to check existing payment record');
     }
 
-    console.log('Payment record created:', paymentData);
+    let paymentData;
+    if (existingPayment) {
+      // Update existing payment record
+      const { data: updatedPayment, error: updateError } = await supabase
+        .from('payments')
+        .update({
+          amount: amount / 100,
+          status: 'pending',
+          provider: 'paymongo',
+          provider_session_id: sessionId,
+          provider_payment_id: paymentIntentId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingPayment.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Error updating payment record:', updateError);
+        throw new Error(`Failed to update payment record: ${updateError.message}`);
+      }
+      paymentData = updatedPayment;
+      console.log('Payment record updated:', paymentData);
+    } else {
+      // Create new payment record
+      const { data: newPayment, error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          booking_id: bookingId,
+          user_id: bookingData.user_id,
+          amount: amount / 100,
+          status: 'pending',
+          provider: 'paymongo',
+          provider_session_id: sessionId,
+          provider_payment_id: paymentIntentId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (paymentError) {
+        console.error('Error creating payment record:', paymentError);
+        throw new Error(`Failed to create payment record: ${paymentError.message}`);
+      }
+      paymentData = newPayment;
+      console.log('Payment record created:', paymentData);
+    }
 
     // Update the booking with the session ID
     const { error: updateError } = await supabase
