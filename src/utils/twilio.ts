@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase.ts';
 
 // Function to send SMS notifications to drivers
 export const sendDriverNotifications = async (bookingId: string): Promise<boolean> => {
@@ -6,10 +6,14 @@ export const sendDriverNotifications = async (bookingId: string): Promise<boolea
     const { data: { session } } = await supabase.auth.getSession();
     
     // Get the base URL for the API
-    const baseUrl = import.meta.env.DEV 
-      ? 'http://localhost:3000/api'
-      : 'https://islago.vercel.app/api';
+    const baseUrl = 'https://islago.vercel.app/api';
     
+    console.log('Sending driver notifications:', {
+      bookingId,
+      baseUrl,
+      hasSession: !!session
+    });
+
     // Call the Vercel function
     const response = await fetch(`${baseUrl}/send-driver-sms`, {
       method: 'POST',
@@ -20,12 +24,21 @@ export const sendDriverNotifications = async (bookingId: string): Promise<boolea
       body: JSON.stringify({ bookingId })
     });
 
+    console.log('Driver notification response:', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText
+    });
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to send notifications');
+      const errorData = await response.json();
+      console.error('Driver notification error:', errorData);
+      throw new Error(errorData.message || 'Failed to send notifications');
     }
 
     const data = await response.json();
+    console.log('Driver notification success:', data);
+
     return data.success;
   } catch (error) {
     console.error('Error sending notifications:', error);
