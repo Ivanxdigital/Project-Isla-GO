@@ -140,7 +140,10 @@ export default function PaymentSuccess() {
 
         // Try to notify drivers
         try {
+          console.log('Attempting to send driver notifications for booking:', bookingId);
+          
           await sendDriverNotifications(bookingId);
+          console.log('Driver notifications sent successfully');
           toast.success('Drivers have been notified of your booking');
         } catch (error) {
           console.error('Failed to notify drivers:', error);

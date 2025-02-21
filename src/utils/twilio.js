@@ -14,11 +14,16 @@ console.log('Twilio Config:', {
 // Function to send SMS notifications to drivers
 export const sendDriverNotifications = async (bookingId) => {
   try {
+    console.log('Starting driver notification process for booking:', bookingId);
+    
     const { data: { session } } = await supabase.auth.getSession();
+    console.log('Auth session retrieved:', !!session);
+
     if (!session) {
       throw new Error('No authenticated session found');
     }
 
+    console.log('Sending notification request to API');
     const response = await fetch('/api/send-driver-sms', {
       method: 'POST',
       headers: {
@@ -28,8 +33,11 @@ export const sendDriverNotifications = async (bookingId) => {
       body: JSON.stringify({ bookingId })
     });
 
+    console.log('API Response status:', response.status);
+
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('API error response:', errorData);
       throw new Error(errorData.message || 'Failed to send notifications');
     }
 
@@ -38,7 +46,7 @@ export const sendDriverNotifications = async (bookingId) => {
 
     return data;
   } catch (error) {
-    console.error('Error sending driver notifications:', error);
+    console.error('Error in sendDriverNotifications:', error);
     throw error;
   }
 };

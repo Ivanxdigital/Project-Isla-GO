@@ -23,6 +23,12 @@ const formatPhoneNumber = (number: string) => {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('Received driver notification request:', {
+    method: req.method,
+    bookingId: req.body?.bookingId,
+    hasAuth: !!req.headers.authorization
+  });
+
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -42,10 +48,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { bookingId } = req.body;
 
     if (!bookingId) {
+      console.error('Missing booking ID');
       return res.status(400).json({ error: 'Booking ID is required' });
     }
 
-    // Get booking details
+    // Get booking details with customer info
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -58,6 +65,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `)
       .eq('id', bookingId)
       .single();
+
+    console.log('Booking query result:', {
+      hasBooking: !!booking,
+      error: bookingError?.message
+    });
 
     if (bookingError || !booking) {
       console.error('Error fetching booking:', bookingError);
@@ -72,6 +84,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('documents_verified', true)
       .eq('is_available', true)
       .not('mobile_number', 'is', null);
+
+    console.log('Drivers query result:', {
+      driverCount: drivers?.length,
+      error: driversError?.message
+    });
 
     if (driversError) {
       console.error('Error fetching drivers:', driversError);
@@ -156,10 +173,10 @@ Reply YES to accept this booking.
     });
 
   } catch (error) {
-    console.error('Error processing request:', error);
+    console.error('Error in send-driver-sms handler:', error);
     return res.status(500).json({
       error: 'Internal server error',
-      message: error.message
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 } 
