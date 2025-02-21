@@ -41,7 +41,7 @@ export const sendDriverNotifications = async (bookingId) => {
     console.error('Error sending driver notifications:', error);
     throw error;
   }
-}
+};
 
 // Add function to handle driver responses
 export const handleDriverResponse = async (driverId, bookingId, accepted) => {

@@ -4,7 +4,7 @@ import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outl
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../utils/supabase.ts';
 import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo.js';
-import { sendDriverNotifications } from '../utils/twilio.ts';
+import { sendDriverNotifications } from '../utils/twilio.js';
 import toast from 'react-hot-toast';
 
 export default function PaymentSuccess() {
