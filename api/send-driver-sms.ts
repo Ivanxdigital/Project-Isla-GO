@@ -1,9 +1,9 @@
-import { Twilio } from 'twilio';
+import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Initialize Twilio client
-const twilioClient = new Twilio(
+// Initialize Twilio client using ES module syntax
+const twilioClient = new twilio.Twilio(
   process.env.TWILIO_ACCOUNT_SID!,
   process.env.TWILIO_AUTH_TOKEN!
 );
