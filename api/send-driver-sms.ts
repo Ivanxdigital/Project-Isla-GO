@@ -23,32 +23,34 @@ const formatPhoneNumber = (number: string) => {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('Received driver notification request:', {
-    method: req.method,
-    bookingId: req.body?.bookingId,
-    hasAuth: !!req.headers.authorization
-  });
-
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Enable CORS with proper headers
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   // Handle preflight request
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return res.status(200).end();
   }
 
+  // Log the incoming request
+  console.log('Received request:', {
+    method: req.method,
+    headers: req.headers,
+    body: req.body
+  });
+
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ 
+      error: 'Method not allowed',
+      allowedMethods: ['POST']
+    });
   }
 
   try {
     const { bookingId } = req.body;
-
+    
     if (!bookingId) {
-      console.error('Missing booking ID');
       return res.status(400).json({ error: 'Booking ID is required' });
     }
 

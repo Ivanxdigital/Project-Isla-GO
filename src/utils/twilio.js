@@ -30,13 +30,20 @@ export const sendDriverNotifications = async (bookingId) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`
       },
-      body: JSON.stringify({ bookingId })
+      body: JSON.stringify({ bookingId }),
+      mode: 'cors'
     });
 
-    console.log('API Response status:', response.status);
+    console.log('API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers)
+    });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({ 
+        error: `HTTP error! status: ${response.status}` 
+      }));
       console.error('API error response:', errorData);
       throw new Error(errorData.message || 'Failed to send notifications');
     }
