@@ -56,18 +56,30 @@ export default function PaymentSuccess() {
       if (records.status === 'paid') {
         console.log('Payment confirmed:', bookingId);
         
-        // Update booking status
-        const { error: bookingError } = await supabase
-          .from('bookings')
-          .update({ 
-            status: 'confirmed',
-            payment_status: 'paid',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', bookingId);
+        try {
+          // Update booking status
+          const { error: bookingError } = await supabase
+            .from('bookings')
+            .update({ 
+              status: 'confirmed',
+              payment_status: 'paid',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', bookingId);
 
-        if (bookingError) {
-          console.error('Error updating booking:', bookingError);
+          if (bookingError) {
+            console.error('Error updating booking:', bookingError);
+            throw new Error('Failed to update booking status');
+          }
+
+          // Try to notify drivers
+          console.log('Attempting to send driver notifications for booking:', bookingId);
+          await sendDriverNotifications(bookingId);
+          console.log('Driver notifications sent successfully');
+          toast.success('Drivers have been notified of your booking');
+        } catch (error) {
+          console.error('Failed to notify drivers:', error);
+          toast.error('There was an issue notifying drivers. Our team will handle this manually.');
         }
         
         setStatus('success');
