@@ -93,28 +93,36 @@ export default function DriversPage() {
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      const { data: applications, error: applicationsError } = await supabase
-        .from('driver_applications')
+      const { data: drivers, error: driversError } = await supabase
+        .from('drivers')
         .select(`
           *,
-          driver:driver_id (
-            id,
-            status,
-            documents_verified,
-            license_expiry,
-            notes
+          application:driver_applications!driver_id (
+            full_name,
+            email,
+            mobile_number,
+            license_number,
+            license_expiration,
+            vehicle_make,
+            vehicle_model,
+            vehicle_year,
+            plate_number,
+            insurance_provider,
+            policy_number,
+            policy_expiration,
+            bank_name,
+            account_number,
+            account_holder
           )
         `)
-        .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
-      if (applicationsError) throw applicationsError;
+      if (driversError) throw driversError;
 
-      console.log('Fetched applications:', applications);
+      console.log('Fetched drivers:', drivers);
 
-      // Get user profiles in a separate query
-      if (applications?.length) {
-        const userIds = applications.map(app => app.user_id);
+      if (drivers?.length) {
+        const userIds = drivers.map(driver => driver.user_id);
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
@@ -124,10 +132,10 @@ export default function DriversPage() {
 
         console.log('Fetched profiles:', profiles);
 
-        // Merge the profile data with applications
-        const driversWithProfiles = applications.map(app => ({
-          ...app,
-          user: profiles.find(p => p.id === app.user_id)
+        // Merge the profile data with drivers
+        const driversWithProfiles = drivers.map(driver => ({
+          ...driver,
+          user: profiles.find(p => p.id === driver.user_id)
         }));
 
         console.log('Merged data:', driversWithProfiles);
