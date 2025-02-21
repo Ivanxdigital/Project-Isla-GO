@@ -205,7 +205,16 @@ export const createPaymentSession = async (amount, description, bookingId) => {
             status: VALID_PAYMENT_STATUSES.PAID,
             updated_at: new Date().toISOString()
           })
-          .eq('provider_session_id', sessionId)
+          .eq('provider_session_id', sessionId),
+        // Add this to trigger driver notifications
+        fetch('/api/send-driver-sms', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify({ bookingId })
+        })
       ]);
     }
 

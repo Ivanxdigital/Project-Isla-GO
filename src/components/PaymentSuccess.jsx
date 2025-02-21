@@ -74,7 +74,7 @@ export default function PaymentSuccess() {
         
         // Add a slight delay before redirecting
         setTimeout(() => {
-          navigate('/bookings', { 
+          navigate('/manage-bookings', { 
             state: { 
               message: 'Payment successful! You can view your booking details below.',
               type: 'success'
@@ -151,7 +151,7 @@ export default function PaymentSuccess() {
         
         // Add a slight delay before redirecting
         setTimeout(() => {
-          navigate('/bookings', { 
+          navigate('/manage-bookings', { 
             state: { 
               message: 'Payment successful! You can view your booking details below.',
               type: 'success'
