@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js';
+import { supabase } from './supabase';
 
 const TWILIO_ACCOUNT_SID = import.meta.env.VITE_TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = import.meta.env.VITE_TWILIO_AUTH_TOKEN;
@@ -11,50 +11,37 @@ console.log('Twilio Config:', {
   hasAuthToken: !!TWILIO_AUTH_TOKEN
 });
 
-export const sendBookingNotificationToDrivers = async (bookingId) => {
+// Function to send SMS notifications to drivers
+export const sendDriverNotifications = async (bookingId) => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    console.log('Got session:', !!session, 'Token:', session?.access_token?.substring(0, 20) + '...');
-    
-    const baseUrl = import.meta.env.DEV 
-      ? 'http://localhost:54321/functions/v1'
-      : 'https://achpbaomhjddqycgzomw.supabase.co/functions/v1';
-    
-    const url = `${baseUrl}/twilio-webhook/send-sms`;
-    console.log('Attempting to call Edge Function:', {
-      url,
-      method: 'POST',
-      hasToken: !!session?.access_token
-    });
+    if (!session) {
+      throw new Error('No authenticated session found');
+    }
 
-    const response = await fetch(url, {
+    const response = await fetch('/api/send-driver-sms', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token}`,
+        'Authorization': `Bearer ${session.access_token}`
       },
-      body: JSON.stringify({ bookingId }),
+      body: JSON.stringify({ bookingId })
     });
-
-    console.log('Edge Function Response:', {
-      status: response.status,
-      ok: response.ok,
-      statusText: response.statusText
-    });
-
-    const data = await response.json();
-    console.log('Edge Function Data:', data);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to notify drivers');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to send notifications');
     }
 
-    return true;
+    const data = await response.json();
+    console.log('Driver notification response:', data);
+
+    return data;
   } catch (error) {
-    console.error('Error sending notifications:', error);
+    console.error('Error sending driver notifications:', error);
     throw error;
   }
-};
+}
 
 // Add function to handle driver responses
 export const handleDriverResponse = async (driverId, bookingId, accepted) => {
