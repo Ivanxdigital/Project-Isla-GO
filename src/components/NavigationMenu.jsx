@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../contexts/AuthContext';
-import { useAdminAuth } from '../contexts/AdminAuthContext';
-import { supabase } from '../utils/supabase';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { useAdminAuth } from '../contexts/AdminAuthContext.jsx';
+import { supabase } from '../utils/supabase.ts';
 import { toast } from 'react-hot-toast';
-import { useDriverAuth } from '../contexts/DriverAuthContext';
+import { useDriverAuth } from '../contexts/DriverAuthContext.jsx';
 import { Menu, Transition } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const MobileMenuItem = ({ to, onClick, children, className }) => (
   <Link
     to={to}
-    className={`block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-lg transition-all duration-200 ${className}`}
+    className={`block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-xl transition-all duration-200 ${className}`}
     onClick={onClick}
   >
     {children}
@@ -395,7 +395,7 @@ export default function NavigationMenu() {
             duration: 0.3,
             ease: "easeInOut"
           }}
-          className="fixed top-0 inset-x-0 mx-auto w-[95%] max-w-7xl bg-gray-900/85 backdrop-blur-xl rounded-b-2xl shadow-2xl shadow-gray-950/20 border-x border-b border-gray-800/50 z-[100]"
+          className="fixed top-4 inset-x-0 mx-auto w-[95%] max-w-7xl bg-gray-900/75 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] border border-gray-800/50 z-[100]"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => isAdminPage && setIsHovered(false)}
         >
@@ -441,7 +441,7 @@ export default function NavigationMenu() {
               <div className="flex md:hidden">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="inline-flex items-center justify-center p-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none transition-all duration-200"
+                  className="inline-flex items-center justify-center p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800/50 focus:outline-none transition-all duration-200 mr-2"
                   aria-label="Menu"
                 >
                   {isMenuOpen ? (
@@ -460,7 +460,7 @@ export default function NavigationMenu() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 md:hidden"
+                    className="absolute top-[calc(100%+0.5rem)] left-0 right-0 bg-gray-900/75 backdrop-blur-xl rounded-xl border border-gray-800/50 shadow-[0_8px_32px_rgba(0,0,0,0.2)] md:hidden mx-2"
                   >
                     <div className="px-2 pt-2 pb-3 space-y-1">
                       {menuItems.map((item) => (
