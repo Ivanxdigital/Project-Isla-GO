@@ -97,7 +97,9 @@ export default function DriversPage() {
         .from('drivers')
         .select(`
           *,
-          application:driver_applications!driver_id (
+          user_id,
+          driver_applications!driver_id (
+            id,
             full_name,
             email,
             mobile_number,
@@ -112,14 +114,16 @@ export default function DriversPage() {
             policy_expiration,
             bank_name,
             account_number,
-            account_holder
+            account_holder,
+            status
           )
         `)
+        .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (driversError) throw driversError;
 
-      console.log('Fetched drivers:', drivers);
+      console.log('Raw drivers data:', drivers);
 
       if (drivers?.length) {
         // Filter out null user_ids before making the profiles query
@@ -140,6 +144,7 @@ export default function DriversPage() {
           // Merge the profile data with drivers, handling cases where profile might not exist
           const driversWithProfiles = drivers.map(driver => ({
             ...driver,
+            application: driver.driver_applications?.[0], // Access first application if there are multiple
             user: profiles?.find(p => p.id === driver.user_id) || null
           }));
 
@@ -147,7 +152,11 @@ export default function DriversPage() {
           setDrivers(driversWithProfiles);
         } else {
           // If no valid user IDs, just use the drivers data without profiles
-          setDrivers(drivers);
+          const driversWithApplications = drivers.map(driver => ({
+            ...driver,
+            application: driver.driver_applications?.[0]
+          }));
+          setDrivers(driversWithApplications);
         }
       } else {
         setDrivers([]);
