@@ -22,6 +22,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/send-driver-sms",
+      "destination": "/api/send-driver-sms.ts"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     },

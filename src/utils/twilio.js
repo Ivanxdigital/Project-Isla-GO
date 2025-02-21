@@ -23,15 +23,21 @@ export const sendDriverNotifications = async (bookingId) => {
       throw new Error('No authenticated session found');
     }
 
+    // Get the base URL
+    const baseUrl = import.meta.env.PROD 
+      ? 'https://islago.vercel.app'
+      : 'http://localhost:3000';
+
     console.log('Sending notification request to API');
-    const response = await fetch('/api/send-driver-sms', {
+    const response = await fetch(`${baseUrl}/api/send-driver-sms`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ bookingId }),
-      mode: 'cors'
+      mode: 'cors',
+      credentials: 'same-origin'
     });
 
     console.log('API Response:', {
