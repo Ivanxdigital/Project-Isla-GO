@@ -1143,3 +1143,11 @@ const { data: records, error: fetchError } = await supabase
 
    Please contact the customer to coordinate pickup details.
    ```
+
+## Bug Fixes
+- Fixed driver fetching in DriversPage.jsx
+  - Added proper error handling for null user IDs
+  - Improved profile data merging logic
+  - Fixed Supabase import path
+
+## Git Commit Message

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../utils/supabase';
+import { supabase } from '../../utils/supabase.js';
 import { 
   MagnifyingGlassIcon,
   EllipsisVerticalIcon,
@@ -122,24 +122,33 @@ export default function DriversPage() {
       console.log('Fetched drivers:', drivers);
 
       if (drivers?.length) {
-        const userIds = drivers.map(driver => driver.user_id);
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', userIds);
+        // Filter out null user_ids before making the profiles query
+        const userIds = drivers
+          .map(driver => driver.user_id)
+          .filter(id => id != null);
 
-        if (profilesError) throw profilesError;
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', userIds);
 
-        console.log('Fetched profiles:', profiles);
+          if (profilesError) throw profilesError;
 
-        // Merge the profile data with drivers
-        const driversWithProfiles = drivers.map(driver => ({
-          ...driver,
-          user: profiles.find(p => p.id === driver.user_id)
-        }));
+          console.log('Fetched profiles:', profiles);
 
-        console.log('Merged data:', driversWithProfiles);
-        setDrivers(driversWithProfiles);
+          // Merge the profile data with drivers, handling cases where profile might not exist
+          const driversWithProfiles = drivers.map(driver => ({
+            ...driver,
+            user: profiles?.find(p => p.id === driver.user_id) || null
+          }));
+
+          console.log('Merged data:', driversWithProfiles);
+          setDrivers(driversWithProfiles);
+        } else {
+          // If no valid user IDs, just use the drivers data without profiles
+          setDrivers(drivers);
+        }
       } else {
         setDrivers([]);
       }
