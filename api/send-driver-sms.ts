@@ -23,45 +23,42 @@ const formatPhoneNumber = (number: string) => {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Enable CORS with proper headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
-
-  // Handle preflight request
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  // Log the incoming request
-  console.log('Received request:', {
-    method: req.method,
-    path: req.url,
-    headers: {
-      ...req.headers,
-      authorization: req.headers.authorization ? '[REDACTED]' : undefined
-    },
-    body: req.body
-  });
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      error: 'Method not allowed',
-      allowedMethods: ['POST'],
-      receivedMethod: req.method
-    });
-  }
-
   try {
-    const { bookingId } = req.body;
+    console.log('1. Handler started');
     
+    // CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    console.log('2. Method:', req.method);
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    // Log environment variables (redacted)
+    console.log('3. Environment check:', {
+      hasTwilioSid: !!process.env.TWILIO_ACCOUNT_SID,
+      hasTwilioToken: !!process.env.TWILIO_AUTH_TOKEN,
+      hasTwilioPhone: !!process.env.TWILIO_PHONE_NUMBER,
+      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+    });
+
+    const { bookingId } = req.body;
+    console.log('4. Booking ID:', bookingId);
+
     if (!bookingId) {
       return res.status(400).json({ error: 'Booking ID is required' });
     }
 
-    // Get booking details with customer info
+    // Get booking details
+    console.log('5. Fetching booking details');
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -75,13 +72,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('id', bookingId)
       .single();
 
-    console.log('Booking query result:', {
+    console.log('6. Booking query result:', {
       hasBooking: !!booking,
       error: bookingError?.message
     });
 
     if (bookingError || !booking) {
-      console.error('Error fetching booking:', bookingError);
+      console.error('7. Error fetching booking:', bookingError);
       return res.status(404).json({ error: 'Booking not found' });
     }
 
@@ -182,7 +179,11 @@ Reply YES to accept this booking.
     });
 
   } catch (error) {
-    console.error('Error in send-driver-sms handler:', error);
+    console.error('Error in handler:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
     return res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error'

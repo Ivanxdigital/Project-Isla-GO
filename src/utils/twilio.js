@@ -14,21 +14,24 @@ console.log('Twilio Config:', {
 // Function to send SMS notifications to drivers
 export const sendDriverNotifications = async (bookingId) => {
   try {
-    console.log('Starting driver notification process for booking:', bookingId);
+    console.log('1. Starting notification process:', bookingId);
     
     const { data: { session } } = await supabase.auth.getSession();
-    console.log('Auth session retrieved:', !!session);
+    console.log('2. Auth session:', {
+      hasSession: !!session,
+      hasToken: !!session?.access_token
+    });
 
     if (!session) {
       throw new Error('No authenticated session found');
     }
 
-    // Get the base URL
     const baseUrl = import.meta.env.PROD 
       ? 'https://islago.vercel.app'
       : 'http://localhost:3000';
+    
+    console.log('3. Making API request to:', `${baseUrl}/api/send-driver-sms`);
 
-    console.log('Sending notification request to API');
     const response = await fetch(`${baseUrl}/api/send-driver-sms`, {
       method: 'POST',
       headers: {
@@ -36,30 +39,35 @@ export const sendDriverNotifications = async (bookingId) => {
         'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ bookingId }),
-      mode: 'cors',
-      credentials: 'same-origin'
+      mode: 'cors'
     });
 
-    console.log('API Response:', {
+    console.log('4. Response received:', {
       status: response.status,
       statusText: response.statusText,
-      headers: Object.fromEntries(response.headers)
+      ok: response.ok
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ 
-        error: `HTTP error! status: ${response.status}` 
-      }));
-      console.error('API error response:', errorData);
-      throw new Error(errorData.message || 'Failed to send notifications');
+    const responseText = await response.text();
+    console.log('5. Raw response:', responseText);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('6. Failed to parse JSON:', e);
+      throw new Error('Invalid JSON response from server');
     }
 
-    const data = await response.json();
-    console.log('Driver notification response:', data);
+    if (!response.ok) {
+      console.error('7. Error response:', data);
+      throw new Error(data.message || 'Failed to send notifications');
+    }
 
+    console.log('8. Success:', data);
     return data;
   } catch (error) {
-    console.error('Error in sendDriverNotifications:', error);
+    console.error('9. Error in sendDriverNotifications:', error);
     throw error;
   }
 };
