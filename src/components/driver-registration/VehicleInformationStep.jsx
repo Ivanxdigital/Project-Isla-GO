@@ -1,14 +1,49 @@
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 
+// Common van models in the Philippines with their seating capacities
+const VAN_MODELS = [
+  { make: 'Toyota', model: 'HiAce Commuter', capacity: 15 },
+  { make: 'Toyota', model: 'HiAce GL Grandia', capacity: 12 },
+  { make: 'Nissan', model: 'NV350 Urvan', capacity: 15 },
+  { make: 'Hyundai', model: 'Grand Starex', capacity: 10 },
+  { make: 'Foton', model: 'View Transvan', capacity: 15 },
+  { make: 'Maxus', model: 'V80', capacity: 13 },
+  { make: 'JAC', model: 'Sunray', capacity: 15 },
+  { make: 'Mercedes-Benz', model: 'Sprinter', capacity: 15 },
+];
+
 export default function VehicleInformationStep() {
   const {
     register,
+    watch,
+    setValue,
     formState: { errors },
   } = useFormContext();
 
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 21 }, (_, i) => currentYear - i);
+  
+  const selectedMake = watch('vehicleMake');
+  const selectedModel = watch('vehicleModel');
+
+  // Get unique makes from VAN_MODELS
+  const uniqueMakes = [...new Set(VAN_MODELS.map(van => van.make))];
+
+  // Get models for selected make
+  const availableModels = VAN_MODELS.filter(van => van.make === selectedMake);
+
+  // Update seating capacity when model changes
+  React.useEffect(() => {
+    if (selectedMake && selectedModel) {
+      const selectedVan = VAN_MODELS.find(
+        van => van.make === selectedMake && van.model === selectedModel
+      );
+      if (selectedVan) {
+        setValue('seatingCapacity', selectedVan.capacity);
+      }
+    }
+  }, [selectedMake, selectedModel, setValue]);
 
   return (
     <div className="space-y-6">
@@ -17,18 +52,27 @@ export default function VehicleInformationStep() {
           <label htmlFor="vehicleMake" className="block text-sm font-medium text-gray-700">
             Vehicle Make
           </label>
-          <input
-            type="text"
+          <select
             id="vehicleMake"
             {...register("vehicleMake", {
               required: "Vehicle make is required",
-              minLength: { value: 2, message: "Vehicle make must be at least 2 characters" },
             })}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               errors.vehicleMake ? 'border-red-300' : 'border-gray-300'
             }`}
-            placeholder="Toyota"
-          />
+            onChange={(e) => {
+              setValue('vehicleMake', e.target.value);
+              setValue('vehicleModel', ''); // Reset model when make changes
+              setValue('seatingCapacity', ''); // Reset capacity when make changes
+            }}
+          >
+            <option value="">Select make</option>
+            {uniqueMakes.map(make => (
+              <option key={make} value={make}>
+                {make}
+              </option>
+            ))}
+          </select>
           {errors.vehicleMake && (
             <p className="mt-1 text-sm text-red-600">{errors.vehicleMake.message}</p>
           )}
@@ -38,18 +82,23 @@ export default function VehicleInformationStep() {
           <label htmlFor="vehicleModel" className="block text-sm font-medium text-gray-700">
             Vehicle Model
           </label>
-          <input
-            type="text"
+          <select
             id="vehicleModel"
             {...register("vehicleModel", {
               required: "Vehicle model is required",
-              minLength: { value: 2, message: "Vehicle model must be at least 2 characters" },
             })}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               errors.vehicleModel ? 'border-red-300' : 'border-gray-300'
             }`}
-            placeholder="Innova"
-          />
+            disabled={!selectedMake}
+          >
+            <option value="">Select model</option>
+            {availableModels.map(van => (
+              <option key={van.model} value={van.model}>
+                {van.model} ({van.capacity} seats)
+              </option>
+            ))}
+          </select>
           {errors.vehicleModel && (
             <p className="mt-1 text-sm text-red-600">{errors.vehicleModel.message}</p>
           )}
@@ -159,6 +208,12 @@ export default function VehicleInformationStep() {
           )}
         </div>
       </div>
+
+      {/* Hidden seating capacity field */}
+      <input
+        type="hidden"
+        {...register("seatingCapacity")}
+      />
 
       <div className="rounded-md bg-blue-50 p-4">
         <div className="flex">

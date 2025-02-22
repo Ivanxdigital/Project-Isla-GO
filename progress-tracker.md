@@ -937,82 +937,172 @@ const { data: records, error: fetchError } = await supabase
 - Enhance error handling and recovery
 - Provide better user feedback
 
-### 2024-03-20 - Enhanced Driver Management System
+### 2024-03-20 - Driver Data Fetching Improvements
 **Files Modified:**
 - `src/pages/admin/DriversPage.jsx`
 
 **Changes Made:**
-1. Implemented Comprehensive Driver Management
-   - Added ability to add new drivers
-   - Added ability to edit existing driver details
-   - Added ability to remove drivers
-   - Enhanced driver status management
+1. Enhanced Driver Data Fetching
+   - Added explicit user_id selection in query
+   - Fixed driver_applications relationship handling
+   - Added proper array handling for applications data
+   - Improved data merging for drivers without profiles
+   - Added status filter for active drivers
 
-2. Added User Integration Features
-   - Implemented existing user detection
-   - Added handling for already registered drivers
-   - Added profile update functionality for existing users
-   - Enhanced data consistency across user and driver tables
+2. Improved Error Handling and Debugging
+   - Added detailed console logging
+   - Enhanced error handling for null user IDs
+   - Improved profile data merging logic
+   - Fixed Supabase import path with .js extension
 
-3. Enhanced Form Implementation
-   - Added comprehensive driver registration form
-   - Implemented form validation
-   - Added proper error handling
-   - Enhanced user feedback
-
-4. Database Integration
-   - Added proper user profile handling
-   - Enhanced driver application management
-   - Added driver record management
-   - Implemented proper status tracking
+3. Enhanced Data Structure
+   - Properly handled driver_applications relationship
+   - Improved access to application data
+   - Better handling of drivers without profiles
+   - Enhanced data consistency
 
 **Technical Details:**
-- User Management:
+- Query Structure:
   ```javascript
-  // Existing User Detection
-  const { data: existingUser } = await supabase
-    .from('profiles')
-    .select('id, email')
-    .eq('email', email)
-    .single();
-
-  // Driver Status Check
-  const { data: existingDriver } = await supabase
-    .from('driver_applications')
-    .select('id, status')
-    .eq('user_id', userId)
-    .single();
+  .select(`
+    *,
+    user_id,
+    driver_applications!driver_id (
+      id,
+      full_name,
+      email,
+      // ... other fields
+      status
+    )
+  `)
   ```
 
-- Form Features:
-  - Comprehensive driver details
-  - Vehicle information
-  - License information
-  - Banking details
-  - Insurance information
-
-- Status Management:
-  - Active/Inactive status
-  - Document verification status
-  - Application status tracking
-  - Profile status synchronization
+- Data Processing:
+  - Proper filtering of null user IDs
+  - Handling of missing profiles
+  - Access to first application if multiple exist
+  - Consistent data structure maintenance
 
 **Purpose:**
-- Streamline driver management process
-- Ensure data consistency
-- Improve user experience
-- Enhance administrative control
+- Fix driver data display issues
+- Improve data consistency
+- Enhance debugging capability
+- Ensure proper relationship handling
 
-**Testing Instructions:**
-1. Access the admin dashboard
-2. Navigate to Drivers section
-3. Test adding a new driver:
-   - With new user
-   - With existing user
-4. Test editing driver details
-5. Test removing a driver
-6. Verify status changes
-7. Check data consistency across tables
+**Next Steps:**
+- Monitor driver data loading
+- Verify proper display of all active drivers
+- Check relationship handling
+- Ensure proper error handling
+
+### 2024-03-20 - Driver Data Synchronization Fix
+**Issue Found:**
+- Driver application existed but corresponding driver record was missing
+- Initial insert failed due to missing required fields
+- Incorrect assumption about vehicle_details column structure
+
+**Fix Applied:**
+- Added missing driver record with all required fields:
+  - Basic info (name, user_id)
+  - License details (license_number, license_expiry)
+  - Vehicle details (individual columns instead of JSON)
+  - Status and verification flags
+- Properly mapped fields from driver_applications table
+- Maintained data consistency between tables
+
+**Technical Details:**
+```sql
+INSERT INTO public.drivers (
+  id, user_id, name, license_number, license_expiry,
+  status, created_at, updated_at, documents_verified,
+  vehicle_make, vehicle_model, vehicle_year, plate_number
+) 
+SELECT 
+  '2b143c4c-bbe4-45c8-909d-98c429a22013',
+  user_id,
+  full_name,
+  license_number,
+  license_expiration,
+  'active',
+  NOW(),
+  NOW(),
+  true,
+  vehicle_make,
+  vehicle_model,
+  vehicle_year,
+  plate_number
+FROM driver_applications 
+WHERE id = '26807f26-e87d-4af9-bca0-7206bcd58228';
+```
+
+**Next Steps:**
+- Monitor for any other missing driver records
+- Consider adding trigger or check to ensure driver records are always created with approved applications
+- Document actual table structure and field mappings
+- Add validation to prevent data desynchronization
+
+### 2024-03-20 - Van Model and Seating Capacity Implementation
+**Files Modified:**
+- `supabase/migrations/20250123000000_add_van_and_seating.sql`
+- `src/components/driver-registration/VehicleInformationStep.jsx`
+- `src/pages/driver/Dashboard.jsx`
+
+**Changes Made:**
+1. Enhanced Database Schema for Van Management
+   - Added van model and seating capacity fields to drivers table
+   - Added booked_seats tracking to bookings table
+   - Implemented dynamic seat availability tracking
+   - Added constraints for valid seating values
+   - Created triggers for seat management
+
+2. Updated Vehicle Information Form
+   - Added predefined van models with capacities
+   - Implemented automatic seating capacity assignment
+   - Enhanced form validation and error handling
+   - Added comprehensive vehicle information collection
+   - Improved user interface with model selection
+
+3. Enhanced Booking Management System
+   - Implemented different handling for shared and private rides
+   - Added seat availability checks before booking acceptance
+   - Enhanced driver notification system with capacity checks
+   - Improved booking status tracking
+   - Added proper error handling and user feedback
+
+**Technical Details:**
+- Database Changes:
+  ```sql
+  -- New columns in drivers table
+  van_model text,
+  seating_capacity integer,
+  available_seats integer
+
+  -- New column in bookings table
+  booked_seats integer DEFAULT 1
+  ```
+
+- Van Models Configuration:
+  ```javascript
+  const VAN_MODELS = [
+    { make: 'Toyota', model: 'HiAce Commuter', capacity: 15 },
+    { make: 'Toyota', model: 'HiAce GL Grandia', capacity: 12 },
+    { make: 'Nissan', model: 'NV350 Urvan', capacity: 15 },
+    // ... other models
+  ]
+  ```
+
+- Booking Logic:
+  - Private rides: Full van capacity booking
+  - Shared rides: Dynamic seat allocation
+  - Real-time availability tracking
+  - Proper constraint enforcement
+
+**Purpose:**
+- Implement van model selection system
+- Automate seating capacity management
+- Prevent overbooking scenarios
+- Improve booking management efficiency
+- Enhance user experience for drivers
 
 ## Pending Tasks
 - [x] Add retry mechanism for failed notifications

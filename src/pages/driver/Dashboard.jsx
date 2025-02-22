@@ -1,8 +1,9 @@
 // src/pages/driver/Dashboard.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../utils/supabase';
-import { useDriverAuth } from '../../contexts/DriverAuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext.jsx';
+import { supabase } from '../../utils/supabase.js';
+import { useDriverAuth } from '../../contexts/DriverAuthContext.jsx';
 import { toast } from 'react-hot-toast';
 
 export default function DriverDashboard() {
@@ -253,22 +254,85 @@ export default function DriverDashboard() {
       const loadingToast = toast.loading(accept ? 'Accepting booking...' : 'Rejecting booking...');
 
       if (accept) {
-        // Get the notification data
+        // Get the notification and booking data
         const notification = notifications.find(n => n.id === notificationId);
+        const booking = notification.bookings;
         
+        // Get current driver's available seats and capacity for the time slot
+        const { data: driverData, error: driverError } = await supabase
+          .from('drivers')
+          .select('seating_capacity, available_seats')
+          .eq('id', user.id)
+          .single();
+
+        if (driverError) {
+          throw new Error('Failed to fetch driver data');
+        }
+
+        // For private rides, check if there are any bookings in this time slot
+        if (booking.service_type !== 'shared') {
+          const { data: existingBookings, error: bookingsError } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('assigned_driver_id', user.id)
+            .eq('status', 'DRIVER_ASSIGNED')
+            .eq('departure_date', booking.departure_date)
+            .eq('departure_time', booking.departure_time);
+
+          if (bookingsError) {
+            throw new Error('Failed to fetch existing bookings');
+          }
+
+          if (existingBookings?.length > 0) {
+            toast.dismiss(loadingToast);
+            toast.error('You already have a booking for this time slot. Private rides require full van availability.');
+            return;
+          }
+
+          // For private rides, we'll book the entire van capacity
+          booking.booked_seats = driverData.seating_capacity;
+        } else {
+          // For shared rides, get all accepted bookings for the same time slot
+          const { data: existingBookings, error: bookingsError } = await supabase
+            .from('bookings')
+            .select('booked_seats')
+            .eq('assigned_driver_id', user.id)
+            .eq('status', 'DRIVER_ASSIGNED')
+            .eq('departure_date', booking.departure_date)
+            .eq('departure_time', booking.departure_time)
+            .eq('service_type', 'shared');
+
+          if (bookingsError) {
+            throw new Error('Failed to fetch existing bookings');
+          }
+
+          // Calculate total booked seats for shared rides in this time slot
+          const totalBookedSeats = existingBookings.reduce((sum, b) => sum + (b.booked_seats || 1), 0);
+          
+          // For shared rides, booked_seats equals group_size
+          booking.booked_seats = booking.group_size;
+
+          // Check if there are enough seats available
+          if (driverData.seating_capacity - totalBookedSeats < booking.booked_seats) {
+            toast.dismiss(loadingToast);
+            toast.error(`Not enough seats available. You have ${driverData.seating_capacity - totalBookedSeats} seats remaining for this time slot.`);
+            return;
+          }
+        }
+
         // Combine date and time into a timestamp
-        const departureDateStr = notification.bookings?.departure_date;
-        const departureTimeStr = notification.bookings?.departure_time;
+        const departureDateStr = booking.departure_date;
+        const departureTimeStr = booking.departure_time;
         const departureTimestamp = new Date(`${departureDateStr}T${departureTimeStr}`).toISOString();
 
-        // Create trip assignment with correct timestamp
+        // Create trip assignment
         const { error: tripError } = await supabase
           .from('trip_assignments')
           .insert({
             driver_id: user.id,
             booking_id: bookingId,
             status: 'pending',
-            departure_time: departureTimestamp, // Now using proper timestamp
+            departure_time: departureTimestamp,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -278,12 +342,13 @@ export default function DriverDashboard() {
           throw tripError;
         }
 
-        // Update booking status
+        // Update booking status and assign driver
         const { error: bookingError } = await supabase
           .from('bookings')
           .update({
             status: 'DRIVER_ASSIGNED',
-            assigned_driver_id: user.id
+            assigned_driver_id: user.id,
+            booked_seats: booking.booked_seats // Set the calculated booked_seats
           })
           .eq('id', bookingId);
 
