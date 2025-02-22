@@ -116,9 +116,15 @@ export default function DriversPage() {
             account_number,
             account_holder,
             status
+          ),
+          profiles!user_id (
+            id,
+            first_name,
+            last_name,
+            email,
+            mobile_number
           )
         `)
-        .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (driversError) throw driversError;
@@ -126,38 +132,15 @@ export default function DriversPage() {
       console.log('Raw drivers data:', drivers);
 
       if (drivers?.length) {
-        // Filter out null user_ids before making the profiles query
-        const userIds = drivers
-          .map(driver => driver.user_id)
-          .filter(id => id != null);
+        const driversWithDetails = drivers.map(driver => ({
+          ...driver,
+          application: driver.driver_applications?.[0], // Access first application
+          user: driver.profiles,
+          user_id: driver.user_id // Ensure user_id is directly accessible
+        }));
 
-        if (userIds.length > 0) {
-          const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('*')
-            .in('id', userIds);
-
-          if (profilesError) throw profilesError;
-
-          console.log('Fetched profiles:', profiles);
-
-          // Merge the profile data with drivers, handling cases where profile might not exist
-          const driversWithProfiles = drivers.map(driver => ({
-            ...driver,
-            application: driver.driver_applications?.[0], // Access first application if there are multiple
-            user: profiles?.find(p => p.id === driver.user_id) || null
-          }));
-
-          console.log('Merged data:', driversWithProfiles);
-          setDrivers(driversWithProfiles);
-        } else {
-          // If no valid user IDs, just use the drivers data without profiles
-          const driversWithApplications = drivers.map(driver => ({
-            ...driver,
-            application: driver.driver_applications?.[0]
-          }));
-          setDrivers(driversWithApplications);
-        }
+        console.log('Processed drivers data:', driversWithDetails);
+        setDrivers(driversWithDetails);
       } else {
         setDrivers([]);
       }
@@ -695,34 +678,44 @@ export default function DriversPage() {
     }
 
     try {
-      if (!driver?.driver?.id) {
-        throw new Error('Invalid driver ID');
+      // Debug logging
+      console.log('Driver object:', driver);
+      console.log('Driver ID:', driver?.driver?.id);
+      console.log('User ID:', driver?.user_id);
+
+      // Validate driver object structure
+      if (!driver?.application?.id || !driver?.user_id) {
+        throw new Error('Invalid driver data: Missing required fields');
       }
 
       // First update the driver status to inactive
-      const { error: driverError } = await supabase
+      const { data: driverData, error: driverError } = await supabase
         .from('drivers')
         .update({ 
           status: 'inactive',
           updated_at: new Date().toISOString()
         })
-        .eq('id', driver.driver.id)
+        .eq('user_id', driver.user_id)
         .single();
 
-      if (driverError) throw driverError;
+      if (driverError) {
+        console.error('Error updating driver status:', driverError);
+        throw driverError;
+      }
 
       // Then update the driver application status to rejected
-      const { error: applicationError } = await supabase
+      const { data: applicationData, error: applicationError } = await supabase
         .from('driver_applications')
         .update({ 
           status: 'rejected',
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', driver.user_id)
+        .eq('id', driver.application.id)
         .eq('status', 'approved') // Only update if currently approved
         .single();
 
       if (applicationError && applicationError.code !== 'PGRST116') { // Ignore if no rows affected
+        console.error('Error updating application status:', applicationError);
         throw applicationError;
       }
 
@@ -730,7 +723,11 @@ export default function DriversPage() {
       fetchDrivers();
     } catch (error) {
       console.error('Error removing driver:', error);
-      toast.error(error.message === 'Invalid driver ID' ? 'Invalid driver selected' : 'Failed to remove driver');
+      toast.error(
+        error.message.includes('Invalid driver data') 
+          ? 'Invalid driver data: Please refresh the page and try again' 
+          : 'Failed to remove driver'
+      );
     }
   };
 
