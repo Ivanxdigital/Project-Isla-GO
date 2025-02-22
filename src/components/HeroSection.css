@@ -17,8 +17,58 @@ body, html {
   }
 }
 
+@keyframes float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale3d(1, 1, 1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale3d(1.05, 1.05, 1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes wave {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-25%, 0, 0);
+  }
+}
+
 .animate-gradient {
-  animation: gradient 3s ease infinite;
+  animation: gradient 8s ease infinite;
+  background-size: 200% 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.animate-wave {
+  animation: wave 10s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
 }
 
 .bg-size-200 {
@@ -29,15 +79,56 @@ body, html {
   background-position: 0% 50%;
 }
 
-/* Update the hero container */
+/* Update the hero container with smooth transitions */
 .hero-container {
   margin: 0;
   padding: 0;
-  height: 100vh;
+  min-height: 100vh;
   width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* Optimize performance with hardware acceleration */
+.hero-container * {
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  transform: translateZ(0);
+}
+
+/* Add smooth transitions for interactive elements */
+.hero-container button,
+.hero-container a {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+/* Enhanced hover effects */
+.hero-container button:hover,
+.hero-container a:hover {
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Active state animations */
+.hero-container button:active,
+.hero-container a:active {
+  transform: translate3d(0, 1px, 0);
+}
+
+/* Responsive design adjustments */
+@media (max-width: 640px) {
+  .hero-container {
+    min-height: calc(100vh - 60px);
+  }
+  
+  .animate-gradient {
+    animation-duration: 6s;
+  }
+  
+  .animate-float {
+    animation-duration: 4s;
+  }
 }
