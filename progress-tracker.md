@@ -1241,3 +1241,76 @@ WHERE id = '26807f26-e87d-4af9-bca0-7206bcd58228';
   - Fixed Supabase import path
 
 ## Git Commit Message
+
+### 2024-03-19 - Driver Management System Fixes
+**Files Modified:**
+- `src/pages/admin/DriversPage.jsx`
+
+**Changes Made:**
+1. Fixed Database Relationship Queries
+   - Corrected foreign key relationships in Supabase queries
+   - Updated driver_applications relationship using `!driver_id`
+   - Fixed profiles relationship using `!user_id`
+   - Added proper field selections based on schema
+
+2. Enhanced Data Structure
+   - Added missing fields from drivers table:
+     - documents_verified
+     - user_id
+     - status tracking
+   - Improved data processing for UI components
+   - Added proper type checking and validation
+   - Enhanced error handling for data fetching
+
+3. Query Optimization
+   - Removed redundant status filter from database query
+   - Implemented client-side filtering for better flexibility
+   - Added proper error logging and debugging
+   - Enhanced data transformation logic
+
+4. UI Improvements
+   - Added proper loading states
+   - Enhanced error message display
+   - Improved data validation feedback
+   - Added proper null checks for optional fields
+
+**Technical Details:**
+- Database Relationships:
+  ```javascript
+  .select(`
+    id,
+    user_id,
+    status,
+    created_at,
+    updated_at,
+    documents_verified,
+    driver_applications!driver_id (
+      id,
+      user_id,
+      // ... other fields
+    ),
+    profiles!user_id (
+      id,
+      first_name,
+      // ... other fields
+    )
+  `)
+  ```
+
+- Data Processing:
+  ```javascript
+  const processedDrivers = drivers.map(driver => ({
+    id: driver.id,
+    user_id: driver.user_id,
+    status: driver.status,
+    documents_verified: driver.documents_verified,
+    application: driver.driver_applications?.[0] || null,
+    user: driver.profiles
+  }));
+  ```
+
+**Purpose:**
+- Fix driver data loading issues
+- Ensure proper relationship handling
+- Improve error handling and feedback
+- Enhance data consistency and validation
