@@ -93,79 +93,60 @@ export default function DriversPage() {
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      // First get the driver applications
-      const { data: driverApplications, error: applicationsError } = await supabase
-        .from('driver_applications')
+      // First get the drivers with their applications
+      const { data: drivers, error: driversError } = await supabase
+        .from('drivers')
         .select(`
           id,
           user_id,
-          full_name,
-          email,
-          mobile_number,
-          license_number,
-          license_expiration,
-          vehicle_make,
-          vehicle_model,
-          vehicle_year,
-          plate_number,
-          insurance_provider,
-          policy_number,
-          policy_expiration,
-          bank_name,
-          account_number,
-          account_holder,
           status,
-          profiles!user_id (
+          created_at,
+          updated_at,
+          driver_applications!driver_id (
+            id,
+            full_name,
+            email,
+            mobile_number,
+            license_number,
+            license_expiration,
+            vehicle_make,
+            vehicle_model,
+            vehicle_year,
+            plate_number,
+            insurance_provider,
+            policy_number,
+            policy_expiration,
+            bank_name,
+            account_number,
+            account_holder,
+            status
+          ),
+          profiles:user_id (
             id,
             first_name,
             last_name,
             email,
             mobile_number
-          ),
-          drivers!inner (
-            id,
-            status,
-            created_at,
-            updated_at
           )
         `)
-        .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
-      if (applicationsError) {
-        console.error('Error fetching applications:', applicationsError);
-        throw applicationsError;
+      if (driversError) {
+        console.error('Error fetching drivers:', driversError);
+        throw driversError;
       }
 
-      console.log('Raw applications data:', driverApplications);
+      console.log('Raw drivers data:', drivers);
 
-      if (driverApplications?.length) {
-        const processedDrivers = driverApplications.map(application => ({
-          id: application.drivers[0]?.id,
-          user_id: application.user_id,
-          status: application.drivers[0]?.status,
-          created_at: application.drivers[0]?.created_at,
-          updated_at: application.drivers[0]?.updated_at,
-          application: {
-            id: application.id,
-            full_name: application.full_name,
-            email: application.email,
-            mobile_number: application.mobile_number,
-            license_number: application.license_number,
-            license_expiration: application.license_expiration,
-            vehicle_make: application.vehicle_make,
-            vehicle_model: application.vehicle_model,
-            vehicle_year: application.vehicle_year,
-            plate_number: application.plate_number,
-            insurance_provider: application.insurance_provider,
-            policy_number: application.policy_number,
-            policy_expiration: application.policy_expiration,
-            bank_name: application.bank_name,
-            account_number: application.account_number,
-            account_holder: application.account_holder,
-            status: application.status
-          },
-          user: application.profiles
+      if (drivers?.length) {
+        const processedDrivers = drivers.map(driver => ({
+          id: driver.id,
+          user_id: driver.user_id,
+          status: driver.status,
+          created_at: driver.created_at,
+          updated_at: driver.updated_at,
+          application: driver.driver_applications?.[0] || null,
+          user: driver.profiles
         }));
 
         console.log('Processed drivers data:', processedDrivers);
@@ -808,7 +789,7 @@ export default function DriversPage() {
   const filteredDrivers = drivers.filter(driver => {
     const matchesSearch = driver.user?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          driver.license_number?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || driver.driver?.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || driver.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -898,11 +879,11 @@ export default function DriversPage() {
             </Menu.Item>
 
             {/* Status Management */}
-            {driver.driver?.status !== 'active' && (
+            {driver.status !== 'active' && (
               <Menu.Item>
                 {({ active }) => (
                   <button
-                    onClick={() => updateDriverStatus(driver.driver.id, 'active')}
+                    onClick={() => updateDriverStatus(driver.id, 'active')}
                     className={`${
                       active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
                     } flex w-full px-4 py-2 text-sm`}
@@ -1109,13 +1090,13 @@ export default function DriversPage() {
               Cancel
             </button>
             <button
-              onClick={() => handleRejectDocuments(selectedDriverDocs.driver.id)}
+              onClick={() => handleRejectDocuments(selectedDriverDocs.id)}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
             >
               Reject Documents
             </button>
             <button
-              onClick={() => handleVerifyDocuments(selectedDriverDocs.driver.id)}
+              onClick={() => handleVerifyDocuments(selectedDriverDocs.id)}
               disabled={!Object.values(documentStatus).every(Boolean)}
               className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
             >
@@ -1180,7 +1161,7 @@ export default function DriversPage() {
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
                         {filteredDrivers.map((driver) => {
-                          const StatusIcon = STATUS_BADGES[driver.driver?.status]?.icon;
+                          const StatusIcon = STATUS_BADGES[driver.status]?.icon;
                           return (
                             <tr key={driver.id}>
                               <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
@@ -1192,7 +1173,7 @@ export default function DriversPage() {
                                 <div>Expires: {new Date(driver.license_expiration).toLocaleDateString()}</div>
                               </td>
                               <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                <div>{driver.user?.mobile_number}</div>
+                                <div>{driver.mobile_number}</div>
                                 {driver.user?.messenger_contact && (
                                   <div className="text-xs">
                                     {driver.user.messenger_type}: {driver.user.messenger_contact}
@@ -1200,9 +1181,9 @@ export default function DriversPage() {
                                 )}
                               </td>
                               <td className="whitespace-nowrap px-3 py-4 text-sm">
-                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGES[driver.driver?.status]?.class}`}>
+                                <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGES[driver.status]?.class}`}>
                                   {StatusIcon && <StatusIcon className="mr-1 h-4 w-4" />}
-                                  {driver.driver?.status || 'pending'}
+                                  {driver.status || 'pending'}
                                 </span>
                               </td>
                               <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
@@ -1241,7 +1222,7 @@ export default function DriversPage() {
                             
                             <div>
                               <div className="text-sm font-medium text-gray-500">Contact</div>
-                              <div className="text-sm text-gray-900">{driver.user?.mobile_number}</div>
+                              <div className="text-sm text-gray-900">{driver.mobile_number}</div>
                               {driver.user?.messenger_contact && (
                                 <div className="text-xs text-gray-500">
                                   {driver.user.messenger_type}: {driver.user.messenger_contact}
@@ -1252,9 +1233,9 @@ export default function DriversPage() {
                             <div>
                               <div className="text-sm font-medium text-gray-500">Status</div>
                               <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                STATUS_BADGES[driver.driver?.status]?.class
+                                STATUS_BADGES[driver.status]?.class
                               }`}>
-                                {driver.driver?.status || 'pending'}
+                                {driver.status || 'pending'}
                               </span>
                             </div>
                           </div>
