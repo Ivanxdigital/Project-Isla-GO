@@ -93,54 +93,83 @@ export default function DriversPage() {
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      const { data: drivers, error: driversError } = await supabase
-        .from('drivers')
+      // First get the driver applications
+      const { data: driverApplications, error: applicationsError } = await supabase
+        .from('driver_applications')
         .select(`
-          *,
+          id,
           user_id,
-          driver_applications!driver_id (
-            id,
-            full_name,
-            email,
-            mobile_number,
-            license_number,
-            license_expiration,
-            vehicle_make,
-            vehicle_model,
-            vehicle_year,
-            plate_number,
-            insurance_provider,
-            policy_number,
-            policy_expiration,
-            bank_name,
-            account_number,
-            account_holder,
-            status
-          ),
+          full_name,
+          email,
+          mobile_number,
+          license_number,
+          license_expiration,
+          vehicle_make,
+          vehicle_model,
+          vehicle_year,
+          plate_number,
+          insurance_provider,
+          policy_number,
+          policy_expiration,
+          bank_name,
+          account_number,
+          account_holder,
+          status,
           profiles!user_id (
             id,
             first_name,
             last_name,
             email,
             mobile_number
+          ),
+          drivers!inner (
+            id,
+            status,
+            created_at,
+            updated_at
           )
         `)
+        .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
-      if (driversError) throw driversError;
+      if (applicationsError) {
+        console.error('Error fetching applications:', applicationsError);
+        throw applicationsError;
+      }
 
-      console.log('Raw drivers data:', drivers);
+      console.log('Raw applications data:', driverApplications);
 
-      if (drivers?.length) {
-        const driversWithDetails = drivers.map(driver => ({
-          ...driver,
-          application: driver.driver_applications?.[0], // Access first application
-          user: driver.profiles,
-          user_id: driver.user_id // Ensure user_id is directly accessible
+      if (driverApplications?.length) {
+        const processedDrivers = driverApplications.map(application => ({
+          id: application.drivers[0]?.id,
+          user_id: application.user_id,
+          status: application.drivers[0]?.status,
+          created_at: application.drivers[0]?.created_at,
+          updated_at: application.drivers[0]?.updated_at,
+          application: {
+            id: application.id,
+            full_name: application.full_name,
+            email: application.email,
+            mobile_number: application.mobile_number,
+            license_number: application.license_number,
+            license_expiration: application.license_expiration,
+            vehicle_make: application.vehicle_make,
+            vehicle_model: application.vehicle_model,
+            vehicle_year: application.vehicle_year,
+            plate_number: application.plate_number,
+            insurance_provider: application.insurance_provider,
+            policy_number: application.policy_number,
+            policy_expiration: application.policy_expiration,
+            bank_name: application.bank_name,
+            account_number: application.account_number,
+            account_holder: application.account_holder,
+            status: application.status
+          },
+          user: application.profiles
         }));
 
-        console.log('Processed drivers data:', driversWithDetails);
-        setDrivers(driversWithDetails);
+        console.log('Processed drivers data:', processedDrivers);
+        setDrivers(processedDrivers);
       } else {
         setDrivers([]);
       }
