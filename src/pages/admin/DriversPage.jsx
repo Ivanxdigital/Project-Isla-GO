@@ -689,33 +689,48 @@ export default function DriversPage() {
     }
   };
 
-  const handleDeleteDriver = async (driverId, userId) => {
+  const handleDeleteDriver = async (driver) => {
     if (!window.confirm('Are you sure you want to remove this driver? This action cannot be undone.')) {
       return;
     }
 
     try {
+      if (!driver?.driver?.id) {
+        throw new Error('Invalid driver ID');
+      }
+
       // First update the driver status to inactive
       const { error: driverError } = await supabase
         .from('drivers')
-        .update({ status: 'inactive' })
-        .eq('id', driverId);
+        .update({ 
+          status: 'inactive',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', driver.driver.id)
+        .single();
 
       if (driverError) throw driverError;
 
       // Then update the driver application status to rejected
       const { error: applicationError } = await supabase
         .from('driver_applications')
-        .update({ status: 'rejected' })
-        .eq('user_id', userId);
+        .update({ 
+          status: 'rejected',
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', driver.user_id)
+        .eq('status', 'approved') // Only update if currently approved
+        .single();
 
-      if (applicationError) throw applicationError;
+      if (applicationError && applicationError.code !== 'PGRST116') { // Ignore if no rows affected
+        throw applicationError;
+      }
 
       toast.success('Driver removed successfully');
       fetchDrivers();
     } catch (error) {
       console.error('Error removing driver:', error);
-      toast.error('Failed to remove driver');
+      toast.error(error.message === 'Invalid driver ID' ? 'Invalid driver selected' : 'Failed to remove driver');
     }
   };
 
@@ -908,7 +923,7 @@ export default function DriversPage() {
             <Menu.Item>
               {({ active }) => (
                 <button
-                  onClick={() => handleDeleteDriver(driver.driver?.id, driver.user_id)}
+                  onClick={() => handleDeleteDriver(driver)}
                   className={`${
                     active ? 'bg-red-50 text-red-900' : 'text-red-700'
                   } flex w-full px-4 py-2 text-sm`}
