@@ -125,8 +125,7 @@ export default function DriversPage() {
           ),
           profiles!user_id (
             id,
-            first_name,
-            last_name,
+            full_name,
             email,
             mobile_number
           )
@@ -149,7 +148,7 @@ export default function DriversPage() {
           updated_at: driver.updated_at,
           documents_verified: driver.documents_verified,
           application: driver.driver_applications?.[0] || null,
-          user: driver.profiles
+          user: driver.profiles?.[0] || null // Get the first profile from the array
         }));
 
         console.log('Processed drivers data:', processedDrivers);
@@ -1172,16 +1171,11 @@ export default function DriversPage() {
                                 <div className="text-gray-500">Joined {new Date(driver.created_at).toLocaleDateString()}</div>
                               </td>
                               <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                <div>{driver.license_number}</div>
-                                <div>Expires: {new Date(driver.license_expiration).toLocaleDateString()}</div>
+                                <div>{driver.application?.license_number}</div>
+                                <div>Expires: {new Date(driver.application?.license_expiration).toLocaleDateString()}</div>
                               </td>
                               <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                <div>{driver.mobile_number}</div>
-                                {driver.user?.messenger_contact && (
-                                  <div className="text-xs">
-                                    {driver.user.messenger_type}: {driver.user.messenger_contact}
-                                  </div>
-                                )}
+                                <div>{driver.user?.mobile_number}</div>
                               </td>
                               <td className="whitespace-nowrap px-3 py-4 text-sm">
                                 <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGES[driver.status]?.class}`}>
@@ -1217,20 +1211,15 @@ export default function DriversPage() {
                           <div className="mt-3 space-y-2">
                             <div>
                               <div className="text-sm font-medium text-gray-500">License Info</div>
-                              <div className="text-sm text-gray-900">{driver.license_number}</div>
+                              <div className="text-sm text-gray-900">{driver.application?.license_number}</div>
                               <div className="text-sm text-gray-900">
-                                Expires: {new Date(driver.license_expiration).toLocaleDateString()}
+                                Expires: {new Date(driver.application?.license_expiration).toLocaleDateString()}
                               </div>
                             </div>
                             
                             <div>
                               <div className="text-sm font-medium text-gray-500">Contact</div>
-                              <div className="text-sm text-gray-900">{driver.mobile_number}</div>
-                              {driver.user?.messenger_contact && (
-                                <div className="text-xs text-gray-500">
-                                  {driver.user.messenger_type}: {driver.user.messenger_contact}
-                                </div>
-                              )}
+                              <div className="text-sm text-gray-900">{driver.user?.mobile_number}</div>
                             </div>
                             
                             <div>
