@@ -103,27 +103,8 @@ export default function DriversPage() {
           created_at,
           updated_at,
           documents_verified,
-          driver_applications (
-            id,
-            user_id,
-            full_name,
-            email,
-            mobile_number,
-            license_number,
-            license_expiration,
-            vehicle_make,
-            vehicle_model,
-            vehicle_year,
-            plate_number,
-            insurance_provider,
-            policy_number,
-            policy_expiration,
-            bank_name,
-            account_number,
-            account_holder,
-            status
-          ),
-          profiles:user_id (
+          driver_applications!driver_id(*),
+          profiles!inner(
             id,
             full_name,
             email,
@@ -148,7 +129,7 @@ export default function DriversPage() {
           updated_at: driver.updated_at,
           documents_verified: driver.documents_verified,
           application: driver.driver_applications?.[0] || null,
-          user: driver.profiles || null // profiles is already a single object due to foreign key relationship
+          user: driver.profiles || null
         }));
 
         console.log('Processed drivers data:', processedDrivers);
