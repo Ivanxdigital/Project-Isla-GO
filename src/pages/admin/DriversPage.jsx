@@ -93,7 +93,7 @@ export default function DriversPage() {
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      // First get the drivers with their applications
+      // First get the drivers with their applications and profiles
       const { data: drivers, error: driversError } = await supabase
         .from('drivers')
         .select(`
@@ -102,8 +102,10 @@ export default function DriversPage() {
           status,
           created_at,
           updated_at,
+          documents_verified,
           driver_applications!driver_id (
             id,
+            user_id,
             full_name,
             email,
             mobile_number,
@@ -121,7 +123,7 @@ export default function DriversPage() {
             account_holder,
             status
           ),
-          profiles:user_id (
+          profiles!user_id (
             id,
             first_name,
             last_name,
@@ -145,6 +147,7 @@ export default function DriversPage() {
           status: driver.status,
           created_at: driver.created_at,
           updated_at: driver.updated_at,
+          documents_verified: driver.documents_verified,
           application: driver.driver_applications?.[0] || null,
           user: driver.profiles
         }));
