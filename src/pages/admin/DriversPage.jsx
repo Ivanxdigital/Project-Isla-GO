@@ -103,11 +103,28 @@ export default function DriversPage() {
           created_at,
           updated_at,
           documents_verified,
-          driver_applications!driver_id(*),
-          profiles!inner(
+          driver_applications!driver_id:id (
             id,
             full_name,
             email,
+            mobile_number,
+            license_number,
+            license_expiration,
+            vehicle_make,
+            vehicle_model,
+            vehicle_year,
+            plate_number,
+            insurance_provider,
+            policy_number,
+            policy_expiration,
+            bank_name,
+            account_number,
+            account_holder,
+            status
+          ),
+          profiles:user_id (
+            id,
+            full_name,
             mobile_number
           )
         `)
