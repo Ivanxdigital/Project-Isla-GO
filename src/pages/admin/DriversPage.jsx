@@ -103,7 +103,7 @@ export default function DriversPage() {
           created_at,
           updated_at,
           documents_verified,
-          driver_applications!driver_id (
+          driver_applications (
             id,
             user_id,
             full_name,
@@ -123,7 +123,7 @@ export default function DriversPage() {
             account_holder,
             status
           ),
-          profiles!user_id (
+          profiles:user_id (
             id,
             full_name,
             email,
@@ -148,7 +148,7 @@ export default function DriversPage() {
           updated_at: driver.updated_at,
           documents_verified: driver.documents_verified,
           application: driver.driver_applications?.[0] || null,
-          user: driver.profiles?.[0] || null // Get the first profile from the array
+          user: driver.profiles || null // profiles is already a single object due to foreign key relationship
         }));
 
         console.log('Processed drivers data:', processedDrivers);
