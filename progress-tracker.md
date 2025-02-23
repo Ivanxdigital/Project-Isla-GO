@@ -1314,3 +1314,114 @@ WHERE id = '26807f26-e87d-4af9-bca0-7206bcd58228';
 - Ensure proper relationship handling
 - Improve error handling and feedback
 - Enhance data consistency and validation
+
+### 2024-03-19 - Admin Drivers Page Query Fix
+**Files Modified:**
+- `src/pages/admin/DriversPage.jsx`
+
+**Changes Made:**
+1. Improved Drivers Query Structure
+   - Removed problematic admin access check
+   - Fixed foreign key relationship syntax
+   - Changed inner joins to regular joins for better data retrieval
+   - Enhanced error logging and debugging
+
+2. Enhanced Error Handling
+   - Added detailed error logging
+   - Improved error message display
+   - Added error stack trace logging
+   - Enhanced user feedback for failures
+
+**Technical Details:**
+- Query Structure Changes:
+  ```javascript
+  // Changed from driver_applications!inner to driver_applications
+  // Changed from profiles!inner to profiles:user_id
+  .select(`
+    id,
+    user_id,
+    status,
+    created_at,
+    updated_at,
+    documents_verified,
+    driver_applications (
+      // fields...
+    ),
+    profiles:user_id (
+      // fields...
+    )
+  `)
+  ```
+
+- Error Handling:
+  - Detailed error logging with code and message
+  - Error stack trace for debugging
+  - User-friendly toast messages
+  - Proper error state management
+
+**Purpose:**
+- Fix drivers data loading issues
+- Improve query reliability
+- Enhance error visibility
+- Better handle missing relationships
+
+### 2024-03-20 - Driver Notification System Improvements
+**Files Modified:**
+- `src/pages/driver/Dashboard.jsx`
+- Database functions and triggers
+
+**Changes Made:**
+1. Enhanced Driver Response Handling
+   - Integrated database-level `handle_driver_response` function
+   - Added proper notification expiration handling
+   - Implemented comprehensive error logging
+   - Added proper status tracking and updates
+
+2. Standardized Status Handling
+   - Added proper notification status enums
+   - Added booking status enums
+   - Aligned frontend with database constraints
+   - Enhanced status validation
+
+3. Improved Error Handling and Logging
+   - Added comprehensive error logging to `driver_notification_logs`
+   - Enhanced error messages and user feedback
+   - Added proper error recovery mechanisms
+   - Improved debugging capability
+
+4. Enhanced UI/UX
+   - Added expiration time display
+   - Disabled buttons for expired notifications
+   - Added proper loading states
+   - Enhanced user feedback with toast notifications
+
+**Technical Details:**
+- Status Enums:
+  ```javascript
+  const NOTIFICATION_STATUS = {
+    PENDING: 'PENDING',
+    ACCEPTED: 'ACCEPTED',
+    REJECTED: 'REJECTED'
+  };
+
+  const BOOKING_STATUS = {
+    PENDING: 'PENDING',
+    FINDING_DRIVER: 'FINDING_DRIVER',
+    DRIVER_ASSIGNED: 'DRIVER_ASSIGNED',
+    COMPLETED: 'COMPLETED',
+    CANCELLED: 'CANCELLED',
+    EXPIRED: 'EXPIRED'
+  };
+  ```
+
+- Error Logging:
+  - Status code tracking
+  - Response logging
+  - Error message capture
+  - Timestamp tracking
+
+**Purpose:**
+- Improve notification handling reliability
+- Ensure proper status management
+- Enhance error tracking and recovery
+- Improve user experience
