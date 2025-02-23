@@ -6,6 +6,22 @@ import { supabase } from '../../utils/supabase.js';
 import { useDriverAuth } from '../../contexts/DriverAuthContext.jsx';
 import { toast } from 'react-hot-toast';
 
+// Add notification status enum to match database
+const NOTIFICATION_STATUS = {
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED'
+};
+
+const BOOKING_STATUS = {
+  PENDING: 'PENDING',
+  FINDING_DRIVER: 'FINDING_DRIVER',
+  DRIVER_ASSIGNED: 'DRIVER_ASSIGNED',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED'
+};
+
 export default function DriverDashboard() {
   const { user } = useAuth();
   const { isDriver, driverStatus, loading: driverAuthLoading } = useDriverAuth();
@@ -43,16 +59,27 @@ export default function DriverDashboard() {
             to_location,
             departure_date,
             departure_time,
-            total_amount
+            total_amount,
+            service_type,
+            booked_seats
           )
         `)
         .eq('driver_id', user.id)
-        .eq('status', 'PENDING');
+        .eq('status', NOTIFICATION_STATUS.PENDING)
+        .lt('expires_at', new Date().toISOString()) // Only get non-expired notifications
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setNotifications(data || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      // Log to notification_logs table
+      await supabase.from('driver_notification_logs').insert({
+        booking_id: null,
+        status_code: 500,
+        response: JSON.stringify({ error: error.message }),
+        created_at: new Date().toISOString()
+      });
     }
   };
 
@@ -239,156 +266,74 @@ export default function DriverDashboard() {
   // Update the handleBookingResponse function
   const handleBookingResponse = async (notificationId, bookingId, accept) => {
     try {
-      // Ask for confirmation before proceeding
       const confirmed = await confirmAction(
         accept 
           ? 'Are you sure you want to accept this booking?' 
           : 'Are you sure you want to reject this booking?'
       );
 
-      if (!confirmed) {
-        return; // User cancelled the action
-      }
+      if (!confirmed) return;
 
-      // Show loading toast
       const loadingToast = toast.loading(accept ? 'Accepting booking...' : 'Rejecting booking...');
 
-      if (accept) {
-        // Get the notification and booking data
-        const notification = notifications.find(n => n.id === notificationId);
-        const booking = notification.bookings;
-        
-        // Get current driver's available seats and capacity for the time slot
-        const { data: driverData, error: driverError } = await supabase
-          .from('drivers')
-          .select('seating_capacity, available_seats')
-          .eq('id', user.id)
-          .single();
-
-        if (driverError) {
-          throw new Error('Failed to fetch driver data');
-        }
-
-        // For private rides, check if there are any bookings in this time slot
-        if (booking.service_type !== 'shared') {
-          const { data: existingBookings, error: bookingsError } = await supabase
-            .from('bookings')
-            .select('id')
-            .eq('assigned_driver_id', user.id)
-            .eq('status', 'DRIVER_ASSIGNED')
-            .eq('departure_date', booking.departure_date)
-            .eq('departure_time', booking.departure_time);
-
-          if (bookingsError) {
-            throw new Error('Failed to fetch existing bookings');
-          }
-
-          if (existingBookings?.length > 0) {
-            toast.dismiss(loadingToast);
-            toast.error('You already have a booking for this time slot. Private rides require full van availability.');
-            return;
-          }
-
-          // For private rides, we'll book the entire van capacity
-          booking.booked_seats = driverData.seating_capacity;
-        } else {
-          // For shared rides, get all accepted bookings for the same time slot
-          const { data: existingBookings, error: bookingsError } = await supabase
-            .from('bookings')
-            .select('booked_seats')
-            .eq('assigned_driver_id', user.id)
-            .eq('status', 'DRIVER_ASSIGNED')
-            .eq('departure_date', booking.departure_date)
-            .eq('departure_time', booking.departure_time)
-            .eq('service_type', 'shared');
-
-          if (bookingsError) {
-            throw new Error('Failed to fetch existing bookings');
-          }
-
-          // Calculate total booked seats for shared rides in this time slot
-          const totalBookedSeats = existingBookings.reduce((sum, b) => sum + (b.booked_seats || 1), 0);
-          
-          // For shared rides, booked_seats equals group_size
-          booking.booked_seats = booking.group_size;
-
-          // Check if there are enough seats available
-          if (driverData.seating_capacity - totalBookedSeats < booking.booked_seats) {
-            toast.dismiss(loadingToast);
-            toast.error(`Not enough seats available. You have ${driverData.seating_capacity - totalBookedSeats} seats remaining for this time slot.`);
-            return;
-          }
-        }
-
-        // Combine date and time into a timestamp
-        const departureDateStr = booking.departure_date;
-        const departureTimeStr = booking.departure_time;
-        const departureTimestamp = new Date(`${departureDateStr}T${departureTimeStr}`).toISOString();
-
-        // Create trip assignment
-        const { error: tripError } = await supabase
-          .from('trip_assignments')
-          .insert({
-            driver_id: user.id,
-            booking_id: bookingId,
-            status: 'pending',
-            departure_time: departureTimestamp,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-
-        if (tripError) {
-          console.error('Trip assignment error:', tripError);
-          throw tripError;
-        }
-
-        // Update booking status and assign driver
-        const { error: bookingError } = await supabase
-          .from('bookings')
-          .update({
-            status: 'DRIVER_ASSIGNED',
-            assigned_driver_id: user.id,
-            booked_seats: booking.booked_seats // Set the calculated booked_seats
-          })
-          .eq('id', bookingId);
-
-        if (bookingError) {
-          console.error('Booking update error:', bookingError);
-          throw bookingError;
-        }
-      }
-
-      // Update notification status
-      const { error: updateError } = await supabase
+      // Get the notification for response code
+      const { data: notification } = await supabase
         .from('driver_notifications')
-        .update({
-          status: accept ? 'ACCEPTED' : 'REJECTED',
-          responded_at: new Date().toISOString()
-        })
-        .eq('id', notificationId);
+        .select('response_code, expires_at')
+        .eq('id', notificationId)
+        .single();
 
-      if (updateError) throw updateError;
-
-      if (!accept) {
-        // Update booking status if rejected
-        const { error: bookingError } = await supabase
-          .from('bookings')
-          .update({
-            status: 'PENDING',
-            assigned_driver_id: null
-          })
-          .eq('id', bookingId);
-
-        if (bookingError) throw bookingError;
+      // Check if notification has expired
+      if (new Date(notification.expires_at) < new Date()) {
+        toast.dismiss(loadingToast);
+        toast.error('This booking request has expired');
+        return;
       }
 
-      toast.dismiss(loadingToast);
-      toast.success(accept 
-        ? 'Booking accepted successfully! Check your trips for details.' 
-        : 'Booking rejected successfully'
-      );
-      
-      // Refresh all relevant data
+      // Call the database function to handle the response
+      const { data, error } = await supabase
+        .rpc('handle_driver_response', {
+          p_booking_id: bookingId,
+          p_driver_id: user.id,
+          p_response_code: notification.response_code
+        });
+
+      if (error) throw error;
+
+      // Handle the response from the database function
+      switch (data) {
+        case 'SUCCESS':
+          toast.dismiss(loadingToast);
+          toast.success(accept 
+            ? 'Booking accepted successfully! Check your trips for details.' 
+            : 'Booking rejected successfully'
+          );
+          break;
+        case 'EXPIRED':
+          toast.dismiss(loadingToast);
+          toast.error('This booking request has expired');
+          break;
+        case 'BOOKING_NO_LONGER_AVAILABLE':
+          toast.dismiss(loadingToast);
+          toast.error('This booking is no longer available');
+          break;
+        case 'INVALID_CODE':
+          toast.dismiss(loadingToast);
+          toast.error('Invalid response code');
+          break;
+        default:
+          throw new Error(`Unexpected response: ${data}`);
+      }
+
+      // Log the response
+      await supabase.from('driver_notification_logs').insert({
+        booking_id: bookingId,
+        status_code: data === 'SUCCESS' ? 200 : 400,
+        response: JSON.stringify({ status: data }),
+        created_at: new Date().toISOString()
+      });
+
+      // Refresh the notifications and bookings
       await Promise.all([
         fetchNotifications(),
         fetchPendingBookings()
@@ -398,8 +343,13 @@ export default function DriverDashboard() {
       console.error('Error handling booking response:', error);
       toast.error(`Failed to process response: ${error.message || 'Unknown error'}`);
       
-      // Log the full error object for debugging
-      console.log('Full error object:', error);
+      // Log the error
+      await supabase.from('driver_notification_logs').insert({
+        booking_id: bookingId,
+        status_code: 500,
+        response: JSON.stringify({ error: error.message }),
+        created_at: new Date().toISOString()
+      });
     }
   };
 
@@ -550,6 +500,9 @@ export default function DriverDashboard() {
                       <p className="text-sm text-gray-600">
                         Time: {notification.bookings?.departure_time}
                       </p>
+                      <p className="text-sm text-gray-600">
+                        Expires: {new Date(notification.expires_at).toLocaleString()}
+                      </p>
                       <p className="text-sm font-semibold text-green-600">
                         ₱{notification.bookings?.total_amount}
                       </p>
@@ -558,12 +511,14 @@ export default function DriverDashboard() {
                       <button
                         onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, true)}
                         className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+                        disabled={new Date(notification.expires_at) < new Date()}
                       >
                         Accept
                       </button>
                       <button
                         onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, false)}
                         className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+                        disabled={new Date(notification.expires_at) < new Date()}
                       >
                         Decline
                       </button>
