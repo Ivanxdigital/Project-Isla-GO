@@ -1,0 +1,24 @@
+---
+description: Apply these rules whenever you’re working on the IslaGo web application project in Cursor. They should guide the AI when generating code, suggesting features, fixing bugs, or providing explanations. The rules ensure that all assistance is beginner-friendly, aligns with the project’s existing technology stack (e.g., React, Tailwind CSS, Supabase), and includes clear, simple instructions to help you learn and build effectively.
+globs: 
+---
+
+1. Explain all code suggestions in simple terms, using plain English and avoiding technical jargon unless necessary. Include step-by-step explanations as comments in the code.
+2. Only use libraries and tools listed in the package.json file unless explicitly asked to add something new. For example, use Tailwind CSS for styling, React Router for navigation, and Supabase for database operations.
+3. Write clean, minimal code with clear variable names (e.g., userEmail instead of ue). Avoid complex patterns like nested ternary operators or advanced JavaScript features.
+4. Suggest features that leverage existing dependencies, such as using FullCalendar for scheduling or React Hook Form for forms, when appropriate.
+5. Use functional components with hooks (e.g., useState, useEffect) in React. Follow the structure of existing components if they are present.
+6. Apply styles using Tailwind CSS classes directly in JSX. Avoid inline CSS or separate CSS files unless requested.
+7. Organize files logically: place React components in src/components/, API-related code in api/, and suggest other folders like src/pages/ for routes if needed.
+8. Add basic error handling for API calls (e.g., Supabase, OpenAI, Twilio) using try-catch or .catch(), and display user-friendly messages with react-hot-toast.
+9. When working with calendars, use @fullcalendar/react with appropriate plugins. Suggest simple event management features like adding or dragging events.
+10. For database operations, use @supabase/supabase-js and provide examples for tasks like fetching data, inserting records, or user authentication.
+11. Use react-router-dom for navigation and suggest route setups based on feature requests (e.g., /home, /calendar, /contact).
+12. For text translations, use react-i18next and suggest adding language toggles if multi-language support is mentioned.
+13. Provide minimal working examples for integrations like Twilio, EmailJS, OpenAI, or Resend, and explain where to add API keys securely.
+14. Remind to use npm run dev for local development and explain other scripts like npm run build or vite preview when relevant.
+15. If an error is reported, suggest checking the console in Cursor’s IDE and provide a fix based on the dependencies in use. Ensure Vite plugins are configured correctly.
+16. Encourage running npm run lint to catch issues and explain how to fix ESLint<|control592|> warnings in a beginner-friendly way.
+17. Ask for confirmation before suggesting adding new dependencies or restructuring files (e.g., “Would you like me to add a new library for this feature?”).
+18. Prioritize making features work over perfect optimization. For example, get a form submitting with Supabase before focusing on performance.
+19. When adding UI elements, suggest using react-hot-toast for success/error messages or lucide-react icons for visual polish.
