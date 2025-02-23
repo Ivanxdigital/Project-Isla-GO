@@ -1,0 +1,34 @@
+---
+description: Use this rule for the islago project when working on React components, Vite builds, Tailwind CSS styling, or Supabase/API integrations.
+globs: *.jsx, *.tsx, api/*.js, api/*.ts, *.css
+---
+# islago-react-vite-tailwind-stack
+# Use this rule for the islago project when working on React components, Vite builds, Tailwind CSS styling, or Supabase/API integrations.
+
+## General Coding Style
+- Use ESM syntax (`import`/`export`) since `"type": "module"` is set in package.json.
+- Prefer functional components with React Hooks over class components.
+- Follow Tailwind CSS conventions for styling; avoid inline CSS unless necessary.
+- Use TypeScript syntax when suggesting code in `.ts` or `.tsx` files.
+
+## File-Specific Rules
+- For files matching `*.jsx` or `*.tsx`:
+  - Import React components with `react` and `react-dom`.
+  - Suggest utilities from `framer-motion`, `react-hook-form`, and `react-router-dom`.
+  - Use `@headlessui/react`, `lucide-react`, or `@heroicons/react` for UI components.
+- For files in `api/*`:
+  - Suggest Node.js-compatible code with `@vercel/node`, `twilio`, `openai`, or `resend`.
+  - Export functions as ESM modules.
+- For files matching `*.css`:
+  - Use Tailwind directives (`@tailwind`) and PostCSS syntax.
+
+## Library-Specific Guidance
+- Use `date-fns` for date handling.
+- Suggest `@fullcalendar/*` for calendar features.
+- Prioritize `react-hook-form` for forms and `react-hot-toast` for notifications.
+- Use `react-i18next` for i18n.
+- Use `@supabase/supabase-js` for Supabase interactions.
+
+## Tooling and Workflow
+- Align with Vite builds and ESLint rules from the project’s config.
+- Reference `@file:./package.json` for dependency accuracy.
