@@ -93,7 +93,9 @@ export default function DriversPage() {
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      // First get the drivers with their applications and profiles
+      console.log('Starting to fetch drivers...');
+      
+      // Get the drivers with their applications and profiles
       const { data: drivers, error: driversError } = await supabase
         .from('drivers')
         .select(`
@@ -103,7 +105,7 @@ export default function DriversPage() {
           created_at,
           updated_at,
           documents_verified,
-          driver_applications!driver_id:id (
+          driver_applications (
             id,
             full_name,
             email,
@@ -131,7 +133,10 @@ export default function DriversPage() {
         .order('created_at', { ascending: false });
 
       if (driversError) {
-        console.error('Error fetching drivers:', driversError);
+        console.error('Detailed drivers error:', driversError);
+        console.error('Error code:', driversError.code);
+        console.error('Error message:', driversError.message);
+        console.error('Error details:', driversError.details);
         throw driversError;
       }
 
@@ -152,12 +157,14 @@ export default function DriversPage() {
         console.log('Processed drivers data:', processedDrivers);
         setDrivers(processedDrivers);
       } else {
+        console.log('No drivers found in the response');
         setDrivers([]);
       }
 
     } catch (error) {
       console.error('Error fetching drivers:', error);
-      toast.error('Failed to load drivers');
+      console.error('Error stack:', error.stack);
+      toast.error(`Failed to load drivers: ${error.message}`);
     } finally {
       setLoading(false);
     }
