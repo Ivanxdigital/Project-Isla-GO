@@ -34,7 +34,6 @@ import PrivateRoute from './components/PrivateRoute.jsx';
 import DriverRegistration from './pages/DriverRegistration.jsx';
 import DriverRegister from './pages/driver/Register.jsx';
 import RegistrationSuccess from './pages/driver/RegistrationSuccess.jsx';
-import UserRegistration from './components/UserRegistration.jsx';
 import { supabase } from './utils/supabase.ts';
 import BeforeRegister from './pages/driver/BeforeRegister.jsx';
 import DriverApplicationsPage from './pages/admin/DriverApplicationsPage.jsx';
