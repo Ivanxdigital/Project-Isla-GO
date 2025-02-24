@@ -93,20 +93,15 @@ export default function DriversPage() {
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      console.log('Starting to fetch drivers...');
-      
-      // Get the drivers with their applications and profiles
-      const { data: drivers, error: driversError } = await supabase
+      const { data: drivers, error } = await supabase
         .from('drivers')
         .select(`
-          id,
-          user_id,
-          status,
-          created_at,
-          updated_at,
-          documents_verified,
-          driver_applications (
-            id,
+          *,
+          user:user_id (
+            email,
+            role
+          ),
+          driver_application:driver_applications (
             full_name,
             email,
             mobile_number,
@@ -121,50 +116,18 @@ export default function DriversPage() {
             policy_expiration,
             bank_name,
             account_number,
-            account_holder,
-            status
-          ),
-          profiles:user_id (
-            id,
-            full_name,
-            mobile_number
+            account_holder
           )
         `)
         .order('created_at', { ascending: false });
 
-      if (driversError) {
-        console.error('Detailed drivers error:', driversError);
-        console.error('Error code:', driversError.code);
-        console.error('Error message:', driversError.message);
-        console.error('Error details:', driversError.details);
-        throw driversError;
-      }
-
-      console.log('Raw drivers data:', drivers);
-
-      if (drivers?.length) {
-        const processedDrivers = drivers.map(driver => ({
-          id: driver.id,
-          user_id: driver.user_id,
-          status: driver.status,
-          created_at: driver.created_at,
-          updated_at: driver.updated_at,
-          documents_verified: driver.documents_verified,
-          application: driver.driver_applications?.[0] || null,
-          user: driver.profiles || null
-        }));
-
-        console.log('Processed drivers data:', processedDrivers);
-        setDrivers(processedDrivers);
-      } else {
-        console.log('No drivers found in the response');
-        setDrivers([]);
-      }
-
+      if (error) throw error;
+      
+      console.log('Fetched drivers:', drivers);
+      setDrivers(drivers || []);
     } catch (error) {
       console.error('Error fetching drivers:', error);
-      console.error('Error stack:', error.stack);
-      toast.error(`Failed to load drivers: ${error.message}`);
+      toast.error('Failed to load drivers');
     } finally {
       setLoading(false);
     }
@@ -689,62 +652,27 @@ export default function DriversPage() {
     }
   };
 
-  const handleDeleteDriver = async (driver) => {
+  const handleDeleteDriver = async (driverId) => {
     if (!window.confirm('Are you sure you want to remove this driver? This action cannot be undone.')) {
       return;
     }
 
     try {
-      // Debug logging
-      console.log('Driver object:', driver);
-      console.log('Driver ID:', driver?.driver?.id);
-      console.log('User ID:', driver?.user_id);
-
-      // Validate driver object structure
-      if (!driver?.application?.id || !driver?.user_id) {
-        throw new Error('Invalid driver data: Missing required fields');
-      }
-
-      // First update the driver status to inactive
-      const { data: driverData, error: driverError } = await supabase
+      const { error } = await supabase
         .from('drivers')
         .update({ 
           status: 'inactive',
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', driver.user_id)
-        .single();
+        .eq('id', driverId);
 
-      if (driverError) {
-        console.error('Error updating driver status:', driverError);
-        throw driverError;
-      }
-
-      // Then update the driver application status to rejected
-      const { data: applicationData, error: applicationError } = await supabase
-        .from('driver_applications')
-        .update({ 
-          status: 'rejected',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', driver.application.id)
-        .eq('status', 'approved') // Only update if currently approved
-        .single();
-
-      if (applicationError && applicationError.code !== 'PGRST116') { // Ignore if no rows affected
-        console.error('Error updating application status:', applicationError);
-        throw applicationError;
-      }
+      if (error) throw error;
 
       toast.success('Driver removed successfully');
       fetchDrivers();
     } catch (error) {
       console.error('Error removing driver:', error);
-      toast.error(
-        error.message.includes('Invalid driver data') 
-          ? 'Invalid driver data: Please refresh the page and try again' 
-          : 'Failed to remove driver'
-      );
+      toast.error('Failed to remove driver');
     }
   };
 
@@ -794,8 +722,7 @@ export default function DriversPage() {
   };
 
   const filteredDrivers = drivers.filter(driver => {
-    const matchesSearch = driver.user?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         driver.license_number?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = driver.user_id?.toString().toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || driver.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -820,72 +747,6 @@ export default function DriversPage() {
       >
         <Menu.Items className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
           <div className="py-1">
-            {/* View Details - Shows comprehensive profile */}
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => handleViewDetails(driver)}
-                  className={`${
-                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                  } flex w-full px-4 py-2 text-sm`}
-                >
-                  <EyeIcon className="mr-3 h-5 w-5 text-gray-400" aria-hidden="true" />
-                  View Full Details
-                </button>
-              )}
-            </Menu.Item>
-
-            {/* Trip History - Shows past trips and earnings */}
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => handleViewTrips(driver)}
-                  className={`${
-                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                  } flex w-full px-4 py-2 text-sm`}
-                >
-                  <ClockIcon className="mr-3 h-5 w-5 text-gray-400" aria-hidden="true" />
-                  Trip History
-                </button>
-              )}
-            </Menu.Item>
-
-            {/* Performance - Shows ratings and metrics */}
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => handleViewPerformance(driver)}
-                  className={`${
-                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                  } flex w-full px-4 py-2 text-sm`}
-                >
-                  <ChartBarIcon className="mr-3 h-5 w-5 text-gray-400" aria-hidden="true" />
-                  Performance Metrics
-                </button>
-              )}
-            </Menu.Item>
-
-            <div className="border-t border-gray-100 my-1"></div>
-
-            {/* Document Management */}
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => {
-                    setSelectedDriverDocs(driver);
-                    setIsDocumentModalOpen(true);
-                  }}
-                  className={`${
-                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                  } flex w-full px-4 py-2 text-sm`}
-                >
-                  <DocumentMagnifyingGlassIcon className="mr-3 h-5 w-5 text-gray-400" aria-hidden="true" />
-                  Verify Documents
-                </button>
-              )}
-            </Menu.Item>
-
-            {/* Status Management */}
             {driver.status !== 'active' && (
               <Menu.Item>
                 {({ active }) => (
@@ -902,42 +763,10 @@ export default function DriversPage() {
               </Menu.Item>
             )}
 
-            {/* Communication */}
             <Menu.Item>
               {({ active }) => (
                 <button
-                  onClick={() => {
-                    setSelectedDriver(driver);
-                    setIsMessageModalOpen(true);
-                  }}
-                  className={`${
-                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                  } flex w-full px-4 py-2 text-sm`}
-                >
-                  <ChatBubbleLeftIcon className="mr-3 h-5 w-5 text-gray-400" aria-hidden="true" />
-                  Send Message
-                </button>
-              )}
-            </Menu.Item>
-
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => openDriverModal(driver)}
-                  className={`${
-                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                  } flex w-full px-4 py-2 text-sm`}
-                >
-                  <PencilIcon className="mr-3 h-5 w-5 text-gray-400" aria-hidden="true" />
-                  Edit Driver
-                </button>
-              )}
-            </Menu.Item>
-
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => handleDeleteDriver(driver)}
+                  onClick={() => handleDeleteDriver(driver.id)}
                   className={`${
                     active ? 'bg-red-50 text-red-900' : 'text-red-700'
                   } flex w-full px-4 py-2 text-sm`}
@@ -1121,7 +950,7 @@ export default function DriversPage() {
         <div className="sm:flex-auto">
           <h1 className="text-xl font-semibold text-gray-900">Drivers</h1>
           <p className="mt-2 text-sm text-gray-700">
-            Manage your drivers, their details, and their status.
+            Manage your drivers and their status.
           </p>
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
@@ -1144,22 +973,19 @@ export default function DriversPage() {
                 {loading ? (
                   <div className="p-4 text-center text-gray-500">Loading drivers...</div>
                 ) : (
-                  <>
+                  <div>
                     {/* Desktop view */}
                     <table className="min-w-full divide-y divide-gray-300 hidden md:table">
                       <thead className="bg-gray-50">
                         <tr>
                           <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                            Driver
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            License Info
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            Contact
+                            Driver ID
                           </th>
                           <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                             Status
+                          </th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                            Created At
                           </th>
                           <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
                             <span className="sr-only">Actions</span>
@@ -1172,21 +998,16 @@ export default function DriversPage() {
                           return (
                             <tr key={driver.id}>
                               <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
-                                <div className="font-medium text-gray-900">{driver.user?.full_name}</div>
-                                <div className="text-gray-500">Joined {new Date(driver.created_at).toLocaleDateString()}</div>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                <div>{driver.application?.license_number}</div>
-                                <div>Expires: {new Date(driver.application?.license_expiration).toLocaleDateString()}</div>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                <div>{driver.user?.mobile_number}</div>
+                                <div className="font-medium text-gray-900">{driver.user_id}</div>
                               </td>
                               <td className="whitespace-nowrap px-3 py-4 text-sm">
                                 <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGES[driver.status]?.class}`}>
                                   {StatusIcon && <StatusIcon className="mr-1 h-4 w-4" />}
                                   {driver.status || 'pending'}
                                 </span>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                {new Date(driver.created_at).toLocaleDateString()}
                               </td>
                               <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                                 <div className="flex justify-end">
@@ -1205,45 +1026,30 @@ export default function DriversPage() {
                         <div key={driver.id} className="bg-white p-4 border-b border-gray-200">
                           <div className="flex justify-between items-start mb-2">
                             <div>
-                              <div className="font-medium text-gray-900">{driver.user?.full_name}</div>
+                              <div className="font-medium text-gray-900">{driver.user_id}</div>
                               <div className="text-sm text-gray-500">
-                                Joined {new Date(driver.created_at).toLocaleDateString()}
+                                Created: {new Date(driver.created_at).toLocaleDateString()}
                               </div>
                             </div>
                             <DriverActions driver={driver} />
                           </div>
                           
-                          <div className="mt-3 space-y-2">
-                            <div>
-                              <div className="text-sm font-medium text-gray-500">License Info</div>
-                              <div className="text-sm text-gray-900">{driver.application?.license_number}</div>
-                              <div className="text-sm text-gray-900">
-                                Expires: {new Date(driver.application?.license_expiration).toLocaleDateString()}
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <div className="text-sm font-medium text-gray-500">Contact</div>
-                              <div className="text-sm text-gray-900">{driver.user?.mobile_number}</div>
-                            </div>
-                            
-                            <div>
-                              <div className="text-sm font-medium text-gray-500">Status</div>
-                              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                STATUS_BADGES[driver.status]?.class
-                              }`}>
-                                {driver.status || 'pending'}
-                              </span>
-                            </div>
+                          <div className="mt-2">
+                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                              STATUS_BADGES[driver.status]?.class
+                            }`}>
+                              {driver.status || 'pending'}
+                            </span>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </>
-                )}
-                {!loading && filteredDrivers.length === 0 && (
-                  <div className="text-center py-10">
-                    <p className="text-sm text-gray-500">No drivers found</p>
+
+                    {filteredDrivers.length === 0 && (
+                      <div className="text-center py-10">
+                        <p className="text-sm text-gray-500">No drivers found</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
