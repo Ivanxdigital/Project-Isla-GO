@@ -20,7 +20,12 @@ import {
   KeyIcon,
   PlusIcon,
   PencilIcon,
-  TrashIcon
+  TrashIcon,
+  UserIcon,
+  IdentificationIcon,
+  TruckIcon,
+  ShieldCheckIcon,
+  BanknotesIcon
 } from '@heroicons/react/24/outline';
 import { Menu, Transition, Dialog } from '@headlessui/react';
 import { toast } from 'react-hot-toast';
@@ -1101,192 +1106,261 @@ export default function DriversPage() {
         onClose={() => setIsDriverModalOpen(false)}
         className="fixed inset-0 z-10 overflow-y-auto"
       >
-        <div className="flex min-h-screen items-center justify-center">
-          <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+        <div className="flex min-h-screen items-center justify-center sm:p-4">
+          <Dialog.Overlay className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
 
-          <div className="relative bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
-            <Dialog.Title className="text-lg font-medium text-gray-900 mb-4">
-              {isEditMode ? 'Edit Driver' : 'Add New Driver'}
-            </Dialog.Title>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">First Name</label>
-                <input
-                  type="text"
-                  value={driverFormData.first_name}
-                  onChange={(e) => setDriverFormData({...driverFormData, first_name: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Last Name</label>
-                <input
-                  type="text"
-                  value={driverFormData.last_name}
-                  onChange={(e) => setDriverFormData({...driverFormData, last_name: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
-                  type="email"
-                  value={driverFormData.email}
-                  onChange={(e) => setDriverFormData({...driverFormData, email: e.target.value})}
-                  disabled={isEditMode}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Mobile Number</label>
-                <input
-                  type="text"
-                  value={driverFormData.mobile_number}
-                  onChange={(e) => setDriverFormData({...driverFormData, mobile_number: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">License Number</label>
-                <input
-                  type="text"
-                  value={driverFormData.license_number}
-                  onChange={(e) => setDriverFormData({...driverFormData, license_number: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">License Expiration</label>
-                <input
-                  type="date"
-                  value={driverFormData.license_expiration}
-                  onChange={(e) => setDriverFormData({...driverFormData, license_expiration: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Vehicle Make</label>
-                <input
-                  type="text"
-                  value={driverFormData.vehicle_make}
-                  onChange={(e) => setDriverFormData({...driverFormData, vehicle_make: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Vehicle Model</label>
-                <input
-                  type="text"
-                  value={driverFormData.vehicle_model}
-                  onChange={(e) => setDriverFormData({...driverFormData, vehicle_model: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Vehicle Year</label>
-                <input
-                  type="number"
-                  value={driverFormData.vehicle_year}
-                  onChange={(e) => setDriverFormData({...driverFormData, vehicle_year: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Plate Number</label>
-                <input
-                  type="text"
-                  value={driverFormData.plate_number}
-                  onChange={(e) => setDriverFormData({...driverFormData, plate_number: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Insurance Provider</label>
-                <input
-                  type="text"
-                  value={driverFormData.insurance_provider}
-                  onChange={(e) => setDriverFormData({...driverFormData, insurance_provider: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Policy Number</label>
-                <input
-                  type="text"
-                  value={driverFormData.policy_number}
-                  onChange={(e) => setDriverFormData({...driverFormData, policy_number: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Policy Expiration</label>
-                <input
-                  type="date"
-                  value={driverFormData.policy_expiration}
-                  onChange={(e) => setDriverFormData({...driverFormData, policy_expiration: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Bank Name</label>
-                <input
-                  type="text"
-                  value={driverFormData.bank_name}
-                  onChange={(e) => setDriverFormData({...driverFormData, bank_name: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Account Number</label>
-                <input
-                  type="text"
-                  value={driverFormData.account_number}
-                  onChange={(e) => setDriverFormData({...driverFormData, account_number: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Account Holder</label>
-                <input
-                  type="text"
-                  value={driverFormData.account_holder}
-                  onChange={(e) => setDriverFormData({...driverFormData, account_holder: e.target.value})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
+          <div className="relative bg-white w-full sm:rounded-xl shadow-2xl sm:max-w-3xl sm:mx-4 h-full sm:h-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 z-10 bg-gray-50 px-4 sm:px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Dialog.Title className="text-lg sm:text-xl font-semibold text-gray-900">
+                    {isEditMode ? 'Edit Driver' : 'Add New Driver'}
+                  </Dialog.Title>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {isEditMode ? 'Update driver information' : 'Enter driver details to create a new account'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsDriverModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => setIsDriverModalOpen(false)}
-                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={isEditMode ? handleEditDriver : handleAddDriver}
-                className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-              >
-                {isEditMode ? 'Save Changes' : 'Add Driver'}
-              </button>
+            {/* Modal Content */}
+            <div className="px-4 sm:px-6 py-4 overflow-y-auto max-h-[calc(100vh-8rem)] sm:max-h-[calc(100vh-16rem)]">
+              <div className="space-y-6 sm:space-y-8">
+                {/* Personal Information Section */}
+                <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-100">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <UserIcon className="h-5 w-5 mr-2 text-indigo-500" />
+                    Personal Information
+                  </h3>
+                  <div className="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-2">
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                      <input
+                        type="text"
+                        value={driverFormData.first_name}
+                        onChange={(e) => setDriverFormData({...driverFormData, first_name: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="John"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                      <input
+                        type="text"
+                        value={driverFormData.last_name}
+                        onChange={(e) => setDriverFormData({...driverFormData, last_name: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="Doe"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={driverFormData.email}
+                        onChange={(e) => setDriverFormData({...driverFormData, email: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="john.doe@example.com"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                      <input
+                        type="tel"
+                        value={driverFormData.mobile_number}
+                        onChange={(e) => setDriverFormData({...driverFormData, mobile_number: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="+1 (555) 000-0000"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* License Information Section */}
+                <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-100">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <IdentificationIcon className="h-5 w-5 mr-2 text-indigo-500" />
+                    License Information
+                  </h3>
+                  <div className="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-2">
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">License Number</label>
+                      <input
+                        type="text"
+                        value={driverFormData.license_number}
+                        onChange={(e) => setDriverFormData({...driverFormData, license_number: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="DL12345678"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">License Expiration</label>
+                      <input
+                        type="date"
+                        value={driverFormData.license_expiration}
+                        onChange={(e) => setDriverFormData({...driverFormData, license_expiration: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vehicle Information Section */}
+                <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-100">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <TruckIcon className="h-5 w-5 mr-2 text-indigo-500" />
+                    Vehicle Information
+                  </h3>
+                  <div className="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-2">
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Make</label>
+                      <input
+                        type="text"
+                        value={driverFormData.vehicle_make}
+                        onChange={(e) => setDriverFormData({...driverFormData, vehicle_make: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="Toyota"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Model</label>
+                      <input
+                        type="text"
+                        value={driverFormData.vehicle_model}
+                        onChange={(e) => setDriverFormData({...driverFormData, vehicle_model: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="Camry"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Year</label>
+                      <input
+                        type="number"
+                        value={driverFormData.vehicle_year}
+                        onChange={(e) => setDriverFormData({...driverFormData, vehicle_year: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="2023"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Plate Number</label>
+                      <input
+                        type="text"
+                        value={driverFormData.plate_number}
+                        onChange={(e) => setDriverFormData({...driverFormData, plate_number: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="ABC123"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Insurance Information Section */}
+                <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-100">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <ShieldCheckIcon className="h-5 w-5 mr-2 text-indigo-500" />
+                    Insurance Information
+                  </h3>
+                  <div className="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-2">
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Provider</label>
+                      <input
+                        type="text"
+                        value={driverFormData.insurance_provider}
+                        onChange={(e) => setDriverFormData({...driverFormData, insurance_provider: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="Insurance Company"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Policy Number</label>
+                      <input
+                        type="text"
+                        value={driverFormData.policy_number}
+                        onChange={(e) => setDriverFormData({...driverFormData, policy_number: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="POL123456789"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Policy Expiration</label>
+                      <input
+                        type="date"
+                        value={driverFormData.policy_expiration}
+                        onChange={(e) => setDriverFormData({...driverFormData, policy_expiration: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Banking Information Section */}
+                <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-100">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <BanknotesIcon className="h-5 w-5 mr-2 text-indigo-500" />
+                    Banking Information
+                  </h3>
+                  <div className="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-2">
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
+                      <input
+                        type="text"
+                        value={driverFormData.bank_name}
+                        onChange={(e) => setDriverFormData({...driverFormData, bank_name: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="Bank Name"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Account Number</label>
+                      <input
+                        type="text"
+                        value={driverFormData.account_number}
+                        onChange={(e) => setDriverFormData({...driverFormData, account_number: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="000123456789"
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Account Holder Name</label>
+                      <input
+                        type="text"
+                        value={driverFormData.account_holder}
+                        onChange={(e) => setDriverFormData({...driverFormData, account_holder: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 z-10 bg-gray-50 px-4 sm:px-6 py-4 border-t border-gray-100">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 space-y-3 space-y-reverse sm:space-y-0">
+                <button
+                  type="button"
+                  onClick={() => setIsDriverModalOpen(false)}
+                  className="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={isEditMode ? handleEditDriver : handleAddDriver}
+                  className="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  {isEditMode ? 'Save Changes' : 'Add Driver'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
