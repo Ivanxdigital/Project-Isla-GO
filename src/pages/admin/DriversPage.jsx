@@ -977,7 +977,13 @@ export default function DriversPage() {
                       <thead className="bg-gray-50">
                         <tr>
                           <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                            Driver ID
+                            Driver Name
+                          </th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                            Contact Info
+                          </th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                            Vehicle Details
                           </th>
                           <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                             Status
@@ -993,10 +999,24 @@ export default function DriversPage() {
                       <tbody className="divide-y divide-gray-200 bg-white">
                         {filteredDrivers.map((driver) => {
                           const StatusIcon = STATUS_BADGES[driver.status]?.icon;
+                          const driverApp = driver.driver_applications?.[0];
                           return (
                             <tr key={driver.id}>
                               <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
-                                <div className="font-medium text-gray-900">{driver.user_id}</div>
+                                <div className="font-medium text-gray-900">
+                                  {driverApp?.full_name || 'N/A'}
+                                </div>
+                                <div className="text-gray-500">ID: {driver.id}</div>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                <div>{driverApp?.email || 'N/A'}</div>
+                                <div>{driverApp?.mobile_number || 'N/A'}</div>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                <div>{driverApp?.vehicle_make} {driverApp?.vehicle_model}</div>
+                                <div className="text-xs text-gray-400">
+                                  Year: {driverApp?.vehicle_year} • Plate: {driverApp?.plate_number}
+                                </div>
                               </td>
                               <td className="whitespace-nowrap px-3 py-4 text-sm">
                                 <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGES[driver.status]?.class}`}>
@@ -1020,27 +1040,44 @@ export default function DriversPage() {
 
                     {/* Mobile view */}
                     <div className="md:hidden">
-                      {filteredDrivers.map((driver) => (
-                        <div key={driver.id} className="bg-white p-4 border-b border-gray-200">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <div className="font-medium text-gray-900">{driver.user_id}</div>
+                      {filteredDrivers.map((driver) => {
+                        const driverApp = driver.driver_applications?.[0];
+                        return (
+                          <div key={driver.id} className="bg-white p-4 border-b border-gray-200">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {driverApp?.full_name || 'N/A'}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {driverApp?.email}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {driverApp?.mobile_number}
+                                </div>
+                                <div className="text-sm text-gray-500 mt-2">
+                                  Vehicle: {driverApp?.vehicle_make} {driverApp?.vehicle_model}
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                  Year: {driverApp?.vehicle_year} • Plate: {driverApp?.plate_number}
+                                </div>
+                              </div>
+                              <DriverActions driver={driver} />
+                            </div>
+                            
+                            <div className="mt-2 flex items-center justify-between">
+                              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                STATUS_BADGES[driver.status]?.class
+                              }`}>
+                                {driver.status || 'pending'}
+                              </span>
                               <div className="text-sm text-gray-500">
                                 Created: {new Date(driver.created_at).toLocaleDateString()}
                               </div>
                             </div>
-                            <DriverActions driver={driver} />
                           </div>
-                          
-                          <div className="mt-2">
-                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                              STATUS_BADGES[driver.status]?.class
-                            }`}>
-                              {driver.status || 'pending'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {filteredDrivers.length === 0 && (
