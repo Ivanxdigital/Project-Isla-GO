@@ -801,9 +801,9 @@ export default function BookingForm() {
           <p className="text-lg text-gray-600">{t('subtitle')}</p>
         </div>
 
-        <ProgressSteps currentStep={currentStep} />
-
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <ProgressSteps currentStep={currentStep} />
+          
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={currentStep}
