@@ -22,12 +22,14 @@
     "@fullcalendar/timegrid": "^6.1.15",
     "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.0.18",
+    "@modelcontextprotocol/server-postgres": "^0.6.2",
     "@radix-ui/react-slot": "^1.1.1",
     "@supabase/supabase-js": "^2.48.1",
     "@vercel/node": "^2.0.0",
     "autoprefixer": "^10.4.16",
     "class-variance-authority": "^0.7.1",
     "date-fns": "^4.1.0",
+    "esbuild": "^0.25.0",
     "framer-motion": "^10.18.0",
     "i18next": "^23.16.8",
     "i18next-browser-languagedetector": "^7.1.0",
@@ -47,6 +49,7 @@
     "swiper": "^10.3.1",
     "tailwindcss": "^3.3.3",
     "twilio": "^4.0.0",
+    "undici": "^7.3.0",
     "uuid": "^11.0.5"
   },
   "devDependencies": {
@@ -66,5 +69,18 @@
       "require": "./api/*.js",
       "import": "./api/*.js"
     }
-  }
+  },
+  "description": "**IslaGo** is a modern, user-friendly web application aimed at revolutionizing van hire services initially in Palawan, and eventually expanding to other islands across the Philippines. It is built with scalability, maintainability, and high performance in mind. IslaGo’s mission is to provide a seamless and efficient platform for both travelers and locals, offering comprehensive van rental services.",
+  "main": "postcss.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ivanxdigital/Project-Isla-GO.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ivanxdigital/Project-Isla-GO/issues"
+  },
+  "homepage": "https://github.com/Ivanxdigital/Project-Isla-GO#readme"
 }
