@@ -708,9 +708,18 @@ export default function BookingForm() {
     </div>
   );
 
+  const getAvailableDestinations = useCallback((from) => {
+    // If starting from Puerto Princesa, allow travel to both El Nido and San Vicente
+    if (from === 'Puerto Princesa') {
+      return ['El Nido', 'San Vicente'];
+    }
+    // From any other location, only allow travel to Puerto Princesa
+    return ['Puerto Princesa'];
+  }, []);
+
   const handleFromLocationChange = useCallback((newFrom) => {
     setFromLocation(newFrom);
-    setToLocation(newFrom !== 'Puerto Princesa' ? 'Puerto Princesa' : '');
+    setToLocation('');  // Reset the destination when changing origin
   }, []);
 
   const tomorrow = new Date();
@@ -827,7 +836,7 @@ export default function BookingForm() {
                             leaveTo="opacity-0"
                           >
                             <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                              {locations.map((location) => (
+                              {getAvailableDestinations(fromLocation).map((location) => (
                                 <Listbox.Option
                                   key={location}
                                   value={location}
