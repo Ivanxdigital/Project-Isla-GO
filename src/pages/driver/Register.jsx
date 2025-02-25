@@ -173,7 +173,7 @@ export default function DriverRegister() {
           if (isRecent) {
             methods.reset(formData);
             setCurrentStep(savedStep);
-            // Remove duplicate toast - only show one success message
+            toast.success('Draft application loaded from local storage');
           } else {
             localStorage.removeItem(`driver_registration_${user.id}`);
           }
