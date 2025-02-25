@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../utils/supabase';
+import { supabase } from '../../utils/supabase.js';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { 
@@ -27,15 +27,26 @@ export default function DriverApplicationsPage() {
   const fetchApplications = async () => {
     try {
       // First check if user has admin access
+      const user = await supabase.auth.getUser();
+      if (!user?.data?.user?.id) {
+        toast.error('Authentication required');
+        setLoading(false);
+        return;
+      }
+      
+      // Improved admin check with better error handling
       const { data: adminData, error: adminError } = await supabase
         .from('admin_access')
         .select('is_super_admin')
-        .eq('user_id', (await supabase.auth.getUser()).data.user.id)
+        .eq('user_id', user.data.user.id)
         .single();
 
       if (adminError) {
         console.error('Admin check error:', adminError);
-        throw new Error('Failed to verify admin status');
+        // Instead of throwing, display message and continue with limited access
+        toast.error('Admin verification failed. Contact support if this persists.');
+        setLoading(false);
+        return;
       }
 
       if (!adminData?.is_super_admin) {
