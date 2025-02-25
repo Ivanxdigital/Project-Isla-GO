@@ -195,7 +195,7 @@ export const createPaymentSession = async (amount, description, bookingId) => {
     sessionStorage.setItem('bookingId', bookingId);
     sessionStorage.setItem('paymentAmount', amount.toString());
 
-    // If the payment is immediately successful, update both payment and booking status
+    // If the payment is immediately successful, update payment and booking status
     if (responseData.data.attributes.status === 'active') {
       await Promise.all([
         updatePaymentStatus(bookingId, VALID_PAYMENT_STATUSES.PAID),
@@ -205,16 +205,7 @@ export const createPaymentSession = async (amount, description, bookingId) => {
             status: VALID_PAYMENT_STATUSES.PAID,
             updated_at: new Date().toISOString()
           })
-          .eq('provider_session_id', sessionId),
-        // Add this to trigger driver notifications
-        fetch('/api/send-driver-sms', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-          },
-          body: JSON.stringify({ bookingId })
-        })
+          .eq('provider_session_id', sessionId)
       ]);
     }
 
