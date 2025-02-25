@@ -708,8 +708,7 @@ export default function BookingForm() {
     </div>
   );
 
-  const handleFromLocationChange = useCallback((e) => {
-    const newFrom = e.target.value;
+  const handleFromLocationChange = useCallback((newFrom) => {
     setFromLocation(newFrom);
     setToLocation(newFrom !== 'Puerto Princesa' ? 'Puerto Princesa' : '');
   }, []);
