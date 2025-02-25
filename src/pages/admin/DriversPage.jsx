@@ -93,6 +93,7 @@ export default function DriversPage() {
 
   useEffect(() => {
     fetchDrivers();
+    fetchDriverStats();
   }, []);
 
   const fetchDrivers = async () => {
@@ -104,7 +105,7 @@ export default function DriversPage() {
         .from('drivers')
         .select(`
           *,
-          driver_applications!driver_applications_driver_id_fkey (
+          driver_applications:driver_applications!left(
             full_name,
             email,
             mobile_number,
@@ -232,13 +233,47 @@ export default function DriversPage() {
 
   const fetchDriverStats = async () => {
     try {
-      const { data: stats, error } = await supabase
-        .rpc('get_driver_statistics');
+      // Get total drivers count
+      const { data: totalData, error: totalError } = await supabase
+        .from('drivers')
+        .select('id', { count: 'exact' });
       
-      if (error) throw error;
-      setDriverStats(stats);
+      if (totalError) throw totalError;
+
+      // Get active drivers count
+      const { data: activeData, error: activeError } = await supabase
+        .from('drivers')
+        .select('id', { count: 'exact' })
+        .eq('status', 'active');
+
+      if (activeError) throw activeError;
+
+      // Get suspended drivers count
+      const { data: suspendedData, error: suspendedError } = await supabase
+        .from('drivers')
+        .select('id', { count: 'exact' })
+        .eq('status', 'suspended');
+
+      if (suspendedError) throw suspendedError;
+
+      // Get available drivers count
+      const { data: availableData, error: availableError } = await supabase
+        .from('drivers')
+        .select('id', { count: 'exact' })
+        .eq('is_available', true)
+        .eq('status', 'active');
+
+      if (availableError) throw availableError;
+
+      setDriverStats({
+        total: totalData.length || 0,
+        active: activeData.length || 0,
+        suspended: suspendedData.length || 0,
+        availableNow: availableData.length || 0
+      });
     } catch (error) {
       console.error('Error fetching driver stats:', error);
+      toast.error('Failed to load driver statistics');
     }
   };
 
@@ -309,43 +344,38 @@ export default function DriversPage() {
 
   const handleViewDetails = async (driver) => {
     try {
-      // Fetch comprehensive driver details
+      // Fetch driver details directly without trips
       const { data, error } = await supabase
-        .from('driver_applications')
-        .select(`
-          *,
-          driver:driver_id (
-            id,
-            status,
-            documents_verified,
-            license_expiry,
-            notes,
-            service_area,
-            vehicle_details,
-            rating
-          ),
-          trips (
-            id,
-            status,
-            rating,
-            created_at
-          ),
-          profiles (
-            full_name,
-            email,
-            mobile_number,
-            messenger_type,
-            messenger_contact,
-            avatar_url
-          )
-        `)
+        .from('drivers')
+        .select('*')
         .eq('id', driver.id)
         .single();
 
       if (error) throw error;
       
+      // Get the driver application data from the current driver object
+      const driverApp = driver.driver_applications?.[0];
+      
+      // Set the detailed driver data combining both sources
+      setDetailedDriver({
+        id: data.id,
+        full_name: driverApp?.full_name || data.name || 'N/A',
+        email: driverApp?.email || data.email || 'N/A',
+        mobile_number: driverApp?.mobile_number || data.mobile_number || 'N/A',
+        status: data.status,
+        license_number: driverApp?.license_number || data.license_number || 'N/A',
+        license_expiration: driverApp?.license_expiration || data.license_expiry || 'N/A',
+        documents_verified: data.documents_verified,
+        service_types: data.service_types || [],
+        current_location: data.current_location,
+        is_available: data.is_available,
+        vehicle_make: driverApp?.vehicle_make || 'N/A',
+        vehicle_model: driverApp?.vehicle_model || 'N/A',
+        vehicle_year: driverApp?.vehicle_year || 'N/A',
+        plate_number: driverApp?.plate_number || 'N/A'
+      });
+      
       // Open modal with detailed info
-      setDetailedDriver(data);
       setIsDetailModalOpen(true);
     } catch (error) {
       console.error('Error fetching driver details:', error);
@@ -725,8 +755,22 @@ export default function DriversPage() {
   };
 
   const filteredDrivers = drivers.filter(driver => {
-    const matchesSearch = driver.user_id?.toString().toLowerCase().includes(searchTerm.toLowerCase());
+    const driverApp = driver.driver_applications?.[0];
+    const driverName = driverApp?.full_name || '';
+    const driverEmail = driverApp?.email || '';
+    const driverPhone = driverApp?.mobile_number || driver.mobile_number || '';
+    const driverId = driver.id?.toString() || '';
+    const userId = driver.user_id?.toString() || '';
+    
+    const searchFields = [driverName, driverEmail, driverPhone, driverId, userId].map(field => 
+      field.toLowerCase()
+    );
+    
+    const matchesSearch = searchTerm === '' || 
+      searchFields.some(field => field.includes(searchTerm.toLowerCase()));
+    
     const matchesStatus = statusFilter === 'all' || driver.status === statusFilter;
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -776,6 +820,20 @@ export default function DriversPage() {
                 >
                   <TrashIcon className="mr-3 h-5 w-5 text-red-400" aria-hidden="true" />
                   Remove Driver
+                </button>
+              )}
+            </Menu.Item>
+
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  onClick={() => handleViewDetails(driver)}
+                  className={`${
+                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
+                  } flex w-full px-4 py-2 text-sm`}
+                >
+                  <EyeIcon className="mr-3 h-5 w-5 text-gray-400" aria-hidden="true" />
+                  View Details
                 </button>
               )}
             </Menu.Item>
@@ -970,6 +1028,67 @@ export default function DriversPage() {
             </div>
           </div>
 
+          <StatsDashboard />
+
+          <div className="mt-4 bg-white p-4 rounded-lg shadow">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <label htmlFor="search" className="sr-only">Search</label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                  </div>
+                  <input
+                    type="text"
+                    name="search"
+                    id="search"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                    placeholder="Search by name, email, phone, or ID"
+                  />
+                </div>
+              </div>
+              
+              <div className="w-full md:w-48">
+                <label htmlFor="status-filter" className="sr-only">Filter by status</label>
+                <select
+                  id="status-filter"
+                  name="status-filter"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+              
+              <div className="w-full md:w-auto flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setStatusFilter('all');
+                  }}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Clear Filters
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={fetchDrivers}
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-8">
             <div className="w-full">
               <div className="min-w-full align-middle">
@@ -1011,18 +1130,18 @@ export default function DriversPage() {
                                 <tr key={driver.id}>
                                   <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                                     <div className="font-medium text-gray-900">
-                                      {driverApp?.full_name || 'N/A'}
+                                      {driverApp?.full_name || `Driver ${driver.id.substring(0, 8)}`}
                                     </div>
                                     <div className="text-gray-500">ID: {driver.id}</div>
                                   </td>
                                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                     <div>{driverApp?.email || 'N/A'}</div>
-                                    <div>{driverApp?.mobile_number || 'N/A'}</div>
+                                    <div>{driverApp?.mobile_number || driver.mobile_number || 'N/A'}</div>
                                   </td>
                                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                    <div>{driverApp?.vehicle_make} {driverApp?.vehicle_model}</div>
+                                    <div>{driverApp?.vehicle_make || 'N/A'} {driverApp?.vehicle_model || ''}</div>
                                       <div className="text-xs text-gray-400">
-                                        Year: {driverApp?.vehicle_year} • Plate: {driverApp?.plate_number}
+                                        Year: {driverApp?.vehicle_year || 'N/A'} • Plate: {driverApp?.plate_number || 'N/A'}
                                       </div>
                                     </td>
                                     <td className="whitespace-nowrap px-3 py-4 text-sm">
@@ -1054,19 +1173,19 @@ export default function DriversPage() {
                                 <div className="flex justify-between items-start mb-2">
                                   <div>
                                     <div className="font-medium text-gray-900">
-                                      {driverApp?.full_name || 'N/A'}
+                                      {driverApp?.full_name || `Driver ${driver.id.substring(0, 8)}`}
                                     </div>
                                     <div className="text-sm text-gray-500">
-                                      {driverApp?.email}
+                                      {driverApp?.email || 'N/A'}
                                     </div>
                                     <div className="text-sm text-gray-500">
-                                      {driverApp?.mobile_number}
+                                      {driverApp?.mobile_number || driver.mobile_number || 'N/A'}
                                     </div>
                                     <div className="text-sm text-gray-500 mt-2">
-                                      Vehicle: {driverApp?.vehicle_make} {driverApp?.vehicle_model}
+                                      Vehicle: {driverApp?.vehicle_make || 'N/A'} {driverApp?.vehicle_model || ''}
                                     </div>
                                     <div className="text-xs text-gray-400">
-                                      Year: {driverApp?.vehicle_year} • Plate: {driverApp?.plate_number}
+                                      Year: {driverApp?.vehicle_year || 'N/A'} • Plate: {driverApp?.plate_number || 'N/A'}
                                     </div>
                                   </div>
                                   <DriverActions driver={driver} />
@@ -1103,7 +1222,171 @@ export default function DriversPage() {
         </div>
       </div>
 
+      {/* Modals */}
       <DocumentVerificationModal />
+      
+      {/* Message Modal */}
+      <Dialog 
+        open={isMessageModalOpen} 
+        onClose={() => setIsMessageModalOpen(false)}
+        className="relative z-50"
+      >
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="mx-auto max-w-lg w-full rounded-xl bg-white p-6">
+            <Dialog.Title className="text-lg font-medium leading-6 text-gray-900 mb-4">
+              Send Message to Driver
+            </Dialog.Title>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Message
+              </label>
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                rows={4}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="Type your message here..."
+              />
+              <p className="mt-2 text-sm text-gray-500">
+                This message will be sent as a notification to the driver.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setIsMessageModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  handleSendMessage(detailedDriver);
+                  setIsMessageModalOpen(false);
+                }}
+                disabled={!messageText.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                Send Message
+              </button>
+            </div>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
+      
+      {/* Driver Details Modal */}
+      <Dialog 
+        open={isDetailModalOpen} 
+        onClose={() => setIsDetailModalOpen(false)}
+        className="relative z-50"
+      >
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <Dialog.Panel className="mx-auto max-w-4xl w-full rounded-xl bg-white p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <Dialog.Title className="text-xl font-semibold text-gray-900">
+                Driver Details
+              </Dialog.Title>
+              <button
+                onClick={() => setIsDetailModalOpen(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XCircleIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            {detailedDriver && (
+              <div className="space-y-8">
+                {/* Personal Information */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <UserIcon className="h-5 w-5 mr-2 text-indigo-500" />
+                    Personal Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Full Name</p>
+                      <p className="text-base text-gray-900">{detailedDriver.full_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Email</p>
+                      <p className="text-base text-gray-900">{detailedDriver.email || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Mobile Number</p>
+                      <p className="text-base text-gray-900">{detailedDriver.mobile_number || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Status</p>
+                      <p className={`text-base ${
+                        detailedDriver.status === 'active' ? 'text-green-600' : 
+                        detailedDriver.status === 'suspended' ? 'text-red-600' : 'text-gray-600'
+                      }`}>
+                        {detailedDriver.status || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => {
+                        setIsDetailModalOpen(false);
+                        setMessageText('');
+                        setIsMessageModalOpen(true);
+                      }}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                    >
+                      <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
+                      Send Message
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setIsDetailModalOpen(false);
+                        openDriverModal(detailedDriver);
+                      }}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                    >
+                      <PencilIcon className="h-4 w-4 mr-2" />
+                      Edit Details
+                    </button>
+                    
+                    {detailedDriver.status === 'active' ? (
+                      <button
+                        onClick={() => {
+                          updateDriverStatus(detailedDriver.id, 'suspended');
+                          setIsDetailModalOpen(false);
+                        }}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"
+                      >
+                        <XCircleIcon className="h-4 w-4 mr-2" />
+                        Suspend Driver
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          updateDriverStatus(detailedDriver.id, 'active');
+                          setIsDetailModalOpen(false);
+                        }}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckBadgeIcon className="h-4 w-4 mr-2" />
+                        Activate Driver
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Dialog.Panel>
+        </div>
+      </Dialog>
 
       {/* Add/Edit Driver Modal */}
       <Dialog
