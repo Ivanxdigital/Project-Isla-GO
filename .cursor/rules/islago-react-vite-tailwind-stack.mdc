@@ -1,6 +1,7 @@
 ---
 description: Use this rule for the islago project when working on React components, Vite builds, Tailwind CSS styling, or Supabase/API integrations.
 globs: *.jsx, *.tsx, api/*.js, api/*.ts, *.css
+alwaysApply: false
 ---
 # islago-react-vite-tailwind-stack
 # Use this rule for the islago project when working on React components, Vite builds, Tailwind CSS styling, or Supabase/API integrations.

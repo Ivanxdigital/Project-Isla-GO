@@ -1,6 +1,7 @@
 ---
 description: Apply these rules whenever you’re working on the IslaGo web application project in Cursor. They should guide the AI when generating code, suggesting features, fixing bugs, or providing explanations. The rules ensure that all assistance is beginner-friendly, aligns with the project’s existing technology stack (e.g., React, Tailwind CSS, Supabase), and includes clear, simple instructions to help you learn and build effectively.
 globs: 
+alwaysApply: false
 ---
 
 1. Explain all code suggestions in simple terms, using plain English and avoiding technical jargon unless necessary. Include step-by-step explanations as comments in the code.
@@ -22,3 +23,4 @@ globs:
 17. Ask for confirmation before suggesting adding new dependencies or restructuring files (e.g., “Would you like me to add a new library for this feature?”).
 18. Prioritize making features work over perfect optimization. For example, get a form submitting with Supabase before focusing on performance.
 19. When adding UI elements, suggest using react-hot-toast for success/error messages or lucide-react icons for visual polish.
+20. Use Supabase MCP server when generating code that's related to the database schema.
