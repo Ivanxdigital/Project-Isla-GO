@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
+import { StarIcon } from '@heroicons/react/24/solid';
 
 const reviews = [
   {
@@ -31,16 +33,11 @@ const reviews = [
 export default function ReviewsSection() {
   const { t } = useTranslation();
   const [currentReview, setCurrentReview] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsVisible(false);
-      setTimeout(() => {
-        setCurrentReview((prev) => (prev + 1) % reviews.length);
-        setIsVisible(true);
-      }, 500);
-    }, 5000);
+      setCurrentReview((prev) => (prev + 1) % reviews.length);
+    }, 6000);
 
     return () => clearInterval(interval);
   }, []);
@@ -48,54 +45,83 @@ export default function ReviewsSection() {
   const review = reviews[currentReview];
 
   return (
-    <div className="py-24 bg-gradient-to-b from-blue-50 to-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">
-            What Our Customers Say
+    <section className="py-20 bg-blue-50" id="reviews">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            What Our <span className="text-blue-600">Customers</span> Say
           </h2>
-          
-          <div className="relative">
-            <div
-              className={`transition-opacity duration-500 ${
-                isVisible ? 'opacity-100' : 'opacity-0'
-              }`}
-            >
-              <div className="flex flex-col items-center space-y-4">
-                <img
-                  src={review.avatar}
-                  alt={review.name}
-                  className="w-16 h-16 rounded-full object-cover"
-                />
-                
-                <div className="flex space-x-2">
-                  {[...Array(review.rating)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className="w-5 h-5 text-blue-600"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-                      />
-                    </svg>
-                  ))}
-                </div>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Hear from travelers who have experienced our services across Palawan
+          </p>
+        </div>
 
-                <blockquote className="text-lg text-gray-600 text-center">
-                  "{review.text}"
-                </blockquote>
+        {/* Reviews Display */}
+        <div className="mb-16">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={review.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="bg-white rounded-xl shadow-lg overflow-hidden"
+            >
+              <div className="flex flex-col md:flex-row items-center">
+                <div className="md:w-1/3 p-8 flex flex-col items-center">
+                  <div className="relative mb-4">
+                    <img
+                      src={review.avatar}
+                      alt={review.name}
+                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                    />
+                    <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-1.5">
+                      <StarIcon className="w-5 h-5" />
+                    </div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-900">{review.name}</div>
+                    <div className="text-blue-600">{review.location}</div>
+                  </div>
+                </div>
                 
-                <div className="text-center">
-                  <div className="font-semibold text-gray-900">{review.name}</div>
-                  <div className="text-sm text-gray-600">{review.location}</div>
+                <div className="md:w-2/3 bg-white p-8 md:p-10 flex items-center">
+                  <blockquote className="text-xl md:text-2xl text-gray-700 italic">
+                    <span className="text-blue-200 text-6xl font-serif leading-none inline-block mr-2">"</span>
+                    {review.text}
+                  </blockquote>
                 </div>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        
+        {/* Review Navigation */}
+        <div className="flex justify-center space-x-3 mb-16">
+          {reviews.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentReview(index)}
+              className={`h-3 rounded-full transition-all duration-300 ${
+                currentReview === index ? 'bg-blue-600 w-10' : 'bg-gray-300 w-3'
+              }`}
+              aria-label={`Go to review ${index + 1}`}
+            />
+          ))}
+        </div>
+        
+        {/* Additional Reviews CTA */}
+        <div className="text-center">
+          <a 
+            href="#" 
+            className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-300"
+          >
+            See More Reviews
+          </a>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
