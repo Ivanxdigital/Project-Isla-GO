@@ -41,6 +41,9 @@ export default function DriverRegister() {
       email: user?.email || '',
       mobileNumber: '',
       address: '',
+      emergencyContact: '',
+      emergencyContactRelation: '',
+      photoUrl: '',
       
       // License Details
       licenseNumber: '',
@@ -54,6 +57,10 @@ export default function DriverRegister() {
       vehicleColor: '',
       plateNumber: '',
       orCrNumber: '',
+      seatingCapacity: '',
+      
+      // Service Types
+      serviceTypes: [],
       
       // Insurance Details
       insuranceProvider: '',
@@ -369,22 +376,277 @@ export default function DriverRegister() {
     }
   };
 
+  // Add service type options
+  const serviceTypeOptions = [
+    { value: 'shared', label: 'Shared Van Service' },
+    { value: 'private10', label: 'Private Van (10 Seater)' },
+    { value: 'private15', label: 'Private Van (15 Seater)' },
+    { value: 'airport', label: 'Airport Transfer' },
+    { value: 'tour', label: 'Tour Service' }
+  ];
+
+  // Add common Philippine van models
+  const commonVanModels = [
+    'Toyota Hiace',
+    'Nissan NV350 Urvan',
+    'Hyundai Grand Starex',
+    'Foton View Traveller',
+    'JAC Sunray',
+    'Maxus V80'
+  ];
+
+  // Add Philippine banks
+  const philippineBanks = [
+    'BDO',
+    'BPI',
+    'Metrobank',
+    'PNB',
+    'Security Bank',
+    'UnionBank',
+    'RCBC',
+    'China Bank',
+    'LANDBANK',
+    'GCash',
+    'Maya'
+  ];
+
+  // Philippine license types
+  const licenseTypes = [
+    { value: 'professional', label: 'Professional - Any vehicle except motorcycle' },
+    { value: 'sp_professional', label: 'Professional with SP - Special Permit for PUV' }
+  ];
+
+  // Function to format Philippine mobile number
+  const formatPhilippineNumber = (value) => {
+    if (!value) return value;
+    const number = value.replace(/[^\d]/g, '');
+    if (number.length <= 3) return number;
+    if (number.length <= 6) return `${number.slice(0, 3)} ${number.slice(3)}`;
+    return `${number.slice(0, 3)} ${number.slice(3, 6)} ${number.slice(6, 10)}`;
+  };
+
+  // Handle mobile number input
+  const handleMobileNumberChange = (e) => {
+    const { value } = e.target;
+    const formattedValue = formatPhilippineNumber(value);
+    methods.setValue('mobileNumber', formattedValue);
+  };
+
+  // Handle emergency contact number input
+  const handleEmergencyContactChange = (e) => {
+    const { value } = e.target;
+    const formattedValue = formatPhilippineNumber(value);
+    methods.setValue('emergencyContact', formattedValue);
+  };
+
+  // Handle photo upload
+  const handlePhotoUpload = async (file) => {
+    if (!file) return;
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/profile.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('driver-photos')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('driver-photos')
+        .getPublicUrl(fileName);
+
+      methods.setValue('photoUrl', publicUrl);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to upload photo. Please try again.');
+    }
+  };
+
+  // Modified steps rendering to be more mobile-friendly
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium text-gray-900">Personal Information</h3>
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Full Name
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  {...methods.register('fullName', { required: 'Full name is required' })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                {methods.formState.errors.fullName && (
+                  <p className="mt-1 text-sm text-red-600">{methods.formState.errors.fullName.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Mobile Number
+                  <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 ml-1">(e.g., 0917 123 4567)</span>
+                </label>
+                <input
+                  type="tel"
+                  {...methods.register('mobileNumber', {
+                    required: 'Mobile number is required',
+                    pattern: {
+                      value: /^09\d{2} \d{3} \d{4}$/,
+                      message: 'Please enter a valid Philippine mobile number'
+                    }
+                  })}
+                  onChange={handleMobileNumberChange}
+                  placeholder="0917 123 4567"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                {methods.formState.errors.mobileNumber && (
+                  <p className="mt-1 text-sm text-red-600">{methods.formState.errors.mobileNumber.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Emergency Contact Number
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  {...methods.register('emergencyContact', {
+                    required: 'Emergency contact number is required',
+                    pattern: {
+                      value: /^09\d{2} \d{3} \d{4}$/,
+                      message: 'Please enter a valid Philippine mobile number'
+                    }
+                  })}
+                  onChange={handleEmergencyContactChange}
+                  placeholder="0917 123 4567"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+                {methods.formState.errors.emergencyContact && (
+                  <p className="mt-1 text-sm text-red-600">{methods.formState.errors.emergencyContact.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Relationship to Emergency Contact
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  {...methods.register('emergencyContactRelation', {
+                    required: 'Please specify your relationship to the emergency contact'
+                  })}
+                  placeholder="e.g., Spouse, Parent, Sibling"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Address
+                  <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  {...methods.register('address', { required: 'Address is required' })}
+                  rows={3}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Profile Photo
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-1 flex items-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handlePhotoUpload(e.target.files[0])}
+                    className="hidden"
+                    id="photo-upload"
+                  />
+                  <label
+                    htmlFor="photo-upload"
+                    className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Upload Photo
+                  </label>
+                  {methods.watch('photoUrl') && (
+                    <img
+                      src={methods.watch('photoUrl')}
+                      alt="Profile preview"
+                      className="ml-3 h-12 w-12 rounded-full object-cover"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 2:
+        return <LicenseDetailsStep />;
+      case 3:
+        return <VehicleInformationStep />;
+      case 4:
+        return <InsuranceDetailsStep />;
+      case 5:
+        return <LTFRBDetailsStep />;
+      case 6:
+        return (
+          <DocumentsUploadStep
+            documents={documents}
+            onFileChange={handleFileChange}
+          />
+        );
+      case 7:
+        return <BankingInformationStep />;
+      case 8:
+        return <AgreementStep />;
+      default:
+        return null;
+    }
+  };
+
+  // Add a mobile-friendly progress indicator
+  const renderProgressBar = () => {
+    const progress = (currentStep / 8) * 100;
+    return (
+      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+        <div
+          className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex flex-col bg-gray-50 py-6 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full mx-auto space-y-6">
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900">
-            IslaGO: Onboarding Application
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+            IslaGO: Driver Registration
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             Please complete all required fields to register as a driver
           </p>
         </div>
 
+        {renderProgressBar()}
+
         <FormProvider {...methods}>
-          <form onSubmit={methods.handleSubmit(onSubmit)} className="mt-8 space-y-6 bg-white p-8 rounded-lg shadow">
+          <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6 bg-white p-6 rounded-lg shadow-md">
             <BeforeUnload when={hasUnsavedChanges} />
             
+            {/* Saving status indicator */}
             <div className="mb-4 flex items-center justify-end space-x-2">
               {savingStatus === 'pending' && (
                 <span className="text-yellow-600 text-sm">Saving...</span>
@@ -406,37 +668,25 @@ export default function DriverRegister() {
               )}
             </div>
 
-            {currentStep === 1 && <PersonalInformationStep />}
-            {currentStep === 2 && <LicenseDetailsStep />}
-            {currentStep === 3 && <VehicleInformationStep />}
-            {currentStep === 4 && <InsuranceDetailsStep />}
-            {currentStep === 5 && <LTFRBDetailsStep />}
-            {currentStep === 6 && (
-              <DocumentsUploadStep
-                documents={documents}
-                onFileChange={handleFileChange}
-              />
-            )}
-            {currentStep === 7 && <BankingInformationStep />}
-            {currentStep === 8 && <AgreementStep />}
+            {renderStep()}
 
-            <div className="mt-8 flex justify-between">
+            <div className="mt-6 flex flex-col sm:flex-row justify-between gap-4">
               {currentStep > 1 && (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="bg-gray-100 text-gray-800 px-6 py-2 rounded-md hover:bg-gray-200"
+                  className="w-full sm:w-auto bg-gray-100 text-gray-800 px-6 py-3 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                 >
                   Back
                 </button>
               )}
               
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={saveDraft}
                   disabled={savingDraft || savingStatus === 'saving'}
-                  className="bg-blue-100 text-blue-800 px-6 py-2 rounded-md hover:bg-blue-200 disabled:opacity-50"
+                  className="w-full sm:w-auto bg-blue-100 text-blue-800 px-6 py-3 rounded-md hover:bg-blue-200 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   {savingDraft ? 'Saving...' : 'Save Draft'}
                 </button>
@@ -446,7 +696,7 @@ export default function DriverRegister() {
                     type="button"
                     onClick={handleNext}
                     disabled={savingStatus === 'saving'}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     Next
                   </button>
@@ -454,7 +704,7 @@ export default function DriverRegister() {
                   <button
                     type="submit"
                     disabled={loading || savingStatus === 'saving'}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     {loading ? 'Submitting...' : 'Submit Application'}
                   </button>

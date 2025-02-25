@@ -4,11 +4,58 @@ import { useFormContext } from 'react-hook-form';
 export default function PersonalInformationStep() {
   const { register, formState: { errors } } = useFormContext();
 
+  const PhoneNumberInput = ({ id, label, registerName, required = true }) => (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className="mt-1 relative rounded-md shadow-sm">
+        <div className="absolute inset-y-0 left-0 flex items-center">
+          <select
+            className="h-full py-0 pl-3 pr-7 border-transparent bg-transparent text-gray-500 sm:text-sm rounded-md"
+            disabled
+          >
+            <option>+63</option>
+          </select>
+        </div>
+        <input
+          {...register(registerName, {
+            required: required ? `${label} is required` : false,
+            pattern: {
+              value: /^(09\d{9})$/,
+              message: "Please enter a valid 11-digit number starting with '09'"
+            },
+            minLength: {
+              value: 11,
+              message: "Mobile number must be 11 digits"
+            },
+            maxLength: {
+              value: 11,
+              message: "Mobile number must be 11 digits"
+            }
+          })}
+          type="tel"
+          id={id}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-16"
+          placeholder="09XX XXX XXXX"
+        />
+      </div>
+      {errors[registerName] && (
+        <p className="mt-1 text-sm text-red-500">{errors[registerName].message}</p>
+      )}
+      <p className="mt-1 text-xs text-gray-500">
+        Enter complete 11-digit number starting with '09' (e.g., 09993702550)
+      </p>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div>
         <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
           Full Name
+          <span className="text-red-500 ml-1">*</span>
         </label>
         <input
           {...register("fullName", {
@@ -28,6 +75,7 @@ export default function PersonalInformationStep() {
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-gray-700">
           Email Address
+          <span className="text-red-500 ml-1">*</span>
         </label>
         <input
           {...register("email", {
@@ -50,46 +98,61 @@ export default function PersonalInformationStep() {
         </p>
       </div>
 
+      <PhoneNumberInput
+        id="mobileNumber"
+        label="Contact Number"
+        registerName="mobileNumber"
+      />
+
+      <PhoneNumberInput
+        id="emergencyContact"
+        label="Emergency Contact Number"
+        registerName="emergencyContact"
+      />
+
       <div>
-        <label htmlFor="mobileNumber" className="block text-sm font-medium text-gray-700">
-          Mobile Number
+        <label htmlFor="emergencyContactName" className="block text-sm font-medium text-gray-700">
+          Emergency Contact Name
+          <span className="text-red-500 ml-1">*</span>
         </label>
-        <div className="mt-1 relative rounded-md shadow-sm">
-          <div className="absolute inset-y-0 left-0 flex items-center">
-            <select
-              className="h-full py-0 pl-3 pr-7 border-transparent bg-transparent text-gray-500 sm:text-sm rounded-md"
-              disabled
-            >
-              <option>+63</option>
-            </select>
-          </div>
-          <input
-            {...register("mobileNumber", {
-              required: "Mobile number is required",
-              pattern: {
-                value: /^9\d{9}$/,
-                message: "Enter a valid Philippine mobile number starting with 9"
-              },
-              minLength: { value: 10, message: "Mobile number must be 10 digits" },
-              maxLength: { value: 10, message: "Mobile number must be 10 digits" }
-            })}
-            type="tel"
-            id="mobileNumber"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-16"
-            placeholder="9XX XXX XXXX"
-          />
-        </div>
-        {errors.mobileNumber && (
-          <p className="mt-1 text-sm text-red-500">{errors.mobileNumber.message}</p>
+        <input
+          {...register("emergencyContactName", {
+            required: "Emergency contact name is required",
+            minLength: { value: 2, message: "Name must be at least 2 characters" }
+          })}
+          type="text"
+          id="emergencyContactName"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          placeholder="Emergency contact full name"
+        />
+        {errors.emergencyContactName && (
+          <p className="mt-1 text-sm text-red-500">{errors.emergencyContactName.message}</p>
         )}
-        <p className="mt-1 text-sm text-gray-500">
-          Enter your 10-digit mobile number without the leading zero.
-        </p>
+      </div>
+
+      <div>
+        <label htmlFor="emergencyContactRelation" className="block text-sm font-medium text-gray-700">
+          Relationship to Emergency Contact
+          <span className="text-red-500 ml-1">*</span>
+        </label>
+        <input
+          {...register("emergencyContactRelation", {
+            required: "Relationship is required"
+          })}
+          type="text"
+          id="emergencyContactRelation"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          placeholder="e.g., Parent, Spouse, Sibling"
+        />
+        {errors.emergencyContactRelation && (
+          <p className="mt-1 text-sm text-red-500">{errors.emergencyContactRelation.message}</p>
+        )}
       </div>
 
       <div>
         <label htmlFor="address" className="block text-sm font-medium text-gray-700">
           Complete Address
+          <span className="text-red-500 ml-1">*</span>
         </label>
         <textarea
           {...register("address", {

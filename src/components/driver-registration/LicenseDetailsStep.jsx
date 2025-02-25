@@ -1,118 +1,101 @@
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 
-const LICENSE_TYPES = [
-  'Professional',
-  'Non-Professional',
-  'Student'
-];
-
 export default function LicenseDetailsStep() {
   const { register, formState: { errors } } = useFormContext();
-  
-  // Get tomorrow's date for minimum expiration date
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split('T')[0];
+
+  // Philippine license types
+  const licenseTypes = [
+    { value: 'professional', label: 'Professional - Any vehicle except motorcycle' },
+    { value: 'sp_professional', label: 'Professional with SP - Special Permit for PUV' }
+  ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700">
-          Driver's License Number
-        </label>
-        <input
-          {...register("licenseNumber", {
-            required: "License number is required",
-            pattern: {
-              value: /^[A-Z0-9-]+$/i,
-              message: "Enter a valid license number"
-            },
-            minLength: {
-              value: 8,
-              message: "License number must be at least 8 characters"
-            }
-          })}
-          type="text"
-          id="licenseNumber"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          placeholder="XXX-XX-XXXXXX"
-        />
-        {errors.licenseNumber && (
-          <p className="mt-1 text-sm text-red-500">{errors.licenseNumber.message}</p>
-        )}
-        <p className="mt-1 text-sm text-gray-500">
-          Enter your LTO driver's license number exactly as it appears on your license.
-        </p>
-      </div>
+      <h3 className="text-lg font-medium text-gray-900">License Details</h3>
+      <div className="grid grid-cols-1 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            License Number
+            <span className="text-red-500">*</span>
+            <span className="text-xs text-gray-500 ml-1">(e.g., N01-12-345678)</span>
+          </label>
+          <input
+            type="text"
+            {...register('licenseNumber', {
+              required: 'License number is required',
+              pattern: {
+                value: /^[A-Z][0-9]{2}-\d{2}-\d{6}$/,
+                message: 'Please enter a valid LTO license number format'
+              }
+            })}
+            placeholder="N01-12-345678"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+          {errors.licenseNumber && (
+            <p className="mt-1 text-sm text-red-600">{errors.licenseNumber.message}</p>
+          )}
+        </div>
 
-      <div>
-        <label htmlFor="licenseType" className="block text-sm font-medium text-gray-700">
-          Type of License
-        </label>
-        <select
-          {...register("licenseType", {
-            required: "License type is required"
-          })}
-          id="licenseType"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        >
-          <option value="">Select license type</option>
-          {LICENSE_TYPES.map(type => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-        {errors.licenseType && (
-          <p className="mt-1 text-sm text-red-500">{errors.licenseType.message}</p>
-        )}
-        <p className="mt-1 text-sm text-gray-500">
-          Professional license holders may be given priority during the application process.
-        </p>
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            License Type
+            <span className="text-red-500">*</span>
+          </label>
+          <select
+            {...register('licenseType', {
+              required: 'Please select a license type'
+            })}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">Select license type</option>
+            {licenseTypes.map(type => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+          {errors.licenseType && (
+            <p className="mt-1 text-sm text-red-600">{errors.licenseType.message}</p>
+          )}
+        </div>
 
-      <div>
-        <label htmlFor="licenseExpiration" className="block text-sm font-medium text-gray-700">
-          License Expiration Date
-        </label>
-        <input
-          {...register("licenseExpiration", {
-            required: "Expiration date is required",
-            validate: {
-              futureDate: (value) => {
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            License Expiration Date
+            <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="date"
+            {...register('licenseExpiration', {
+              required: 'License expiration date is required',
+              validate: value => {
                 const date = new Date(value);
                 const today = new Date();
-                return date > today || "Expiration date must be in the future";
+                return date > today || 'License must not be expired';
               }
-            }
-          })}
-          type="date"
-          id="licenseExpiration"
-          min={minDate}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        />
-        {errors.licenseExpiration && (
-          <p className="mt-1 text-sm text-red-500">{errors.licenseExpiration.message}</p>
-        )}
-        <p className="mt-1 text-sm text-gray-500">
-          Your license must be valid for at least 6 months from today.
-        </p>
-      </div>
+            })}
+            min={new Date().toISOString().split('T')[0]}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+          {errors.licenseExpiration && (
+            <p className="mt-1 text-sm text-red-600">{errors.licenseExpiration.message}</p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Note: Your professional license should be valid for at least 6 months
+          </p>
+        </div>
 
-      <div className="rounded-md bg-yellow-50 p-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-yellow-800">Important Notice</h3>
-            <div className="mt-2 text-sm text-yellow-700">
-              <p>
-                Please ensure your license information is accurate and up-to-date. You will be required
-                to upload a clear copy of your license in the documents section.
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Make sure your license is a valid Professional Driver's License with appropriate restrictions for public utility vehicles.
               </p>
             </div>
           </div>

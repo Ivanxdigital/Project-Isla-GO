@@ -21,216 +21,254 @@ export default function VehicleInformationStep() {
     formState: { errors },
   } = useFormContext();
 
+  // Common Philippine van models
+  const commonVanModels = [
+    'Toyota Hiace',
+    'Nissan NV350 Urvan',
+    'Hyundai Grand Starex',
+    'Foton View Traveller',
+    'JAC Sunray',
+    'Maxus V80'
+  ];
+
+  // Vehicle year validation
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 21 }, (_, i) => currentYear - i);
-  
-  const selectedMake = watch('vehicleMake');
+  const minYear = currentYear - 10; // Vehicles should not be older than 10 years
+  const maxYear = currentYear + 1; // Allow registration of next year's models
+
   const selectedModel = watch('vehicleModel');
+  
+  // Default seating capacity based on model
+  const getDefaultSeatingCapacity = (model) => {
+    switch (model) {
+      case 'Toyota Hiace':
+      case 'Nissan NV350 Urvan':
+        return '15';
+      case 'Hyundai Grand Starex':
+        return '12';
+      case 'Foton View Traveller':
+        return '16';
+      case 'JAC Sunray':
+        return '15';
+      case 'Maxus V80':
+        return '13';
+      default:
+        return '';
+    }
+  };
 
   // Get unique makes from VAN_MODELS
   const uniqueMakes = [...new Set(VAN_MODELS.map(van => van.make))];
 
   // Get models for selected make
-  const availableModels = VAN_MODELS.filter(van => van.make === selectedMake);
+  const availableModels = VAN_MODELS.filter(van => van.make === uniqueMakes[0]);
 
   // Update seating capacity when model changes
   React.useEffect(() => {
-    if (selectedMake && selectedModel) {
+    if (uniqueMakes[0] && selectedModel) {
       const selectedVan = VAN_MODELS.find(
-        van => van.make === selectedMake && van.model === selectedModel
+        van => van.make === uniqueMakes[0] && van.model === selectedModel
       );
       if (selectedVan) {
         setValue('seatingCapacity', selectedVan.capacity);
       }
     }
-  }, [selectedMake, selectedModel, setValue]);
+  }, [uniqueMakes, selectedModel, setValue]);
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <h3 className="text-lg font-medium text-gray-900">Vehicle Information</h3>
+      <div className="grid grid-cols-1 gap-6">
         <div>
-          <label htmlFor="vehicleMake" className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700">
             Vehicle Make
+            <span className="text-red-500">*</span>
           </label>
-          <select
-            id="vehicleMake"
-            {...register("vehicleMake", {
-              required: "Vehicle make is required",
+          <input
+            type="text"
+            {...register('vehicleMake', {
+              required: 'Vehicle make is required'
             })}
-            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.vehicleMake ? 'border-red-300' : 'border-gray-300'
-            }`}
-            onChange={(e) => {
-              setValue('vehicleMake', e.target.value);
-              setValue('vehicleModel', ''); // Reset model when make changes
-              setValue('seatingCapacity', ''); // Reset capacity when make changes
-            }}
-          >
-            <option value="">Select make</option>
-            {uniqueMakes.map(make => (
-              <option key={make} value={make}>
-                {make}
-              </option>
-            ))}
-          </select>
+            placeholder="e.g., Toyota, Nissan, Hyundai"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
           {errors.vehicleMake && (
             <p className="mt-1 text-sm text-red-600">{errors.vehicleMake.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="vehicleModel" className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700">
             Vehicle Model
+            <span className="text-red-500">*</span>
           </label>
           <select
-            id="vehicleModel"
-            {...register("vehicleModel", {
-              required: "Vehicle model is required",
+            {...register('vehicleModel', {
+              required: 'Vehicle model is required'
             })}
-            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.vehicleModel ? 'border-red-300' : 'border-gray-300'
-            }`}
-            disabled={!selectedMake}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
-            <option value="">Select model</option>
-            {availableModels.map(van => (
-              <option key={van.model} value={van.model}>
-                {van.model} ({van.capacity} seats)
+            <option value="">Select vehicle model</option>
+            {commonVanModels.map(model => (
+              <option key={model} value={model}>
+                {model}
               </option>
             ))}
+            <option value="other">Other</option>
           </select>
           {errors.vehicleModel && (
             <p className="mt-1 text-sm text-red-600">{errors.vehicleModel.message}</p>
           )}
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        {selectedModel === 'other' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Other Model
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              {...register('otherModel', {
+                required: 'Please specify the vehicle model'
+              })}
+              placeholder="Enter vehicle model"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+            {errors.otherModel && (
+              <p className="mt-1 text-sm text-red-600">{errors.otherModel.message}</p>
+            )}
+          </div>
+        )}
+
         <div>
-          <label htmlFor="vehicleYear" className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700">
             Vehicle Year
+            <span className="text-red-500">*</span>
           </label>
-          <select
-            id="vehicleYear"
-            {...register("vehicleYear", {
-              required: "Vehicle year is required",
+          <input
+            type="number"
+            {...register('vehicleYear', {
+              required: 'Vehicle year is required',
+              min: {
+                value: minYear,
+                message: `Vehicle must not be older than ${currentYear - minYear} years`
+              },
+              max: {
+                value: maxYear,
+                message: 'Invalid vehicle year'
+              }
             })}
-            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.vehicleYear ? 'border-red-300' : 'border-gray-300'
-            }`}
-          >
-            <option value="">Select year</option>
-            {yearOptions.map(year => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
+            min={minYear}
+            max={maxYear}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
           {errors.vehicleYear && (
             <p className="mt-1 text-sm text-red-600">{errors.vehicleYear.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="vehicleColor" className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700">
             Vehicle Color
+            <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
-            id="vehicleColor"
-            {...register("vehicleColor", {
-              required: "Vehicle color is required",
-              minLength: { value: 2, message: "Vehicle color must be at least 2 characters" },
+            {...register('vehicleColor', {
+              required: 'Vehicle color is required'
             })}
-            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.vehicleColor ? 'border-red-300' : 'border-gray-300'
-            }`}
-            placeholder="Silver"
+            placeholder="e.g., White, Silver, Black"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
           {errors.vehicleColor && (
             <p className="mt-1 text-sm text-red-600">{errors.vehicleColor.message}</p>
           )}
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
-          <label htmlFor="plateNumber" className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700">
             Plate Number
+            <span className="text-red-500">*</span>
+            <span className="text-xs text-gray-500 ml-1">(e.g., ABC 1234)</span>
           </label>
           <input
             type="text"
-            id="plateNumber"
-            {...register("plateNumber", {
-              required: "Plate number is required",
+            {...register('plateNumber', {
+              required: 'Plate number is required',
               pattern: {
-                value: /^[A-Z0-9 -]+$/i,
-                message: "Enter a valid plate number (letters, numbers, spaces, and hyphens only)",
-              },
-              minLength: { value: 5, message: "Plate number must be at least 5 characters" },
-              maxLength: { value: 10, message: "Plate number cannot exceed 10 characters" },
+                value: /^[A-Z]{3} \d{4}$/,
+                message: 'Please enter a valid plate number format (e.g., ABC 1234)'
+              }
             })}
-            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.plateNumber ? 'border-red-300' : 'border-gray-300'
-            }`}
             placeholder="ABC 1234"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
           {errors.plateNumber && (
             <p className="mt-1 text-sm text-red-600">{errors.plateNumber.message}</p>
           )}
-          <p className="mt-1 text-sm text-gray-500">
-            Enter your vehicle's plate number exactly as it appears.
-          </p>
         </div>
 
         <div>
-          <label htmlFor="orCrNumber" className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700">
             OR/CR Number
+            <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
-            id="orCrNumber"
-            {...register("orCrNumber", {
-              required: "OR/CR number is required",
-              pattern: {
-                value: /^[A-Z0-9-]+$/i,
-                message: "Enter a valid OR/CR number (letters, numbers, and hyphens only)",
-              },
-              minLength: { value: 5, message: "OR/CR number must be at least 5 characters" },
+            {...register('orCrNumber', {
+              required: 'OR/CR number is required'
             })}
-            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-              errors.orCrNumber ? 'border-red-300' : 'border-gray-300'
-            }`}
-            placeholder="123456789"
+            placeholder="Enter OR/CR number"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
           {errors.orCrNumber && (
             <p className="mt-1 text-sm text-red-600">{errors.orCrNumber.message}</p>
           )}
         </div>
-      </div>
 
-      {/* Hidden seating capacity field */}
-      <input
-        type="hidden"
-        {...register("seatingCapacity")}
-      />
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Seating Capacity
+            <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            {...register('seatingCapacity', {
+              required: 'Seating capacity is required',
+              min: {
+                value: 10,
+                message: 'Minimum seating capacity is 10'
+              },
+              max: {
+                value: 16,
+                message: 'Maximum seating capacity is 16'
+              }
+            })}
+            defaultValue={selectedModel ? getDefaultSeatingCapacity(selectedModel) : ''}
+            min="10"
+            max="16"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+          {errors.seatingCapacity && (
+            <p className="mt-1 text-sm text-red-600">{errors.seatingCapacity.message}</p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            Vehicle must have a minimum of 10 and maximum of 16 seats
+          </p>
+        </div>
 
-      <div className="rounded-md bg-blue-50 p-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800">Vehicle Requirements</h3>
-            <div className="mt-2 text-sm text-blue-700">
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Vehicle must be registered under your name or with proper authorization</li>
-                <li>Vehicle must not be more than 7 years old from current year</li>
-                <li>Must have complete and valid registration documents</li>
-                <li>Must be in good working condition</li>
-              </ul>
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-700">
+                Make sure all vehicle information matches your OR/CR. You will need to provide clear photos of your vehicle and registration documents in the next steps.
+              </p>
             </div>
           </div>
         </div>
