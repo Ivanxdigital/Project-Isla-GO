@@ -6,6 +6,8 @@ import { supabase } from '../utils/supabase.ts';
 import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo.js';
 import { sendDriverNotifications } from '../utils/twilio.js';
 import toast from 'react-hot-toast';
+import DriverDetails from './DriverDetails.jsx';
+import ContactOptions from './ContactOptions.jsx';
 
 export default function PaymentSuccess() {
   const { t } = useTranslation();
@@ -16,6 +18,11 @@ export default function PaymentSuccess() {
   const [pollingAttempts, setPollingAttempts] = useState(0);
   const MAX_POLLING_ATTEMPTS = 10;
   const POLLING_INTERVAL = 3000; // 3 seconds between attempts
+  
+  // Add new state for booking and driver data
+  const [bookingData, setBookingData] = useState(null);
+  const [driverData, setDriverData] = useState(null);
+  const [customerData, setCustomerData] = useState(null);
 
   const pollPaymentStatus = async () => {
     try {
@@ -77,6 +84,9 @@ export default function PaymentSuccess() {
           await sendDriverNotifications(bookingId);
           console.log('Driver notifications sent successfully');
           toast.success('Drivers have been notified of your booking');
+          
+          // Fetch booking details with customer for display
+          await fetchBookingWithDriver(bookingId);
         } catch (error) {
           console.error('Failed to notify drivers:', error);
           toast.error('There was an issue notifying drivers. Our team will handle this manually.');
@@ -84,7 +94,7 @@ export default function PaymentSuccess() {
         
         setStatus('success');
         
-        // Add a slight delay before redirecting
+        // Change redirection behavior - wait longer to allow viewing driver details
         setTimeout(() => {
           navigate('/manage-bookings', { 
             state: { 
@@ -92,7 +102,7 @@ export default function PaymentSuccess() {
               type: 'success'
             }
           });
-        }, 2000);
+        }, 10000); // Give more time (10 seconds) to see the driver details
         
         return true;
       }
@@ -157,6 +167,9 @@ export default function PaymentSuccess() {
           await sendDriverNotifications(bookingId);
           console.log('Driver notifications sent successfully');
           toast.success('Drivers have been notified of your booking');
+          
+          // Fetch booking details with customer for display
+          await fetchBookingWithDriver(bookingId);
         } catch (error) {
           console.error('Failed to notify drivers:', error);
           toast.error('There was an issue notifying drivers. Our team will handle this manually.');
@@ -164,7 +177,7 @@ export default function PaymentSuccess() {
 
         setStatus('success');
         
-        // Add a slight delay before redirecting
+        // Change redirection behavior - wait longer to allow viewing driver details  
         setTimeout(() => {
           navigate('/manage-bookings', { 
             state: { 
@@ -172,7 +185,7 @@ export default function PaymentSuccess() {
               type: 'success'
             }
           });
-        }, 2000);
+        }, 10000); // Give more time (10 seconds) to see the driver details
         
         return true;
       } else if (paymentStatus === 'failed') {
@@ -194,6 +207,105 @@ export default function PaymentSuccess() {
       }
       return false;
     }
+  };
+
+  // New function to fetch booking with driver information
+  const fetchBookingWithDriver = async (bookingId) => {
+    try {
+      // Fetch booking with customer information
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          customers (*)
+        `)
+        .eq('id', bookingId)
+        .single();
+        
+      if (bookingError) {
+        console.error('Error fetching booking details:', bookingError);
+        return;
+      }
+      
+      setBookingData(booking);
+      setCustomerData(booking.customers);
+      
+      // Check if a driver has been assigned
+      if (booking.driver_id) {
+        const { data: driver, error: driverError } = await supabase
+          .from('drivers')
+          .select('*')
+          .eq('id', booking.driver_id)
+          .single();
+          
+        if (driverError) {
+          console.error('Error fetching driver details:', driverError);
+          return;
+        }
+        
+        setDriverData(driver);
+      } else {
+        // Set up polling for driver assignment
+        startDriverPolling(bookingId);
+      }
+    } catch (error) {
+      console.error('Error in fetchBookingWithDriver:', error);
+    }
+  };
+  
+  // New function to poll for driver assignment
+  const startDriverPolling = async (bookingId) => {
+    // Start a polling interval to check for driver assignment
+    const driverInterval = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('driver_id, status')
+          .eq('id', bookingId)
+          .single();
+          
+        if (error) {
+          console.error('Error polling for driver:', error);
+          clearInterval(driverInterval);
+          return;
+        }
+        
+        // If a driver has been assigned, fetch driver details
+        if (data.driver_id) {
+          clearInterval(driverInterval);
+          
+          const { data: driver, error: driverError } = await supabase
+            .from('drivers')
+            .select('*')
+            .eq('id', data.driver_id)
+            .single();
+            
+          if (driverError) {
+            console.error('Error fetching assigned driver:', driverError);
+            return;
+          }
+          
+          setDriverData(driver);
+          toast.success('A driver has been assigned to your booking!');
+        }
+        
+        // If booking status has changed to 'finding_driver_failed', stop polling
+        if (data.status === 'finding_driver_failed') {
+          clearInterval(driverInterval);
+          toast.error('We could not find an available driver. Our team will contact you shortly.');
+        }
+      } catch (error) {
+        console.error('Error in driver polling:', error);
+        clearInterval(driverInterval);
+      }
+    }, 5000); // Check every 5 seconds
+    
+    // Clean up interval after 5 minutes (300000ms) maximum
+    setTimeout(() => {
+      clearInterval(driverInterval);
+    }, 300000);
+    
+    return driverInterval;
   };
 
   useEffect(() => {
@@ -233,7 +345,7 @@ export default function PaymentSuccess() {
   }, []); // Empty dependency array since we manage polling internally
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
         <div className="text-center">
           <div className="mx-auto h-16 w-16">
@@ -259,6 +371,15 @@ export default function PaymentSuccess() {
               ? error || t('payment.failed.message', 'There was an issue processing your payment.')
               : t('payment.processing.message', 'Please wait while we verify your payment...')}
           </p>
+          
+          {status === 'success' && !driverData && (
+            <div className="mt-4 p-4 border border-yellow-200 bg-yellow-50 rounded-md">
+              <p className="text-sm text-yellow-700">
+                We're looking for available drivers. Please wait a moment...
+              </p>
+            </div>
+          )}
+          
           {(status === 'error' || status === 'failed') && (
             <div className="mt-4">
               <Link
@@ -271,6 +392,39 @@ export default function PaymentSuccess() {
           )}
         </div>
       </div>
+      
+      {/* Show driver details and contact options only if payment successful */}
+      {status === 'success' && bookingData && customerData && (
+        <div className="mt-8 max-w-md w-full space-y-6">
+          {/* Show driver details if a driver is assigned */}
+          {driverData && (
+            <DriverDetails 
+              driver={driverData} 
+              booking={bookingData}
+              customer={customerData}
+            />
+          )}
+          
+          {/* Show contact options regardless of driver assignment */}
+          <ContactOptions 
+            booking={bookingData}
+            driver={driverData}
+            customer={customerData}
+          />
+          
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600 mb-4">
+              You'll be redirected to manage bookings in a few seconds.
+            </p>
+            <Link
+              to="/manage-bookings"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              View All Bookings
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

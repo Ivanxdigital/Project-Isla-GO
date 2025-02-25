@@ -22,6 +22,29 @@ const formatPhoneNumber = (number: string) => {
   return cleaned.startsWith('63') ? `+${cleaned}` : `+63${cleaned}`;
 };
 
+// Helper function to create WhatsApp deep link
+const createWhatsAppLink = (phoneNumber: string, message: string = '') => {
+  // Clean the phone number (remove spaces, dashes, parentheses, etc.)
+  const cleanNumber = phoneNumber.toString().replace(/[\s\-\(\)\+]+/g, '');
+  
+  // Make sure it has the country code (63 for Philippines)
+  const fullNumber = cleanNumber.startsWith('63') 
+    ? cleanNumber 
+    : cleanNumber.startsWith('9') 
+      ? '63' + cleanNumber 
+      : cleanNumber;
+  
+  // Create the basic WhatsApp link
+  let whatsappLink = `https://wa.me/${fullNumber}`;
+  
+  // If there's a message, add it to the link (properly encoded for URLs)
+  if (message) {
+    whatsappLink += `?text=${encodeURIComponent(message)}`;
+  }
+  
+  return whatsappLink;
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log('1. Handler started');
@@ -105,6 +128,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'No available drivers found' });
     }
 
+    // Create WhatsApp deep link for responding YES
+    const responseLink = createWhatsAppLink(process.env.TWILIO_PHONE_NUMBER?.replace('+', '') || '', 'YES');
+
     // Create message content
     const messageContent = `
 New Booking Alert!
@@ -115,7 +141,7 @@ Time: ${booking.departure_time}
 Service: ${booking.service_type}
 Customer: ${booking.customers.first_name} ${booking.customers.last_name}
 
-Reply YES to accept this booking.
+Reply YES to accept this booking or click: ${responseLink}
 `.trim();
 
     // Send SMS to each driver
@@ -146,7 +172,7 @@ Reply YES to accept this booking.
           success: true,
           messageId: message.sid
         };
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Failed to send SMS to driver ${driver.id}:`, error);
         return {
           driverId: driver.id,
@@ -178,7 +204,7 @@ Reply YES to accept this booking.
       results
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in handler:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
