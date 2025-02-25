@@ -6,6 +6,7 @@ import { Navigation, Pagination } from 'swiper/modules';
 import { motion, AnimatePresence } from 'framer-motion';
 import LanguageSelector from './LanguageSelector.jsx';
 import ReviewsSection from './ReviewsSection.jsx';
+import DriverShowcase from './DriverShowcase.jsx';
 import { createPaymentSession } from '../utils/paymongo.js';
 import { sendBookingEmail as _sendBookingEmail } from '../utils/email.js';
 import { countryCodes } from '../data/countryCodes.js';
@@ -20,39 +21,6 @@ import { useNavigate } from 'react-router-dom';
 import PaymentOptions from './PaymentOptions.jsx';
 import debounce from 'lodash.debounce';
 import HotelAutocomplete from './HotelAutocomplete.jsx';
-
-const drivers = [
-  {
-    id: 1,
-    name: 'Juan Dela Cruz',
-    image: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c',
-    vanImage: 'https://www.toyotamarilao.com.ph/wp-content/uploads/2021/05/Cars_SGEliteColor001.png',
-    experience: '5 years',
-    vanType: '15-Seater Toyota HiAce',
-    rating: 4.9,
-    trips: 2500
-  },
-  {
-    id: 2,
-    name: 'Maria Santos',
-    image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2',
-    vanImage: 'https://www.toyotamarilao.com.ph/wp-content/uploads/2021/05/Cars_SGEliteColor001.png',
-    experience: '7 years',
-    vanType: '15-Seater Toyota HiAce GL',
-    rating: 4.8,
-    trips: 3100
-  },
-  {
-    id: 3,
-    name: 'Pedro Reyes',
-    image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d',
-    vanImage: 'https://www.toyotamarilao.com.ph/wp-content/uploads/2021/05/Cars_SGEliteColor001.png',
-    experience: '4 years',
-    vanType: '15-Seater Nissan NV350',
-    rating: 4.9,
-    trips: 1800
-  }
-];
 
 const ProgressSteps = ({ currentStep }) => {
   const steps = [
@@ -1447,65 +1415,9 @@ export default function BookingForm() {
           </AnimatePresence>
         </div>
 
-        <div className="mt-16">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-8">{t('drivers.title')}</h2>
-          <Swiper
-            modules={[Navigation, Pagination]}
-            spaceBetween={30}
-            slidesPerView={1}
-            navigation
-            pagination={{ clickable: true }}
-            className="mySwiper"
-          >
-            {drivers.map((driver) => (
-              <SwiperSlide key={driver.id}>
-                <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                  <div className="grid grid-cols-1 md:grid-cols-2">
-                    <div className="p-6">
-                      <div className="aspect-w-1 aspect-h-1 rounded-full overflow-hidden mb-4 w-32 h-32 mx-auto">
-                        <img
-                          src={driver.image}
-                          alt={driver.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <h3 className="text-xl font-bold text-center text-gray-900 mb-2">{driver.name}</h3>
-                      <div className="space-y-2 text-gray-600">
-                        <p className="flex items-center justify-center">
-                          <span className="font-medium">{t('drivers.experience')}:</span>
-                          <span className="ml-2">{driver.experience}</span>
-                        </p>
-                        <p className="flex items-center justify-center">
-                          <span className="font-medium">{t('drivers.rating')}:</span>
-                          <span className="ml-2">{driver.rating}/5.0</span>
-                        </p>
-                        <p className="flex items-center justify-center">
-                          <span className="font-medium">{t('drivers.trips')}:</span>
-                          <span className="ml-2">{driver.trips}+</span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="p-6 bg-gray-50">
-                      <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden mb-4">
-                        <img
-                          src={driver.vanImage}
-                          alt={`${driver.name}'s van`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <h4 className="text-lg font-semibold text-center text-gray-900 mb-2">{t('drivers.vehicle')}</h4>
-                      <p className="text-center text-gray-600">{driver.vanType}</p>
-                    </div>
-                  </div>
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        </div>
+        <DriverShowcase />
 
-        <div>
-          <ReviewsSection />
-        </div>
+        <ReviewsSection />
       </div>
 
       {/* Final Booking Summary Display */}
@@ -1570,6 +1482,8 @@ export default function BookingForm() {
       </div>
 
       {showAuthModal ? renderAuthModal() : null}
+
+      <ReviewsSection />
     </div>
   );
 }

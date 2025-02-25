@@ -23,7 +23,6 @@ const MobileMenuItem = ({ to, onClick, children, className }) => (
 export default function NavigationMenu() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const { user, signOut } = useAuth();
   const { isAdmin, role, loading: adminLoading } = useAdminAuth();
   const { isDriver, driverStatus } = useDriverAuth();
@@ -35,27 +34,6 @@ export default function NavigationMenu() {
 
   // Check if current page is an admin page
   const isAdminPage = location.pathname.startsWith('/admin');
-
-  // Reset hover state when switching pages
-  useEffect(() => {
-    setIsHovered(false);
-  }, [location.pathname]);
-
-  // Add this debug log
-  console.log('Navigation Menu Driver State:', { isDriver, driverStatus });
-
-  // Debug log for auth status
-  useEffect(() => {
-    if (!adminLoading) {
-      console.log('Auth Status:', {
-        userId: user?.id,
-        userRole: role,
-        isAdmin: isAdmin,
-        loading: adminLoading,
-        isSigningOut
-      });
-    }
-  }, [user, role, isAdmin, adminLoading, isSigningOut]);
 
   useEffect(() => {
     if (user) {
@@ -367,40 +345,23 @@ export default function NavigationMenu() {
     console.log('Driver Status:', { isDriver, driverStatus });
   }, [isDriver, driverStatus]);
 
-  // Add visibility class based on admin page and hover state
-  const navVisibilityClass = isAdminPage
-    ? `transform transition-all duration-300 ${
-        isHovered ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
-      }`
-    : '';
-
   return (
     <>
-      {/* Update hover detection area - always visible at top of screen */}
-      {isAdminPage && (
-        <div
-          className="fixed top-0 left-0 w-full h-12 z-[99]"
-          onMouseEnter={() => setIsHovered(true)}
-        />
-      )}
-      
       <AnimatePresence mode="wait">
         <motion.nav
           initial={false}
           animate={{ 
-            y: isAdminPage && !isHovered ? -100 : 0,
-            opacity: isAdminPage && !isHovered ? 0 : 1
+            y: 0,
+            opacity: 1
           }}
           transition={{
             duration: 0.3,
             ease: "easeInOut"
           }}
-          className="fixed top-0 inset-x-0 mx-auto w-[95%] max-w-7xl bg-gray-900/75 backdrop-blur-xl rounded-b-2xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] border border-gray-800/50 z-[100]"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => isAdminPage && setIsHovered(false)}
+          className="fixed top-0 inset-x-0 w-full bg-gray-900/75 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] border-b border-gray-800/50 z-[100]"
         >
           <style>{keyframes}</style>
-          <div className="px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               {/* Logo section */}
               <div className="flex items-center flex-shrink-0">
