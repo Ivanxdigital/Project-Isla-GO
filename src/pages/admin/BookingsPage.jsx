@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../utils/supabase';
+import { supabase } from '../../utils/supabase.ts';
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -643,8 +643,8 @@ export default function BookingsPage() {
   );
 
   return (
-    <div className="px-0 py-6">
-      <div className="px-6">
+    <div className="min-h-screen bg-gray-100">
+      <div className="px-6 pt-20">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold text-gray-900">Manage Bookings</h1>
           <div className="flex space-x-2">

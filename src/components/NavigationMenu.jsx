@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const MobileMenuItem = ({ to, onClick, children, className }) => (
   <Link
     to={to}
-    className={`block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800/50 rounded-xl transition-all duration-200 ${className}`}
+    className={`block px-4 py-3.5 text-gray-200 hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 text-[15px] font-normal ${className}`}
     onClick={onClick}
   >
     {children}
@@ -376,10 +376,10 @@ export default function NavigationMenu() {
 
   return (
     <>
-      {/* Hover detection area - always visible at top of screen */}
+      {/* Update hover detection area - always visible at top of screen */}
       {isAdminPage && (
         <div
-          className="fixed top-0 left-0 w-full h-16 z-[99]"
+          className="fixed top-0 left-0 w-full h-12 z-[99]"
           onMouseEnter={() => setIsHovered(true)}
         />
       )}
@@ -395,7 +395,7 @@ export default function NavigationMenu() {
             duration: 0.3,
             ease: "easeInOut"
           }}
-          className="fixed top-4 inset-x-0 mx-auto w-[95%] max-w-7xl bg-gray-900/75 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] border border-gray-800/50 z-[100]"
+          className="fixed top-0 inset-x-0 mx-auto w-[95%] max-w-7xl bg-gray-900/75 backdrop-blur-xl rounded-b-2xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] border border-gray-800/50 z-[100]"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => isAdminPage && setIsHovered(false)}
         >
@@ -460,9 +460,9 @@ export default function NavigationMenu() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-[calc(100%+0.5rem)] left-0 right-0 bg-gray-900/75 backdrop-blur-xl rounded-xl border border-gray-800/50 shadow-[0_8px_32px_rgba(0,0,0,0.2)] md:hidden mx-2"
+                    className="absolute top-[calc(100%+0.75rem)] left-2 right-2 bg-gray-900/95 backdrop-blur-lg rounded-2xl border border-gray-800 shadow-xl md:hidden overflow-hidden"
                   >
-                    <div className="px-2 pt-2 pb-3 space-y-1">
+                    <div className="py-3 space-y-1.5">
                       {menuItems.map((item) => (
                         <MobileMenuItem
                           key={item.name}
@@ -475,7 +475,7 @@ export default function NavigationMenu() {
                       ))}
                       
                       {!user ? (
-                        <>
+                        <div className="px-3 pt-2 pb-3 space-y-3 mt-2 border-t border-gray-800">
                           <MobileMenuItem
                             to="/login"
                             onClick={() => setIsMenuOpen(false)}
@@ -485,93 +485,121 @@ export default function NavigationMenu() {
                           <Link
                             to="/register"
                             onClick={() => setIsMenuOpen(false)}
-                            className="block w-full text-center px-4 py-2 mt-3 bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white rounded-lg font-medium transition-all duration-200"
+                            className="block w-full text-center px-4 py-3 bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white rounded-lg text-[15px] font-medium transition-all duration-200"
                           >
                             Register
                           </Link>
-                        </>
+                        </div>
                       ) : (
-                        <>
-                          <MobileMenuItem
-                            to="/profile"
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            Your Profile
-                          </MobileMenuItem>
-                          <MobileMenuItem
-                            to="/manage-bookings"
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            Manage Bookings
-                          </MobileMenuItem>
-                          
-                          {!adminLoading && isAdmin && (
+                        <div className="border-t border-gray-800 mt-2 pt-2">
+                          <div className="px-4 py-3 flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-emerald-400 p-0.5">
+                              <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                                {profile?.avatar_url ? (
+                                  <img
+                                    src={profile.avatar_url}
+                                    alt="Profile"
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <svg 
+                                    className="w-full h-full text-gray-400 p-1.5" 
+                                    fill="currentColor" 
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8c0 2.208-1.79 4-3.998 4-2.208 0-3.998-1.792-3.998-4s1.79-4 3.998-4c2.208 0 3.998 1.792 3.998 4z" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[15px] font-medium text-gray-200">
+                                {profile?.full_name || 'User'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="px-3 py-2 space-y-1.5">
                             <MobileMenuItem
-                              to="/admin/dashboard"
+                              to="/profile"
                               onClick={() => setIsMenuOpen(false)}
                             >
-                              Admin Dashboard
+                              Your Profile
                             </MobileMenuItem>
-                          )}
+                            <MobileMenuItem
+                              to="/manage-bookings"
+                              onClick={() => setIsMenuOpen(false)}
+                            >
+                              Manage Bookings
+                            </MobileMenuItem>
+                            
+                            {!adminLoading && isAdmin && (
+                              <MobileMenuItem
+                                to="/admin/dashboard"
+                                onClick={() => setIsMenuOpen(false)}
+                              >
+                                Admin Dashboard
+                              </MobileMenuItem>
+                            )}
 
-                          {isDriver && (
-                            <>
-                              {driverStatus === 'pending' && (
-                                <MobileMenuItem
-                                  to="/driver/pending"
-                                  onClick={() => setIsMenuOpen(false)}
-                                  className="text-yellow-600"
-                                >
-                                  <span className="flex items-center">
-                                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6z" clipRule="evenodd" />
-                                    </svg>
-                                    Application Pending
-                                  </span>
-                                </MobileMenuItem>
-                              )}
-                              {driverStatus === 'active' && (
-                                <>
+                            {isDriver && (
+                              <>
+                                {driverStatus === 'pending' && (
                                   <MobileMenuItem
-                                    to="/driver/dashboard"
+                                    to="/driver/pending"
                                     onClick={() => setIsMenuOpen(false)}
                                   >
-                                    Driver Dashboard
+                                    <span className="flex items-center text-yellow-400">
+                                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6z" clipRule="evenodd" />
+                                      </svg>
+                                      Application Pending
+                                    </span>
                                   </MobileMenuItem>
-                                  <MobileMenuItem
-                                    to="/driver/trips"
-                                    onClick={() => setIsMenuOpen(false)}
-                                  >
-                                    My Trips
-                                  </MobileMenuItem>
-                                  <MobileMenuItem
-                                    to="/driver/profile"
-                                    onClick={() => setIsMenuOpen(false)}
-                                  >
-                                    Driver Profile
-                                  </MobileMenuItem>
-                                  <MobileMenuItem
-                                    to="/driver/availability"
-                                    onClick={() => setIsMenuOpen(false)}
-                                  >
-                                    Manage Availability
-                                  </MobileMenuItem>
-                                </>
-                              )}
-                            </>
-                          )}
+                                )}
+                                {driverStatus === 'active' && (
+                                  <>
+                                    <MobileMenuItem
+                                      to="/driver/dashboard"
+                                      onClick={() => setIsMenuOpen(false)}
+                                    >
+                                      Driver Dashboard
+                                    </MobileMenuItem>
+                                    <MobileMenuItem
+                                      to="/driver/trips"
+                                      onClick={() => setIsMenuOpen(false)}
+                                    >
+                                      My Trips
+                                    </MobileMenuItem>
+                                    <MobileMenuItem
+                                      to="/driver/profile"
+                                      onClick={() => setIsMenuOpen(false)}
+                                    >
+                                      Driver Profile
+                                    </MobileMenuItem>
+                                    <MobileMenuItem
+                                      to="/driver/availability"
+                                      onClick={() => setIsMenuOpen(false)}
+                                    >
+                                      Manage Availability
+                                    </MobileMenuItem>
+                                  </>
+                                )}
+                              </>
+                            )}
 
-                          <button
-                            onClick={(e) => {
-                              setIsMenuOpen(false);
-                              handleSignOut(e);
-                            }}
-                            disabled={isSigningOut || adminLoading}
-                            className="w-full text-left block px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors duration-150 rounded-lg mt-2"
-                          >
-                            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
-                          </button>
-                        </>
+                            <button
+                              onClick={(e) => {
+                                setIsMenuOpen(false);
+                                handleSignOut(e);
+                              }}
+                              disabled={isSigningOut || adminLoading}
+                              className="w-full text-left block px-4 py-3.5 text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-lg transition-colors duration-150 text-[15px] font-normal"
+                            >
+                              {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </motion.div>
