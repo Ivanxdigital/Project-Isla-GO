@@ -45,81 +45,59 @@ export default function ReviewsSection() {
   const review = reviews[currentReview];
 
   return (
-    <section className="py-20 bg-blue-50" id="reviews">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="relative w-screen -mx-[50vw] left-[50%] right-[50%] bg-blue-50" id="reviews">
+      <div className="py-12 sm:py-16 md:py-20">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            What Our <span className="text-blue-600">Customers</span> Say
-          </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Hear from travelers who have experienced our services across Palawan
-          </p>
-        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8 sm:mb-12 md:mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
+              What Our <span className="text-blue-600">Customers</span> Say
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
+              Hear from travelers who have experienced our services across Palawan
+            </p>
+          </div>
 
-        {/* Reviews Display */}
-        <div className="mb-16">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={review.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 }}
-              className="bg-white rounded-xl shadow-lg overflow-hidden"
-            >
-              <div className="flex flex-col md:flex-row items-center">
-                <div className="md:w-1/3 p-8 flex flex-col items-center">
-                  <div className="relative mb-4">
-                    <img
-                      src={review.avatar}
-                      alt={review.name}
-                      className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                    />
-                    <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-1.5">
-                      <StarIcon className="w-5 h-5" />
+          {/* Reviews Display */}
+          <div className="mb-8 sm:mb-12">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={review.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="bg-white rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto"
+              >
+                <div className="flex flex-col md:flex-row items-center">
+                  <div className="w-full md:w-1/3 p-6 sm:p-8 flex flex-col items-center">
+                    <div className="relative mb-3 sm:mb-4">
+                      <img
+                        src={review.avatar}
+                        alt={review.name}
+                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                      />
+                      <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-1.5">
+                        <StarIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </div>
+                    </div>
+                    
+                    <div className="text-center">
+                      <div className="text-xl sm:text-2xl font-bold text-gray-900">{review.name}</div>
+                      <div className="text-blue-600 text-sm sm:text-base">{review.location}</div>
                     </div>
                   </div>
                   
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{review.name}</div>
-                    <div className="text-blue-600">{review.location}</div>
+                  <div className="w-full md:w-2/3 bg-white p-6 sm:p-8 md:p-10 flex items-center">
+                    <blockquote className="text-lg sm:text-xl md:text-2xl text-gray-700 italic">
+                      <span className="text-blue-200 text-4xl sm:text-6xl font-serif leading-none inline-block mr-2">"</span>
+                      {review.text}
+                    </blockquote>
                   </div>
                 </div>
-                
-                <div className="md:w-2/3 bg-white p-8 md:p-10 flex items-center">
-                  <blockquote className="text-xl md:text-2xl text-gray-700 italic">
-                    <span className="text-blue-200 text-6xl font-serif leading-none inline-block mr-2">"</span>
-                    {review.text}
-                  </blockquote>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        
-        {/* Review Navigation */}
-        <div className="flex justify-center space-x-3 mb-16">
-          {reviews.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentReview(index)}
-              className={`h-3 rounded-full transition-all duration-300 ${
-                currentReview === index ? 'bg-blue-600 w-10' : 'bg-gray-300 w-3'
-              }`}
-              aria-label={`Go to review ${index + 1}`}
-            />
-          ))}
-        </div>
-        
-        {/* Additional Reviews CTA */}
-        <div className="text-center">
-          <a 
-            href="#" 
-            className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-300"
-          >
-            See More Reviews
-          </a>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </section>
