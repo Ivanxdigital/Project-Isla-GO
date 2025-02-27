@@ -22,27 +22,19 @@ const formatPhoneNumber = (number: string) => {
   return cleaned.startsWith('63') ? `+${cleaned}` : `+63${cleaned}`;
 };
 
-// Helper function to create WhatsApp deep link
-const createWhatsAppLink = (phoneNumber: string, message: string = '') => {
-  // Clean the phone number (remove spaces, dashes, parentheses, etc.)
-  const cleanNumber = phoneNumber.toString().replace(/[\s\-\(\)\+]+/g, '');
-  
-  // Make sure it has the country code (63 for Philippines)
-  const fullNumber = cleanNumber.startsWith('63') 
-    ? cleanNumber 
-    : cleanNumber.startsWith('9') 
-      ? '63' + cleanNumber 
-      : cleanNumber;
-  
-  // Create the basic WhatsApp link
-  let whatsappLink = `https://wa.me/${fullNumber}`;
-  
-  // If there's a message, add it to the link (properly encoded for URLs)
-  if (message) {
-    whatsappLink += `?text=${encodeURIComponent(message)}`;
-  }
-  
-  return whatsappLink;
+// Remove WhatsApp deep link function and replace with simple message function
+const createSmsMessage = (booking: any) => {
+  return `
+New Booking Alert!
+From: ${booking.from_location}
+To: ${booking.to_location}
+Date: ${booking.departure_date}
+Time: ${booking.departure_time}
+Service: ${booking.service_type}
+Customer: ${booking.customers.first_name} ${booking.customers.last_name}
+
+Reply YES to accept this booking.
+`.trim();
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -128,21 +120,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'No available drivers found' });
     }
 
-    // Create WhatsApp deep link for responding YES
-    const responseLink = createWhatsAppLink(process.env.TWILIO_PHONE_NUMBER?.replace('+', '') || '', 'YES');
-
-    // Create message content
-    const messageContent = `
-New Booking Alert!
-From: ${booking.from_location}
-To: ${booking.to_location}
-Date: ${booking.departure_date}
-Time: ${booking.departure_time}
-Service: ${booking.service_type}
-Customer: ${booking.customers.first_name} ${booking.customers.last_name}
-
-Reply YES to accept this booking or click: ${responseLink}
-`.trim();
+    // Create message content using the new function
+    const messageContent = createSmsMessage(booking);
 
     // Send SMS to each driver
     const notificationPromises = drivers.map(async (driver) => {

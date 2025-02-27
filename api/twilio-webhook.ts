@@ -14,29 +14,6 @@ const twilioClient = new twilio.Twilio(
   process.env.TWILIO_AUTH_TOKEN!
 );
 
-// Helper function to create WhatsApp deep link
-const createWhatsAppLink = (phoneNumber: string, message: string = '') => {
-  // Clean the phone number (remove spaces, dashes, parentheses, etc.)
-  const cleanNumber = phoneNumber.toString().replace(/[\s\-\(\)\+]+/g, '');
-  
-  // Make sure it has the country code (63 for Philippines)
-  const fullNumber = cleanNumber.startsWith('63') 
-    ? cleanNumber 
-    : cleanNumber.startsWith('9') 
-      ? '63' + cleanNumber 
-      : cleanNumber;
-  
-  // Create the basic WhatsApp link
-  let whatsappLink = `https://wa.me/${fullNumber}`;
-  
-  // If there's a message, add it to the link (properly encoded for URLs)
-  if (message) {
-    whatsappLink += `?text=${encodeURIComponent(message)}`;
-  }
-  
-  return whatsappLink;
-};
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log('1. Webhook received:', {
@@ -48,24 +25,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { Body: messageBody, From: fromNumber, MessageSid: messageId } = req.body;
     const cleanedMessage = messageBody?.toString().trim().toUpperCase() || '';
     
-    // Check if this is from WhatsApp
-    const isWhatsApp = fromNumber?.toString().includes('whatsapp:') || false;
-    
-    // Clean the phone number differently depending on source
-    let cleanedNumber = '';
-    if (isWhatsApp) {
-      // Format: whatsapp:+63XXXXXXXXXX
-      cleanedNumber = fromNumber?.toString().replace('whatsapp:+63', '') || '';
-    } else {
-      // Regular SMS format
-      cleanedNumber = fromNumber?.toString().replace('+63', '') || '';
-    }
+    // Clean the phone number (remove country code)
+    const cleanedNumber = fromNumber?.toString().replace('+63', '') || '';
 
     console.log('2. Message details:', { 
       fromNumber: cleanedNumber, 
       messageBody: cleanedMessage,
       messageId,
-      channel: isWhatsApp ? 'whatsapp' : 'sms'
+      channel: 'sms'
     });
 
     // Find the driver by phone number
@@ -165,46 +132,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const customerName = `${notification.bookings.customers.first_name} ${notification.bookings.customers.last_name}`;
         const driverName = `${driver.first_name} ${driver.last_name}`;
         
-        // Create WhatsApp deep link for customer
+        // Create customer notification message
         const customerMessage = `Hello ${customerName}! Your booking has been accepted by ${driverName}. They will contact you shortly to coordinate pickup details.`;
         
-        // Create WhatsApp deep link for customer to message driver
-        const whatsappMessage = `Hello! I'm your customer for the trip from ${notification.bookings.from_location} to ${notification.bookings.to_location}`;
-        const whatsappLink = createWhatsAppLink(driver.mobile_number, whatsappMessage);
-        
-        // Add WhatsApp link to SMS message
-        const fullCustomerMessage = `${customerMessage}\n\nClick here to message your driver on WhatsApp: ${whatsappLink}`;
-        
-        // Send SMS with WhatsApp link
+        // Send SMS to customer
         await twilioClient.messages.create({
-          body: fullCustomerMessage,
+          body: customerMessage,
           to: `+63${customerNumber}`,
           from: process.env.TWILIO_PHONE_NUMBER
         });
       }
 
       // Send confirmation to driver with booking details
-      // Customize response based on whether it's WhatsApp or SMS
-      let driverResponse = '';
-      
-      if (isWhatsApp) {
-        // Rich-formatted response for WhatsApp
-        driverResponse = `
-*Booking Confirmed!* ✅
-
-*Customer:* ${notification.bookings?.customers?.first_name} ${notification.bookings?.customers?.last_name}
-*Contact:* +63${notification.bookings?.customers?.mobile_number}
-*From:* ${notification.bookings?.from_location}
-*To:* ${notification.bookings?.to_location}
-*Date:* ${notification.bookings?.departure_date}
-*Time:* ${notification.bookings?.departure_time}
-
-Please contact the customer to coordinate pickup details.
-
-_Send your real-time location when you're on the way to help your customer track your arrival._`.trim();
-      } else {
-        // Plain text for SMS
-        driverResponse = `
+      const driverResponse = `
 Booking Confirmed!
 Customer: ${notification.bookings?.customers?.first_name} ${notification.bookings?.customers?.last_name}
 Contact: +63${notification.bookings?.customers?.mobile_number}
@@ -214,14 +154,6 @@ Date: ${notification.bookings?.departure_date}
 Time: ${notification.bookings?.departure_time}
 
 Please contact the customer to coordinate pickup details.`.trim();
-      }
-
-      // Generate WhatsApp link for driver to message customer
-      const customerWhatsAppMsg = `Hello! I'm your driver ${driver.first_name} ${driver.last_name} for your trip from ${notification.bookings?.from_location} to ${notification.bookings?.to_location}`;
-      const customerWhatsAppLink = createWhatsAppLink(notification.bookings?.customers?.mobile_number, customerWhatsAppMsg);
-      
-      // Add WhatsApp link to driver response
-      driverResponse += `\n\nClick here to message your customer on WhatsApp: ${customerWhatsAppLink}`;
 
       res.setHeader('Content-Type', 'text/xml');
       return res.status(200).send(`
