@@ -755,7 +755,7 @@ export default function BookingForm() {
   }, [showAuthModal]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 pb-0">
       <div className="max-w-3xl mx-auto py-12 px-4 booking-form-container">
         <div className="flex justify-end mb-4">
           <LanguageSelector />
@@ -1482,8 +1482,6 @@ export default function BookingForm() {
       </div>
 
       {showAuthModal ? renderAuthModal() : null}
-
-      <ReviewsSection />
     </div>
   );
 }

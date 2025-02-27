@@ -45,21 +45,25 @@ export default function ReviewsSection() {
   const review = reviews[currentReview];
 
   return (
-    <section className="relative w-screen -mx-[50vw] left-[50%] right-[50%] bg-blue-50" id="reviews">
-      <div className="py-12 sm:py-16 md:py-20">
+    <section className="relative w-screen -mx-[50vw] left-[50%] right-[50%] bg-blue-50 mb-[-1px]" id="reviews">
+      <div className="py-8">
         {/* Section Header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
-              What Our <span className="text-blue-600">Customers</span> Say
-            </h2>
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="inline-block mb-3">
+              <div className="h-1.5 w-12 bg-blue-600 rounded-full mx-auto mb-3"></div>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 relative">
+                What Our <span className="text-blue-600">Customers</span> Say
+              </h2>
+              <div className="h-1.5 w-12 bg-blue-600 rounded-full mx-auto mt-3"></div>
+            </div>
             <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
               Hear from travelers who have experienced our services across Palawan
             </p>
           </div>
 
           {/* Reviews Display */}
-          <div className="mb-8 sm:mb-12">
+          <div className="mb-0">
             <AnimatePresence mode="wait">
               <motion.div
                 key={review.id}
@@ -67,10 +71,10 @@ export default function ReviewsSection() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
-                className="bg-white rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto"
+                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden max-w-4xl mx-auto border border-gray-100"
               >
                 <div className="flex flex-col md:flex-row items-center">
-                  <div className="w-full md:w-1/3 p-6 sm:p-8 flex flex-col items-center">
+                  <div className="w-full md:w-1/3 p-6 sm:p-8 flex flex-col items-center bg-gradient-to-br from-blue-50 to-white">
                     <div className="relative mb-3 sm:mb-4">
                       <img
                         src={review.avatar}

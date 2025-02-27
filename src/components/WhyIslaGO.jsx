@@ -50,25 +50,29 @@ const benefits = [
 
 export default function WhyIslaGO() {
   return (
-    <section className="py-24 bg-white" id="why-islago">
+    <section className="pt-0 pb-16 bg-white" id="why-islago">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
-          >
-            Why Choose IslaGO
-          </motion.h2>
+        <div className="text-center pt-12 sm:pt-16 mb-16">
+          <div className="inline-block mb-3">
+            <div className="h-1.5 w-12 bg-blue-600 rounded-full mx-auto mb-3"></div>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 relative"
+            >
+              Why Choose <span className="text-blue-600">IslaGO</span>
+            </motion.h2>
+            <div className="h-1.5 w-12 bg-blue-600 rounded-full mx-auto mt-3"></div>
+          </div>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-xl text-gray-600 max-w-2xl mx-auto"
+            className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto"
           >
             Your reliable partner for exploring Palawan's most beautiful destinations
           </motion.p>
