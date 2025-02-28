@@ -42,6 +42,9 @@ export default function DriverDashboard() {
   });
   const [pendingBookings, setPendingBookings] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [hasNewNotifications, setHasNewNotifications] = useState(false);
+  const [lastNotificationTime, setLastNotificationTime] = useState(null);
+  const [notificationSound] = useState(new Audio('/notification-sound.mp3')); // Add a notification sound file to your public folder
 
   // Add a polling interval state
   const POLLING_INTERVAL = 5000; // 5 seconds
@@ -70,6 +73,37 @@ export default function DriverDashboard() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      // Check if there are new notifications
+      if (data && data.length > 0) {
+        // If we have more notifications than before or if the newest notification is newer than our last check
+        const newestNotification = data[0];
+        
+        if (notifications.length === 0 || 
+            data.length > notifications.length || 
+            (lastNotificationTime && new Date(newestNotification.created_at) > new Date(lastNotificationTime))) {
+          
+          // Play notification sound
+          try {
+            notificationSound.play();
+          } catch (soundError) {
+            console.error('Error playing notification sound:', soundError);
+          }
+          
+          // Show toast notification
+          toast.success('New booking request available!', {
+            duration: 5000,
+            icon: '🔔'
+          });
+          
+          // Set flag for visual indicator
+          setHasNewNotifications(true);
+          
+          // Update last notification time
+          setLastNotificationTime(newestNotification.created_at);
+        }
+      }
+      
       setNotifications(data || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -117,6 +151,48 @@ export default function DriverDashboard() {
       console.error('Error fetching pending bookings:', error);
     }
   };
+
+  // Set up real-time subscription for new notifications
+  useEffect(() => {
+    if (!user) return;
+    
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('driver-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'driver_notifications',
+        filter: `driver_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('New notification received:', payload);
+        
+        // Play notification sound
+        try {
+          notificationSound.play();
+        } catch (soundError) {
+          console.error('Error playing notification sound:', soundError);
+        }
+        
+        // Show toast notification
+        toast.success('New booking request available!', {
+          duration: 5000,
+          icon: '🔔'
+        });
+        
+        // Set flag for visual indicator
+        setHasNewNotifications(true);
+        
+        // Fetch updated notifications
+        fetchNotifications();
+      })
+      .subscribe();
+    
+    // Cleanup subscription
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [user?.id]);
 
   // Update polling effect to use the shared fetchNotifications function
   useEffect(() => {
@@ -333,6 +409,9 @@ export default function DriverDashboard() {
         created_at: new Date().toISOString()
       });
 
+      // Reset new notification flag
+      setHasNewNotifications(false);
+
       // Refresh the notifications and bookings
       await Promise.all([
         fetchNotifications(),
@@ -381,7 +460,36 @@ export default function DriverDashboard() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h1 className="text-2xl font-bold mb-4">Driver Dashboard</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold mb-4">Driver Dashboard</h1>
+          
+          {/* Notification Bell */}
+          <div className="relative">
+            <button 
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              onClick={() => {
+                // Clear new notification indicator when clicked
+                setHasNewNotifications(false);
+                // Scroll to notifications section
+                document.getElementById('notifications-section').scrollIntoView({ 
+                  behavior: 'smooth' 
+                });
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              
+              {/* Notification Badge */}
+              {hasNewNotifications && (
+                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
+                  New
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+        
         <div className="mb-4 p-2 bg-gray-100 rounded">
           <p>Status: {driverStatus}</p>
           <p>Active Driver: {isDriver ? 'Yes' : 'No'}</p>
@@ -479,15 +587,28 @@ export default function DriverDashboard() {
       </div>
 
       {/* Add this Notifications Section */}
-      <div className="bg-white rounded-lg shadow p-6 mt-8">
-        <h2 className="text-xl font-semibold mb-4">New Booking Requests</h2>
+      <div id="notifications-section" className="bg-white rounded-lg shadow p-6 mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">New Booking Requests</h2>
+          
+          {hasNewNotifications && (
+            <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded-full animate-pulse">
+              New Requests
+            </span>
+          )}
+        </div>
+        
         <div className="space-y-4">
           {notifications.length > 0 ? (
             <div className="space-y-4">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className="bg-white border rounded-lg p-4 shadow-sm"
+                  className={`bg-white border rounded-lg p-4 shadow-sm ${
+                    lastNotificationTime && new Date(notification.created_at) > new Date(lastNotificationTime) 
+                      ? 'border-blue-500 ring-2 ring-blue-200' 
+                      : 'border-gray-200'
+                  }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div>
@@ -505,6 +626,11 @@ export default function DriverDashboard() {
                       </p>
                       <p className="text-sm font-semibold text-green-600">
                         ₱{notification.bookings?.total_amount}
+                      </p>
+                      
+                      {/* Add time received */}
+                      <p className="text-xs text-gray-500 mt-2">
+                        Received: {new Date(notification.created_at).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex space-x-2">
@@ -524,6 +650,32 @@ export default function DriverDashboard() {
                       </button>
                     </div>
                   </div>
+                  
+                  {/* Countdown timer */}
+                  {new Date(notification.expires_at) > new Date() && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <p className="text-xs text-gray-500">
+                        Expires in: {Math.max(0, Math.floor((new Date(notification.expires_at) - new Date()) / 60000))} minutes
+                      </p>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                        <div 
+                          className="bg-blue-600 h-1.5 rounded-full" 
+                          style={{ 
+                            width: `${Math.max(0, Math.min(100, (new Date(notification.expires_at) - new Date()) / (15 * 60 * 1000) * 100))}%` 
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Expired indicator */}
+                  {new Date(notification.expires_at) < new Date() && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <p className="text-xs text-red-500 font-medium">
+                        This booking request has expired
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
