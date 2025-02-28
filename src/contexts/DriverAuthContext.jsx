@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '../utils/supabase';
-import { useAuth } from './AuthContext';
+import { supabase } from '../utils/supabase.js';
+import { useAuth } from './AuthContext.jsx';
 
 const DriverAuthContext = createContext({});
 
@@ -36,11 +36,11 @@ export function DriverAuthProvider({ children }) {
 
         console.log('DriverAuthContext: Checking status for user:', user.id);
 
-        // First check drivers table
+        // First check drivers table - FIXED: Check user_id instead of id
         const { data: driverData, error: driverError } = await supabase
           .from('drivers')
           .select('id, status')
-          .eq('id', user.id)
+          .eq('user_id', user.id)
           .maybeSingle();
 
         console.log('DriverAuthContext: Driver data:', driverData, 'Error:', driverError);
@@ -71,6 +71,8 @@ export function DriverAuthProvider({ children }) {
     // Only check status if we have a user
     if (user) {
       checkDriverStatus();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
@@ -80,6 +82,43 @@ export function DriverAuthProvider({ children }) {
     loading,
     refreshStatus: () => {
       setLoading(true);
+      // Fix: Define checkDriverStatus here to avoid reference error
+      async function checkDriverStatus() {
+        try {
+          if (!user) {
+            setIsDriver(false);
+            setDriverStatus(null);
+            setLoading(false);
+            return;
+          }
+
+          // Check drivers table with user_id
+          const { data: driverData, error: driverError } = await supabase
+            .from('drivers')
+            .select('id, status')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (driverError && driverError.code !== 'PGRST116') {
+            throw driverError;
+          }
+
+          if (driverData) {
+            setIsDriver(driverData.status === 'active');
+            setDriverStatus(driverData.status);
+          } else {
+            setIsDriver(false);
+            setDriverStatus(null);
+          }
+        } catch (error) {
+          console.error('DriverAuthContext Error:', error);
+          setIsDriver(false);
+          setDriverStatus(null);
+        } finally {
+          setLoading(false);
+        }
+      }
+      
       checkDriverStatus();
     }
   };
