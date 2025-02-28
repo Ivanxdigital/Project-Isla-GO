@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [isVisible, setIsVisible] = useState(false);
   const [userId, setUserId] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [adminProfile, setAdminProfile] = useState(null);
   const [stats, setStats] = useState({
     totalBookings: 0,
     activeDrivers: 0,
@@ -25,6 +26,102 @@ export default function Dashboard() {
     const interval = setInterval(fetchStats, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    // Debug log to check user object
+    console.log("Current user object:", user);
+    
+    if (user?.id) {
+      fetchAdminProfile();
+    } else {
+      // If no user object, try to get the current session
+      getCurrentUser();
+    }
+  }, [user]);
+
+  const getCurrentUser = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("Error getting session:", error);
+        return;
+      }
+      
+      if (session?.user) {
+        console.log("Retrieved user from session:", session.user);
+        fetchAdminProfileById(session.user.id);
+      } else {
+        console.log("No active session found");
+      }
+    } catch (error) {
+      console.error("Error in getCurrentUser:", error);
+    }
+  };
+
+  const fetchAdminProfileById = async (id) => {
+    if (!id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching admin profile by ID:', error);
+        return;
+      }
+
+      console.log("Profile data retrieved:", data);
+      setAdminProfile(data);
+    } catch (error) {
+      console.error('Error in fetchAdminProfileById:', error);
+    }
+  };
+
+  const fetchAdminProfile = async () => {
+    try {
+      console.log("Fetching profile for user ID:", user.id);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching admin profile:', error);
+        
+        // If no profile found, try checking the auth user email
+        if (user.email) {
+          const { data: emailData, error: emailError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', user.email)
+            .single();
+            
+          if (emailError) {
+            console.error('Error fetching profile by email:', emailError);
+            return;
+          }
+          
+          if (emailData) {
+            console.log("Profile found by email:", emailData);
+            setAdminProfile(emailData);
+            return;
+          }
+        }
+        return;
+      }
+
+      console.log("Profile data retrieved:", data);
+      setAdminProfile(data);
+    } catch (error) {
+      console.error('Error in fetchAdminProfile:', error);
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -169,10 +266,48 @@ export default function Dashboard() {
     }
   };
 
+  // Get admin display name
+  const getAdminName = () => {
+    if (adminProfile?.full_name) return adminProfile.full_name;
+    if (adminProfile?.first_name) return `${adminProfile.first_name} ${adminProfile.last_name || ''}`.trim();
+    if (adminProfile?.username) return adminProfile.username;
+    if (adminProfile?.email) return adminProfile.email;
+    if (user?.email) return user.email;
+    if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
+    return 'Admin';
+  };
+
+  // Get user ID safely
+  const getUserId = () => {
+    if (user?.id) return user.id;
+    if (adminProfile?.id) return adminProfile.id;
+    return 'Unknown';
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="px-6 pt-20">
-        <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
+        <div className={`mb-8 bg-gradient-to-r from-blue-600 to-blue-800 p-6 rounded-lg shadow-lg text-white transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+              <p className="text-blue-100 mt-1">Welcome back, {getAdminName()}</p>
+            </div>
+            <div className="mt-4 md:mt-0 bg-white/10 backdrop-blur-sm px-4 py-3 rounded-lg border border-white/20">
+              <div className="flex flex-col">
+                <div className="mb-2">
+                  <p className="text-sm text-blue-100">Name:</p>
+                  <p className="font-semibold">{getAdminName()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-blue-100">User ID:</p>
+                  <p className="font-mono text-sm font-medium break-all">{getUserId()}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className={`bg-white p-4 sm:p-6 rounded-lg shadow transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`} style={{ transitionDelay: '100ms' }}>
             <h2 className="text-lg font-semibold mb-2">Total Bookings</h2>
