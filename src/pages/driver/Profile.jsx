@@ -14,8 +14,21 @@ import {
   CameraIcon,
   DocumentTextIcon,
   StarIcon,
-  TruckIcon
+  TruckIcon,
+  MapPinIcon,
+  ClockIcon,
+  TagIcon,
+  BuildingOfficeIcon,
+  CreditCardIcon,
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline';
+
+// Import Shadcn UI components
+import { Avatar, AvatarImage, AvatarFallback } from "../../components/ui/avatar.jsx";
+import { Badge } from "../../components/ui/badge.jsx";
+import { Card, CardHeader, CardContent, CardFooter } from "../../components/ui/card.jsx";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs.jsx";
+import { cn } from "../../lib/utils.js";
 
 const containerVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -39,11 +52,13 @@ export default function DriverProfile() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
   const [stats, setStats] = useState({
     totalTrips: 0,
     rating: 0,
     completionRate: 0
   });
+  const [availability, setAvailability] = useState([]);
   
   const [formData, setFormData] = useState({
     contact_number: '',
@@ -63,8 +78,27 @@ export default function DriverProfile() {
   useEffect(() => {
     if (profile?.driver?.id) {
       fetchDriverStats();
+      fetchDriverAvailability();
     }
   }, [profile]);
+
+  async function fetchDriverAvailability() {
+    try {
+      const { data, error } = await supabase
+        .from('driver_availability')
+        .select('*')
+        .eq('driver_id', profile.driver.id);
+
+      if (error) {
+        console.error('Error fetching availability:', error.message);
+        return;
+      }
+
+      setAvailability(data || []);
+    } catch (error) {
+      console.error('Error fetching availability:', error.message);
+    }
+  }
 
   async function fetchDriverStats() {
     try {
@@ -197,7 +231,14 @@ export default function DriverProfile() {
             contact_number,
             emergency_contact,
             license_expiry,
-            notes
+            notes,
+            service_types,
+            is_available,
+            current_location,
+            van_model,
+            seating_capacity,
+            available_seats,
+            documents_verified
           )
         `)
         .eq('user_id', user.id)
@@ -305,11 +346,13 @@ export default function DriverProfile() {
   if (!profile) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <UserCircleIcon className="mx-auto h-16 w-16 text-gray-400" />
-          <h2 className="mt-4 text-xl font-semibold text-gray-900">No Driver Profile Found</h2>
-          <p className="mt-2 text-gray-600">Please complete your driver application first.</p>
-        </div>
+        <Card className="max-w-md mx-auto">
+          <CardContent className="pt-6 text-center">
+            <UserCircleIcon className="mx-auto h-16 w-16 text-gray-400" />
+            <h2 className="mt-4 text-xl font-semibold text-gray-900">No Driver Profile Found</h2>
+            <p className="mt-2 text-gray-600">Please complete your driver application first.</p>
+          </CardContent>
+        </Card>
       </main>
     );
   }
@@ -330,22 +373,22 @@ export default function DriverProfile() {
           <div className="px-6 py-8 sm:p-10">
             <div className="flex flex-col sm:flex-row items-center">
               <div className="relative group">
-                {profile?.driver?.photo_url ? (
-                  <img 
-                    src={getPhotoUrl(profile.driver.photo_url)}
-                    alt="Profile"
-                    className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg 
-                      transition-transform duration-200 group-hover:scale-105"
-                    onError={(e) => {
-                      console.log('Failed to load image:', e.target.src);
-                      e.target.src = null; 
-                      e.target.onerror = null;
-                    }}
-                  />
-                ) : (
-                  <UserCircleIcon className="h-24 w-24 text-white transition-transform 
-                    duration-200 group-hover:scale-105" />
-                )}
+                <Avatar className="h-24 w-24 border-4 border-white shadow-lg transition-transform duration-200 group-hover:scale-105">
+                  {profile?.driver?.photo_url ? (
+                    <AvatarImage 
+                      src={getPhotoUrl(profile.driver.photo_url)} 
+                      alt={profile.name}
+                      onError={(e) => {
+                        console.log('Failed to load image:', e.target.src);
+                        e.target.src = null; 
+                        e.target.onerror = null;
+                      }}
+                    />
+                  ) : null}
+                  <AvatarFallback className="bg-blue-700 text-white">
+                    {profile.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
                 <label className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg cursor-pointer
                   opacity-0 group-hover:opacity-100 transition-all duration-200 
                   hover:bg-gray-50 hover:scale-110">
@@ -367,16 +410,23 @@ export default function DriverProfile() {
               <div className="mt-4 sm:mt-0 sm:ml-6 text-center sm:text-left">
                 <h1 className="text-2xl font-bold text-white">{profile.name}</h1>
                 <div className="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                    bg-blue-500/20 text-white">
+                  <Badge variant="info" className="bg-blue-500/20 text-white border-transparent">
                     <ShieldCheckIcon className="mr-1.5 h-4 w-4" />
                     {profile.status}
-                  </span>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-                    bg-blue-500/20 text-white">
+                  </Badge>
+                  <Badge variant="info" className="bg-blue-500/20 text-white border-transparent">
                     <StarIcon className="mr-1.5 h-4 w-4" />
                     {stats.rating ? `${stats.rating} Rating` : 'No ratings'}
-                  </span>
+                  </Badge>
+                  {profile.driver?.is_available !== undefined && (
+                    <Badge 
+                      variant={profile.driver.is_available ? "success" : "destructive"} 
+                      className={`${profile.driver.is_available ? 'bg-green-500/20' : 'bg-red-500/20'} text-white border-transparent`}
+                    >
+                      <CheckBadgeIcon className="mr-1.5 h-4 w-4" />
+                      {profile.driver.is_available ? 'Available' : 'Unavailable'}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
@@ -388,8 +438,8 @@ export default function DriverProfile() {
           className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3"
           variants={itemVariants}
         >
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+          <Card>
+            <CardContent className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <TruckIcon className="h-6 w-6 text-blue-600" />
@@ -399,11 +449,11 @@ export default function DriverProfile() {
                   <div className="mt-1 text-3xl font-semibold text-gray-900">{stats.totalTrips}</div>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
           
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+          <Card>
+            <CardContent className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <StarIcon className="h-6 w-6 text-blue-600" />
@@ -415,11 +465,11 @@ export default function DriverProfile() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
           
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+          <Card>
+            <CardContent className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <DocumentTextIcon className="h-6 w-6 text-blue-600" />
@@ -429,129 +479,328 @@ export default function DriverProfile() {
                   <div className="mt-1 text-3xl font-semibold text-gray-900">{stats.completionRate}%</div>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </motion.div>
 
         {/* Main Content */}
         <motion.div 
-          className="mt-6 bg-white shadow rounded-lg"
+          className="mt-6"
           variants={itemVariants}
         >
-          <div className="px-6 py-8">
-            {editing ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Contact Number
-                    </label>
-                    <div className="mt-1 relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <PhoneIcon className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input
-                        type="text"
-                        value={formData.contact_number}
-                        onChange={(e) => setFormData({...formData, contact_number: e.target.value})}
-                        className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
+          <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full justify-start mb-4">
+              <TabsTrigger value="details">Profile Details</TabsTrigger>
+              <TabsTrigger value="vehicle">Vehicle Info</TabsTrigger>
+              {availability.length > 0 && (
+                <TabsTrigger value="availability">Availability</TabsTrigger>
+              )}
+            </TabsList>
+            
+            <TabsContent value="details">
+              <Card>
+                <CardContent className="pt-6">
+                  {editing ? (
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Contact Number
+                          </label>
+                          <div className="mt-1 relative rounded-md shadow-sm">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <PhoneIcon className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                              type="text"
+                              value={formData.contact_number}
+                              onChange={(e) => setFormData({...formData, contact_number: e.target.value})}
+                              className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Emergency Contact
-                    </label>
-                    <div className="mt-1 relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <BellAlertIcon className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Emergency Contact
+                          </label>
+                          <div className="mt-1 relative rounded-md shadow-sm">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <BellAlertIcon className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                              type="text"
+                              value={formData.emergency_contact}
+                              onChange={(e) => setFormData({...formData, emergency_contact: e.target.value})}
+                              className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <input
-                        type="text"
-                        value={formData.emergency_contact}
-                        onChange={(e) => setFormData({...formData, emergency_contact: e.target.value})}
-                        className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex gap-4">
-                  <button
-                    type="submit"
-                    className="flex-1 sm:flex-none px-6 py-2.5 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(false)}
-                    className="flex-1 sm:flex-none px-6 py-2.5 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="space-y-8">
-                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-                  <div className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-6 transition-all hover:shadow-md hover:bg-gray-50/80">
-                    <div className="flex items-center">
-                      <IdentificationIcon className="h-8 w-8 text-blue-600" />
-                      <div className="ml-4">
-                        <h3 className="text-sm font-medium text-gray-500">License Number</h3>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">{profile.license_number}</p>
+                      <div className="flex gap-4">
+                        <button
+                          type="submit"
+                          className="flex-1 sm:flex-none px-6 py-2.5 border border-transparent rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                        >
+                          Save Changes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditing(false)}
+                          className="flex-1 sm:flex-none px-6 py-2.5 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                        >
+                          Cancel
+                        </button>
                       </div>
-                    </div>
-                  </div>
+                    </form>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                      <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                        <CardContent className="p-6">
+                          <div className="flex items-center">
+                            <IdentificationIcon className="h-8 w-8 text-blue-600" />
+                            <div className="ml-4">
+                              <h3 className="text-sm font-medium text-gray-500">License Number</h3>
+                              <p className="mt-1 text-lg font-semibold text-gray-900">{profile.license_number}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                  <div className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-6 transition-all hover:shadow-md hover:bg-gray-50/80">
-                    <div className="flex items-center">
-                      <CalendarIcon className="h-8 w-8 text-blue-600" />
-                      <div className="ml-4">
-                        <h3 className="text-sm font-medium text-gray-500">License Expiry</h3>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">
-                          {profile.license_expiry ? new Date(profile.license_expiry).toLocaleDateString() : '-'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                      <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                        <CardContent className="p-6">
+                          <div className="flex items-center">
+                            <CalendarIcon className="h-8 w-8 text-blue-600" />
+                            <div className="ml-4">
+                              <h3 className="text-sm font-medium text-gray-500">License Expiry</h3>
+                              <p className="mt-1 text-lg font-semibold text-gray-900">
+                                {profile.license_expiry ? new Date(profile.license_expiry).toLocaleDateString() : '-'}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                  <div className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-6 transition-all hover:shadow-md hover:bg-gray-50/80">
-                    <div className="flex items-center">
-                      <PhoneIcon className="h-8 w-8 text-blue-600" />
-                      <div className="ml-4">
-                        <h3 className="text-sm font-medium text-gray-500">Contact Number</h3>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">{profile.contact_number || '-'}</p>
-                      </div>
-                    </div>
-                  </div>
+                      <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                        <CardContent className="p-6">
+                          <div className="flex items-center">
+                            <PhoneIcon className="h-8 w-8 text-blue-600" />
+                            <div className="ml-4">
+                              <h3 className="text-sm font-medium text-gray-500">Contact Number</h3>
+                              <p className="mt-1 text-lg font-semibold text-gray-900">{profile.contact_number || '-'}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                  <div className="bg-gray-50/50 backdrop-blur-sm rounded-xl p-6 transition-all hover:shadow-md hover:bg-gray-50/80">
-                    <div className="flex items-center">
-                      <BellAlertIcon className="h-8 w-8 text-blue-600" />
-                      <div className="ml-4">
-                        <h3 className="text-sm font-medium text-gray-500">Emergency Contact</h3>
-                        <p className="mt-1 text-lg font-semibold text-gray-900">{profile.emergency_contact || '-'}</p>
-                      </div>
+                      <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                        <CardContent className="p-6">
+                          <div className="flex items-center">
+                            <BellAlertIcon className="h-8 w-8 text-blue-600" />
+                            <div className="ml-4">
+                              <h3 className="text-sm font-medium text-gray-500">Emergency Contact</h3>
+                              <p className="mt-1 text-lg font-semibold text-gray-900">{profile.emergency_contact || '-'}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Documents Verified */}
+                      <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                        <CardContent className="p-6">
+                          <div className="flex items-center">
+                            <DocumentTextIcon className="h-8 w-8 text-blue-600" />
+                            <div className="ml-4">
+                              <h3 className="text-sm font-medium text-gray-500">Documents Status</h3>
+                              <p className="mt-1 text-lg font-semibold text-gray-900">
+                                {profile.driver?.documents_verified ? 'Verified' : 'Pending Verification'}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Payment Information */}
+                      <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                        <CardContent className="p-6">
+                          <div className="flex items-center">
+                            <CreditCardIcon className="h-8 w-8 text-blue-600" />
+                            <div className="ml-4">
+                              <h3 className="text-sm font-medium text-gray-500">Payment Information</h3>
+                              <p className="mt-1 text-lg font-semibold text-gray-900">
+                                {profile.bank_name ? `${profile.bank_name} (${profile.account_number?.slice(-4).padStart(profile.account_number.length, '*')})` : 'Not provided'}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
-                  </div>
-                </div>
-
-                {profile.driver && (
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="w-full sm:w-auto px-6 py-2.5 border border-transparent rounded-lg shadow-md 
-                      text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 
-                      focus:ring-offset-2 focus:ring-blue-500 transition-all hover:shadow-lg"
-                  >
-                    Edit Profile
-                  </button>
+                  )}
+                </CardContent>
+                {!editing && profile.driver && (
+                  <CardFooter>
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="w-full sm:w-auto px-6 py-2.5 border border-transparent rounded-lg shadow-md 
+                        text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 
+                        focus:ring-offset-2 focus:ring-blue-500 transition-all hover:shadow-lg"
+                    >
+                      Edit Profile
+                    </button>
+                  </CardFooter>
                 )}
-              </div>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="vehicle">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    {/* Vehicle Model */}
+                    <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                      <CardContent className="p-6">
+                        <div className="flex items-center">
+                          <TruckIcon className="h-8 w-8 text-blue-600" />
+                          <div className="ml-4">
+                            <h3 className="text-sm font-medium text-gray-500">Vehicle Model</h3>
+                            <p className="mt-1 text-lg font-semibold text-gray-900">
+                              {profile.driver?.van_model || profile.vehicle_model || '-'}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Plate Number */}
+                    <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                      <CardContent className="p-6">
+                        <div className="flex items-center">
+                          <TagIcon className="h-8 w-8 text-blue-600" />
+                          <div className="ml-4">
+                            <h3 className="text-sm font-medium text-gray-500">Plate Number</h3>
+                            <p className="mt-1 text-lg font-semibold text-gray-900">{profile.plate_number || '-'}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Service Types */}
+                    {profile.driver?.service_types && (
+                      <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                        <CardContent className="p-6">
+                          <div className="flex items-center">
+                            <BuildingOfficeIcon className="h-8 w-8 text-blue-600" />
+                            <div className="ml-4">
+                              <h3 className="text-sm font-medium text-gray-500">Service Types</h3>
+                              <div className="mt-1">
+                                {profile.driver.service_types && profile.driver.service_types.length > 0 ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    {profile.driver.service_types.map((service, index) => (
+                                      <Badge key={index} variant="info">
+                                        {service}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-lg font-semibold text-gray-900">-</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    
+                    {/* Current Location */}
+                    {profile.driver?.current_location && (
+                      <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                        <CardContent className="p-6">
+                          <div className="flex items-center">
+                            <MapPinIcon className="h-8 w-8 text-blue-600" />
+                            <div className="ml-4">
+                              <h3 className="text-sm font-medium text-gray-500">Current Location</h3>
+                              <p className="mt-1 text-lg font-semibold text-gray-900">
+                                {profile.driver.current_location || '-'}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    
+                    {/* Seating Capacity */}
+                    {(profile.driver?.seating_capacity !== undefined || profile.driver?.available_seats !== undefined) && (
+                      <Card className="bg-gray-50/50 backdrop-blur-sm hover:shadow-md hover:bg-gray-50/80 transition-all">
+                        <CardContent className="p-6">
+                          <div className="flex items-center">
+                            <UserCircleIcon className="h-8 w-8 text-blue-600" />
+                            <div className="ml-4">
+                              <h3 className="text-sm font-medium text-gray-500">Seating Capacity</h3>
+                              <p className="mt-1 text-lg font-semibold text-gray-900">
+                                {profile.driver.available_seats !== undefined && profile.driver.seating_capacity !== undefined ? 
+                                  `${profile.driver.available_seats}/${profile.driver.seating_capacity} seats available` : 
+                                  profile.driver.seating_capacity !== undefined ? 
+                                    `${profile.driver.seating_capacity} seats` : '-'}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {availability.length > 0 && (
+              <TabsContent value="availability">
+                <Card>
+                  <CardHeader>
+                    <h2 className="text-xl font-semibold text-gray-900">Availability Schedule</h2>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {availability.map((slot, index) => {
+                        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        const dayName = slot.day_of_week !== undefined ? dayNames[slot.day_of_week] : 
+                                       (slot.date ? new Date(slot.date).toLocaleDateString('en-US', {weekday: 'long'}) : 'Unknown');
+                        
+                        return (
+                          <Card key={index} className="border border-gray-200">
+                            <CardContent className="p-4 flex items-center">
+                              <ClockIcon className="h-6 w-6 text-blue-600" />
+                              <div className="ml-4">
+                                <p className="text-sm font-medium text-gray-900">{dayName}</p>
+                                <p className="text-sm text-gray-500">
+                                  {slot.start_time && slot.end_time ? 
+                                    `${slot.start_time.slice(0, 5)} - ${slot.end_time.slice(0, 5)}` : 
+                                    'All day'}
+                                </p>
+                                {slot.location && (
+                                  <p className="text-sm text-gray-500">
+                                    <span className="inline-flex items-center">
+                                      <MapPinIcon className="h-4 w-4 mr-1 text-gray-400" />
+                                      {slot.location}
+                                    </span>
+                                  </p>
+                                )}
+                              </div>
+                              <div className="ml-auto">
+                                <Badge variant={slot.status === 'active' ? "success" : "secondary"}>
+                                  {slot.status || 'Active'}
+                                </Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             )}
-          </div>
+          </Tabs>
         </motion.div>
       </div>
     </motion.main>
