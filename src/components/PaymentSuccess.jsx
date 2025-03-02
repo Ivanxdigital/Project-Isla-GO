@@ -102,6 +102,9 @@ export default function PaymentSuccess() {
         } catch (error) {
           console.error('Failed to notify drivers:', error);
           toast.error('There was an issue notifying drivers. Our team will handle this manually.');
+          
+          // Continue with fetching booking details even if driver notification fails
+          await fetchBookingWithDriver(bookingId);
         }
         
         setStatus('success');
@@ -195,6 +198,9 @@ export default function PaymentSuccess() {
         } catch (error) {
           console.error('Failed to notify drivers:', error);
           toast.error('There was an issue notifying drivers. Our team will handle this manually.');
+          
+          // Continue with fetching booking details even if driver notification fails
+          await fetchBookingWithDriver(bookingId);
         }
 
         setStatus('success');

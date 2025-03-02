@@ -26,13 +26,25 @@ export const sendDriverNotifications = async (bookingId) => {
       throw new Error('No authenticated session found');
     }
 
-    const baseUrl = import.meta.env.PROD 
-      ? 'https://islago.vercel.app'
-      : 'http://localhost:3000';
+    // Get the current hostname to determine the correct API URL
+    const hostname = window.location.hostname;
+    let apiUrl;
     
-    console.log('3. Making API request to:', `${baseUrl}/api/send-driver-sms`);
+    // Check if we're on localhost or deployed
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      apiUrl = `${window.location.origin}/api/send-driver-sms`;
+    } else {
+      // For Vercel deployment, use the direct API route
+      apiUrl = `${window.location.origin}/api/send-driver-sms`;
+    }
+    
+    console.log('3. Making API request to:', apiUrl);
 
-    const response = await fetch(`${baseUrl}/api/send-driver-sms`, {
+    // Create driver notifications in the database first
+    // This will ensure drivers see notifications in their dashboard even if SMS fails
+    await createDriverNotificationsInDatabase(bookingId);
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -68,6 +80,93 @@ export const sendDriverNotifications = async (bookingId) => {
     return data;
   } catch (error) {
     console.error('9. Error in sendDriverNotifications:', error);
+    
+    // Log the error to the database
+    try {
+      await supabase.from('notification_logs').insert({
+        booking_id: bookingId,
+        status_code: 500,
+        response: JSON.stringify({ error: error.message }),
+        created_at: new Date().toISOString()
+      });
+    } catch (logError) {
+      console.error('Failed to log notification error:', logError);
+    }
+    
+    throw error;
+  }
+};
+
+// New function to create driver notifications in the database
+const createDriverNotificationsInDatabase = async (bookingId) => {
+  try {
+    // Get booking details
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', bookingId)
+      .single();
+      
+    if (bookingError) {
+      throw new Error(`Failed to fetch booking: ${bookingError.message}`);
+    }
+    
+    // Get available drivers
+    const { data: drivers, error: driversError } = await supabase
+      .from('drivers')
+      .select('id')
+      .eq('status', 'active')
+      .eq('is_available', true);
+      
+    if (driversError) {
+      throw new Error(`Failed to fetch drivers: ${driversError.message}`);
+    }
+    
+    if (!drivers || drivers.length === 0) {
+      console.log('No available drivers found');
+      return;
+    }
+    
+    console.log(`Creating notifications for ${drivers.length} drivers`);
+    
+    // Generate a unique response code for this booking
+    const responseCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+    
+    // Calculate expiration time (15 minutes from now)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+    
+    // Create notifications for each driver
+    const notifications = drivers.map(driver => ({
+      booking_id: bookingId,
+      driver_id: driver.id,
+      status: 'PENDING',
+      response_code: responseCode,
+      expires_at: expiresAt.toISOString(),
+      created_at: new Date().toISOString()
+    }));
+    
+    const { error: insertError } = await supabase
+      .from('driver_notifications')
+      .insert(notifications);
+      
+    if (insertError) {
+      throw new Error(`Failed to create notifications: ${insertError.message}`);
+    }
+    
+    // Update booking status to finding_driver
+    await supabase
+      .from('bookings')
+      .update({
+        status: 'finding_driver',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId);
+      
+    console.log(`Created ${notifications.length} driver notifications in database`);
+    
+  } catch (error) {
+    console.error('Error creating driver notifications in database:', error);
     throw error;
   }
 };

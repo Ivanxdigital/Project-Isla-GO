@@ -34,12 +34,21 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
   try {
     console.log('Preparing to send payment confirmation email for booking:', bookingId);
     
-    // Fetch booking details with customer info
+    // Fetch booking details with customer info - fixed query to properly join with customers table
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
-        *,
-        customer:customers(
+        id,
+        from_location,
+        to_location,
+        departure_date,
+        departure_time,
+        service_type,
+        total_amount,
+        hotel_pickup,
+        hotel_details,
+        customer_id,
+        customers (
           id,
           first_name,
           last_name,
@@ -59,9 +68,25 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       throw new Error('Booking not found');
     }
 
-    if (!booking.customer?.email) {
-      console.error('No email found for customer:', booking.customer);
-      throw new Error('Customer email is required for sending confirmation');
+    // Check if customers data exists and has email
+    if (!booking.customers || !booking.customers.email) {
+      // Fallback: Try to fetch customer directly if the join didn't work
+      const { data: customer, error: customerError } = await supabase
+        .from('customers')
+        .select('id, first_name, last_name, email, mobile_number')
+        .eq('id', booking.customer_id)
+        .single();
+        
+      if (customerError || !customer || !customer.email) {
+        console.error('No email found for customer:', customer || booking.customer_id);
+        throw new Error('Customer email is required for sending confirmation');
+      }
+      
+      // Use the directly fetched customer data
+      booking.customer = customer;
+    } else {
+      // Use the joined data but rename for consistency
+      booking.customer = booking.customers;
     }
 
     // Prepare email data for API call
