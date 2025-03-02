@@ -34,66 +34,58 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
   try {
     console.log('Preparing to send payment confirmation email for booking:', bookingId);
     
-    // Fetch booking details with customer info - fixed query to properly join with customers table
-    const { data: booking, error: bookingError } = await supabase
+    // First, get the booking details without joins to ensure we get the customer_id
+    const { data: bookingBasic, error: bookingBasicError } = await supabase
       .from('bookings')
-      .select(`
-        id,
-        from_location,
-        to_location,
-        departure_date,
-        departure_time,
-        service_type,
-        total_amount,
-        hotel_pickup,
-        hotel_details,
-        customer_id,
-        customers (
-          id,
-          first_name,
-          last_name,
-          email,
-          mobile_number
-        )
-      `)
+      .select('id, customer_id, from_location, to_location, departure_date, departure_time, service_type, total_amount, hotel_pickup, hotel_details')
       .eq('id', bookingId)
       .single();
 
-    if (bookingError) {
-      console.error('Error fetching booking details:', bookingError);
-      throw bookingError;
-    }
-
-    if (!booking) {
+    if (bookingBasicError || !bookingBasic) {
+      console.error('Error fetching basic booking details:', bookingBasicError);
       throw new Error('Booking not found');
     }
 
-    // Check if customers data exists and has email
-    if (!booking.customers || !booking.customers.email) {
-      // Fallback: Try to fetch customer directly if the join didn't work
-      const { data: customer, error: customerError } = await supabase
-        .from('customers')
-        .select('id, first_name, last_name, email, mobile_number')
-        .eq('id', booking.customer_id)
-        .single();
-        
-      if (customerError || !customer || !customer.email) {
-        console.error('No email found for customer:', customer || booking.customer_id);
-        throw new Error('Customer email is required for sending confirmation');
-      }
-      
-      // Use the directly fetched customer data
-      booking.customer = customer;
-    } else {
-      // Use the joined data but rename for consistency
-      booking.customer = booking.customers;
+    console.log('Retrieved booking with customer_id:', bookingBasic.customer_id);
+    
+    if (!bookingBasic.customer_id) {
+      throw new Error('Booking has no associated customer ID');
     }
+
+    // Now fetch the customer directly using the customer_id
+    const { data: customer, error: customerError } = await supabase
+      .from('customers')
+      .select('id, first_name, last_name, email, mobile_number')
+      .eq('id', bookingBasic.customer_id)
+      .single();
+      
+    if (customerError || !customer) {
+      console.error('Error fetching customer details:', customerError);
+      throw new Error('Customer not found');
+    }
+
+    console.log('Retrieved customer data:', {
+      id: customer.id,
+      name: `${customer.first_name} ${customer.last_name}`,
+      hasEmail: !!customer.email
+    });
+    
+    if (!customer.email) {
+      console.error('Customer has no email address:', customer);
+      throw new Error('Customer email is required for sending confirmation');
+    }
+
+    // Combine booking and customer data
+    const booking = {
+      ...bookingBasic,
+      customer: customer
+    };
 
     // Prepare email data for API call
     const emailData = {
       to: [{
-        email: booking.customer.email,
-        name: `${booking.customer.first_name} ${booking.customer.last_name}`
+        email: customer.email,
+        name: `${customer.first_name} ${customer.last_name}`
       }],
       sender: {
         email: 'noreply@islago.com',
@@ -107,7 +99,7 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       },
       params: {
         booking_id: booking.id,
-        customer_name: booking.customer.first_name
+        customer_name: customer.first_name
       }
     };
 
@@ -118,7 +110,7 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       throw new Error('Brevo API key is not configured');
     }
     
-    console.log('Sending payment confirmation email to:', booking.customer.email);
+    console.log('Sending payment confirmation email to:', customer.email);
     
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',

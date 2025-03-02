@@ -286,15 +286,22 @@ export default function PaymentSuccess() {
     // Start a polling interval to check for driver assignment
     const driverInterval = setInterval(async () => {
       try {
+        // Use a simpler query to avoid 400 errors
         const { data, error } = await supabase
           .from('bookings')
           .select('driver_id, status')
-          .eq('id', bookingId)
-          .single();
+          .filter('id', 'eq', bookingId)
+          .limit(1)
+          .maybeSingle();
           
         if (error) {
           console.error('Error polling for driver:', error);
           clearInterval(driverInterval);
+          return;
+        }
+        
+        if (!data) {
+          console.log('No booking data found during polling');
           return;
         }
         
