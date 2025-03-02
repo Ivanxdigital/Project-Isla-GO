@@ -1,20 +1,5 @@
-import SibApiV3Sdk from '@getbrevo/brevo';
+// Import supabase client
 import { supabase } from './supabase.ts';
-
-// Initialize Brevo API client
-const createBrevoClient = () => {
-  const apiKey = import.meta.env.VITE_BREVO_API_KEY;
-  
-  if (!apiKey) {
-    throw new Error('Brevo API key is not configured');
-  }
-  
-  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-  const apiKey1 = apiInstance.authentications['apiKey'];
-  apiKey1.apiKey = apiKey;
-  
-  return apiInstance;
-};
 
 // Format date for better readability
 const formatDate = (date) => new Date(date).toLocaleDateString('en-PH', {
@@ -79,28 +64,54 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       throw new Error('Customer email is required for sending confirmation');
     }
 
-    // Create Brevo client
-    const apiInstance = createBrevoClient();
-    
-    // Prepare email content
-    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-    
-    sendSmtpEmail.subject = `Payment Confirmation - Booking #${booking.id} - IslaGo Transport`;
-    sendSmtpEmail.htmlContent = getPaymentConfirmationHtml(booking);
-    sendSmtpEmail.sender = { name: 'IslaGo Transport', email: 'noreply@islago.com' };
-    sendSmtpEmail.to = [{ email: booking.customer.email, name: `${booking.customer.first_name} ${booking.customer.last_name}` }];
-    sendSmtpEmail.replyTo = { email: 'support@islago.com', name: 'IslaGo Support' };
-    
-    // Add tracking parameters
-    sendSmtpEmail.params = {
-      booking_id: booking.id,
-      customer_name: booking.customer.first_name
+    // Prepare email data for API call
+    const emailData = {
+      to: [{
+        email: booking.customer.email,
+        name: `${booking.customer.first_name} ${booking.customer.last_name}`
+      }],
+      sender: {
+        email: 'noreply@islago.com',
+        name: 'IslaGo Transport'
+      },
+      subject: `Payment Confirmation - Booking #${booking.id} - IslaGo Transport`,
+      htmlContent: getPaymentConfirmationHtml(booking),
+      replyTo: {
+        email: 'support@islago.com',
+        name: 'IslaGo Support'
+      },
+      params: {
+        booking_id: booking.id,
+        customer_name: booking.customer.first_name
+      }
     };
+
+    // Send email using fetch API instead of Brevo SDK
+    const apiKey = import.meta.env.VITE_BREVO_API_KEY;
     
-    // Send the email
+    if (!apiKey) {
+      throw new Error('Brevo API key is not configured');
+    }
+    
     console.log('Sending payment confirmation email to:', booking.customer.email);
-    const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
     
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': apiKey
+      },
+      body: JSON.stringify(emailData)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Brevo API error:', errorData);
+      throw new Error(`Failed to send email: ${errorData.message || 'Unknown error'}`);
+    }
+    
+    const data = await response.json();
     console.log('Email sent successfully:', data);
     
     // Update booking to mark email as sent

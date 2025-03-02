@@ -20,7 +20,6 @@
     "@fullcalendar/react": "^6.1.15",
     "@fullcalendar/rrule": "^6.1.15",
     "@fullcalendar/timegrid": "^6.1.15",
-    "@getbrevo/brevo": "^1.0.0",
     "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.0.18",
     "@modelcontextprotocol/server-postgres": "^0.6.2",

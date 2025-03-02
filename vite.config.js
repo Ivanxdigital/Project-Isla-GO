@@ -37,11 +37,12 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      // External packages that shouldn't be bundled
-      external: [
-        // Add Brevo to external packages to prevent bundling issues
-        '@getbrevo/brevo'
-      ]
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@headlessui/react', '@heroicons/react'],
+        }
+      }
     }
   },
   define: {
