@@ -286,24 +286,26 @@ export default function PaymentSuccess() {
     // Start a polling interval to check for driver assignment
     const driverInterval = setInterval(async () => {
       try {
+        console.log('Polling for driver assignment for booking:', bookingId);
+        
         // Use a simpler query to avoid 400 errors
         const { data, error } = await supabase
           .from('bookings')
           .select('driver_id, status')
-          .filter('id', 'eq', bookingId)
-          .limit(1)
+          .eq('id', bookingId)
           .maybeSingle();
           
         if (error) {
           console.error('Error polling for driver:', error);
-          clearInterval(driverInterval);
-          return;
+          return; // Continue polling despite errors
         }
         
         if (!data) {
           console.log('No booking data found during polling');
-          return;
+          return; // Continue polling
         }
+        
+        console.log('Driver polling result:', data);
         
         // If a driver has been assigned, fetch driver details
         if (data.driver_id) {
@@ -317,6 +319,7 @@ export default function PaymentSuccess() {
             
           if (driverError) {
             console.error('Error fetching assigned driver:', driverError);
+            toast.error('A driver was assigned but we could not fetch their details');
             return;
           }
           
@@ -331,7 +334,7 @@ export default function PaymentSuccess() {
         }
       } catch (error) {
         console.error('Error in driver polling:', error);
-        clearInterval(driverInterval);
+        // Don't clear interval, continue polling
       }
     }, 5000); // Check every 5 seconds
     

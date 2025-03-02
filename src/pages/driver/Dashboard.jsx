@@ -52,10 +52,17 @@ export default function DriverDashboard() {
   // Move fetchNotifications to component scope so it can be used by handleBookingResponse
   const fetchNotifications = async () => {
     try {
+      console.log('Fetching driver notifications for driver:', user.id);
+      
       const { data, error } = await supabase
         .from('driver_notifications')
         .select(`
-          *,
+          id,
+          booking_id,
+          status,
+          response_code,
+          expires_at,
+          created_at,
           bookings (
             id,
             from_location,
@@ -69,10 +76,15 @@ export default function DriverDashboard() {
         `)
         .eq('driver_id', user.id)
         .eq('status', NOTIFICATION_STATUS.PENDING)
-        .lt('expires_at', new Date().toISOString()) // Only get non-expired notifications
+        .gt('expires_at', new Date().toISOString()) // Only get non-expired notifications
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        throw error;
+      }
+      
+      console.log('Notifications fetched:', data?.length || 0);
       
       // Check if there are new notifications
       if (data && data.length > 0) {
@@ -108,22 +120,33 @@ export default function DriverDashboard() {
     } catch (error) {
       console.error('Error fetching notifications:', error);
       // Log to notification_logs table
-      await supabase.from('driver_notification_logs').insert({
-        booking_id: null,
-        status_code: 500,
-        response: JSON.stringify({ error: error.message }),
-        created_at: new Date().toISOString()
-      });
+      try {
+        await supabase.from('driver_notification_logs').insert({
+          booking_id: null,
+          status_code: 500,
+          response: JSON.stringify({ error: error.message }),
+          created_at: new Date().toISOString()
+        });
+      } catch (logError) {
+        console.error('Failed to log notification error:', logError);
+      }
     }
   };
 
   // Move fetchPendingBookings to component scope
   const fetchPendingBookings = async () => {
     try {
+      console.log('Fetching pending bookings for driver:', user.id);
+      
       const { data: notifications, error } = await supabase
         .from('driver_notifications')
         .select(`
-          *,
+          id,
+          booking_id,
+          status,
+          response_code,
+          expires_at,
+          created_at,
           bookings (
             id,
             from_location,
@@ -146,7 +169,8 @@ export default function DriverDashboard() {
         return;
       }
 
-      setPendingBookings(notifications);
+      console.log('Pending bookings fetched:', notifications?.length || 0);
+      setPendingBookings(notifications || []);
     } catch (error) {
       console.error('Error fetching pending bookings:', error);
     }

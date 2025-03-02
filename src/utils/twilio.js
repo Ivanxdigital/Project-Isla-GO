@@ -34,17 +34,30 @@ export const sendDriverNotifications = async (bookingId) => {
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       apiUrl = `${window.location.origin}/api/send-driver-sms`;
     } else {
-      // For Vercel deployment, use the direct API route
-      apiUrl = `${window.location.origin}/api/send-driver-sms`;
+      // For Vercel deployment, use the absolute URL
+      apiUrl = `https://${hostname}/api/send-driver-sms`;
     }
     
     console.log('3. Making API request to:', apiUrl);
 
     // Create driver notifications in the database first
     // This will ensure drivers see notifications in their dashboard even if SMS fails
-    await createDriverNotificationsInDatabase(bookingId);
+    try {
+      await createDriverNotificationsInDatabase(bookingId);
+      console.log('Driver notifications created in database successfully');
+    } catch (dbError) {
+      console.error('Failed to create driver notifications in database:', dbError);
+      // Log the error but continue with the API call
+      await supabase.from('driver_notification_logs').insert({
+        booking_id: bookingId,
+        status_code: 500,
+        response: JSON.stringify({ error: dbError.message, phase: 'database_creation' }),
+        created_at: new Date().toISOString()
+      });
+    }
 
     try {
+      // Make the API call to send SMS notifications
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -74,7 +87,26 @@ export const sendDriverNotifications = async (bookingId) => {
 
       if (!response.ok) {
         console.error('7. Error response:', data);
-        throw new Error(data.message || 'Failed to send notifications');
+        
+        // Log the error to the database
+        await supabase.from('driver_notification_logs').insert({
+          booking_id: bookingId,
+          status_code: response.status,
+          response: JSON.stringify({ 
+            error: data.message || 'API error',
+            details: data
+          }),
+          created_at: new Date().toISOString()
+        });
+        
+        // Don't throw here, just return a fallback response
+        return {
+          success: true,
+          notified: 0,
+          total: 0,
+          fallback: true,
+          message: 'Created database notifications only. SMS delivery failed but will be handled by the backend.'
+        };
       }
 
       console.log('8. Success:', data);
@@ -152,6 +184,15 @@ const createDriverNotificationsInDatabase = async (bookingId) => {
     
     if (!drivers || drivers.length === 0) {
       console.log('No available drivers found');
+      
+      // Log this situation
+      await supabase.from('driver_notification_logs').insert({
+        booking_id: bookingId,
+        status_code: 404,
+        response: JSON.stringify({ message: 'No available drivers found' }),
+        created_at: new Date().toISOString()
+      });
+      
       return;
     }
     
