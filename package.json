@@ -20,6 +20,7 @@
     "@fullcalendar/react": "^6.1.15",
     "@fullcalendar/rrule": "^6.1.15",
     "@fullcalendar/timegrid": "^6.1.15",
+    "@getbrevo/brevo": "^1.0.0",
     "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.0.18",
     "@modelcontextprotocol/server-postgres": "^0.6.2",
@@ -78,7 +79,7 @@
       "import": "./api/*.js"
     }
   },
-  "description": "**IslaGo** is a modern, user-friendly web application aimed at revolutionizing van hire services initially in Palawan, and eventually expanding to other islands across the Philippines. It is built with scalability, maintainability, and high performance in mind. IslaGo’s mission is to provide a seamless and efficient platform for both travelers and locals, offering comprehensive van rental services.",
+  "description": "**IslaGo** is a modern, user-friendly web application aimed at revolutionizing van hire services initially in Palawan, and eventually expanding to other islands across the Philippines. It is built with scalability, maintainability, and high performance in mind. IslaGo's mission is to provide a seamless and efficient platform for both travelers and locals, offering comprehensive van rental services.",
   "main": "postcss.config.js",
   "repository": {
     "type": "git",

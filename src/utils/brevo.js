@@ -1,4 +1,4 @@
-import * as SibApiV3Sdk from '@getbrevo/brevo';
+import SibApiV3Sdk from '@getbrevo/brevo';
 import { supabase } from './supabase.ts';
 
 // Initialize Brevo API client
