@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../utils/supabase.ts';
 import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo.js';
 import { sendDriverNotifications } from '../utils/twilio.js';
+import { sendPaymentConfirmationEmail } from '../utils/brevo.js';
 import toast from 'react-hot-toast';
 import DriverDetails from './DriverDetails.jsx';
 import ContactOptions from './ContactOptions.jsx';
@@ -77,6 +78,17 @@ export default function PaymentSuccess() {
           if (bookingError) {
             console.error('Error updating booking:', bookingError);
             throw new Error('Failed to update booking status');
+          }
+
+          // Send confirmation email via Brevo
+          try {
+            console.log('Sending payment confirmation email for booking:', bookingId);
+            await sendPaymentConfirmationEmail(bookingId);
+            console.log('Payment confirmation email sent successfully');
+            toast.success('Payment confirmation email sent');
+          } catch (emailError) {
+            console.error('Failed to send payment confirmation email:', emailError);
+            toast.error('There was an issue sending the confirmation email');
           }
 
           // Try to notify drivers
@@ -160,10 +172,20 @@ export default function PaymentSuccess() {
           throw new Error('Failed to update booking status');
         }
 
+        // Send confirmation email via Brevo
+        try {
+          console.log('Sending payment confirmation email for booking:', bookingId);
+          await sendPaymentConfirmationEmail(bookingId);
+          console.log('Payment confirmation email sent successfully');
+          toast.success('Payment confirmation email sent');
+        } catch (emailError) {
+          console.error('Failed to send payment confirmation email:', emailError);
+          toast.error('There was an issue sending the confirmation email');
+        }
+
         // Try to notify drivers
         try {
           console.log('Attempting to send driver notifications for booking:', bookingId);
-          
           await sendDriverNotifications(bookingId);
           console.log('Driver notifications sent successfully');
           toast.success('Drivers have been notified of your booking');
