@@ -32,7 +32,8 @@ export const sendDriverNotifications = async (bookingId) => {
     
     // Check if we're on localhost or deployed
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      apiUrl = `${window.location.origin}/api/send-driver-sms`;
+      // For local development, use the relative path
+      apiUrl = '/api/send-driver-sms';
     } else {
       // For Vercel deployment, use the absolute URL
       apiUrl = `https://${hostname}/api/send-driver-sms`;
@@ -79,10 +80,20 @@ export const sendDriverNotifications = async (bookingId) => {
 
       let data;
       try {
-        data = JSON.parse(responseText);
+        // Only try to parse JSON if there's actual content
+        if (responseText && responseText.trim()) {
+          data = JSON.parse(responseText);
+        } else {
+          console.log('6. Empty response received');
+          data = { message: 'Empty response from server' };
+        }
       } catch (e) {
         console.error('6. Failed to parse JSON:', e);
-        throw new Error('Invalid JSON response from server');
+        // Don't throw here, just create a fallback data object
+        data = { 
+          error: 'Invalid JSON response from server',
+          rawResponse: responseText
+        };
       }
 
       if (!response.ok) {
@@ -171,16 +182,18 @@ const createDriverNotificationsInDatabase = async (bookingId) => {
       throw new Error(`Failed to fetch booking: ${bookingError.message}`);
     }
     
-    // Get available drivers
+    // Get available drivers - don't filter by documents_verified to ensure we get all active drivers
     const { data: drivers, error: driversError } = await supabase
       .from('drivers')
-      .select('id')
+      .select('id, name, mobile_number, documents_verified')
       .eq('status', 'active')
       .eq('is_available', true);
       
     if (driversError) {
       throw new Error(`Failed to fetch drivers: ${driversError.message}`);
     }
+    
+    console.log('Available drivers found:', drivers?.length || 0, drivers);
     
     if (!drivers || drivers.length === 0) {
       console.log('No available drivers found');

@@ -58,6 +58,7 @@ export default function DriverDashboard() {
       const currentTime = new Date().toISOString();
       console.log('Current time for comparison:', currentTime);
       
+      // Use a simpler query structure to avoid 400 errors
       const { data, error } = await supabase
         .from('driver_notifications')
         .select(`
@@ -67,7 +68,7 @@ export default function DriverDashboard() {
           response_code,
           expires_at,
           created_at,
-          bookings (
+          bookings:booking_id (
             id,
             from_location,
             to_location,
@@ -78,25 +79,31 @@ export default function DriverDashboard() {
             booked_seats
           )
         `)
-        .eq('driver_id', user.id)
-        .eq('status', NOTIFICATION_STATUS.PENDING)
+        .filter('driver_id', 'eq', user.id)
+        .filter('status', 'eq', NOTIFICATION_STATUS.PENDING)
         .gt('expires_at', new Date().toISOString()) // Only get non-expired notifications
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching notifications:', error);
-        throw error;
+        setNotifications([]);
+        return;
       }
       
       console.log('Notifications fetched:', data?.length || 0, data);
       
+      // Filter out notifications with null bookings
+      const validNotifications = data?.filter(notification => 
+        notification.bookings && notification.bookings.id
+      ) || [];
+      
       // Check if there are new notifications - safely handle null/undefined data
-      if (data && data.length > 0) {
+      if (validNotifications.length > 0) {
         // If we have more notifications than before or if the newest notification is newer than our last check
-        const newestNotification = data[0];
+        const newestNotification = validNotifications[0];
         
         if (notifications.length === 0 || 
-            data.length > notifications.length || 
+            validNotifications.length > notifications.length || 
             (lastNotificationTime && newestNotification && 
              new Date(newestNotification.created_at) > new Date(lastNotificationTime))) {
           
@@ -123,7 +130,7 @@ export default function DriverDashboard() {
         }
       }
       
-      setNotifications(data || []);
+      setNotifications(validNotifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       // Log to notification_logs table

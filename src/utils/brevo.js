@@ -34,189 +34,185 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
   try {
     console.log('Preparing to send payment confirmation email for booking:', bookingId);
     
-    // First, get the booking details with customer and user information
+    // First, get the booking details without trying to join profiles
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
-        id, 
-        customer_id, 
+        id,
+        customer_id,
         user_id,
-        from_location, 
-        to_location, 
-        departure_date, 
-        departure_time, 
-        service_type, 
-        total_amount, 
-        hotel_pickup, 
-        hotel_details,
-        customers (
-          id, 
-          first_name, 
-          last_name, 
-          email, 
-          mobile_number
-        ),
-        profiles (
-          id,
-          email,
-          full_name
-        )
+        from_location,
+        to_location,
+        departure_date,
+        departure_time,
+        service_type,
+        total_amount,
+        hotel_pickup,
+        hotel_details
       `)
       .eq('id', bookingId)
       .single();
-
-    if (bookingError || !booking) {
+      
+    if (bookingError) {
       console.error('Error fetching booking details:', bookingError);
       throw new Error('Booking not found');
     }
-
-    console.log('Retrieved booking data:', {
-      id: booking.id,
-      hasCustomer: !!booking.customers,
-      hasProfile: !!booking.profiles
-    });
     
-    // Determine customer information and email
-    let customerEmail = null;
-    let customerName = null;
-    let firstName = null;
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
     
-    // Try to get email from customer record first
-    if (booking.customers && booking.customers.email) {
-      customerEmail = booking.customers.email;
-      customerName = `${booking.customers.first_name} ${booking.customers.last_name}`;
-      firstName = booking.customers.first_name;
-      console.log('Using customer email:', customerEmail);
-    } 
-    // If no customer email, try to get from user profile
-    else if (booking.profiles && booking.profiles.email) {
-      customerEmail = booking.profiles.email;
-      customerName = booking.profiles.full_name || 'Valued Customer';
-      firstName = booking.profiles.full_name?.split(' ')[0] || 'Valued Customer';
-      console.log('Using profile email as fallback:', customerEmail);
+    // Now get the customer details separately
+    const { data: customer, error: customerError } = await supabase
+      .from('customers')
+      .select('id, first_name, last_name, email, mobile_number')
+      .eq('id', booking.customer_id)
+      .single();
+      
+    if (customerError) {
+      console.error('Error fetching customer details:', customerError);
+      throw new Error('Customer not found');
     }
-    // If still no email, try to fetch customer directly
-    else if (booking.customer_id) {
-      console.log('No email found in joined data, fetching customer directly');
-      const { data: customer, error: customerError } = await supabase
-        .from('customers')
-        .select('id, first_name, last_name, email, mobile_number')
-        .eq('id', booking.customer_id)
-        .single();
-        
-      if (!customerError && customer && customer.email) {
-        customerEmail = customer.email;
-        customerName = `${customer.first_name} ${customer.last_name}`;
-        firstName = customer.first_name;
-        console.log('Found email from direct customer query:', customerEmail);
-      }
-    }
-    // If still no email, try to fetch user profile directly
-    else if (booking.user_id) {
-      console.log('No customer email found, fetching user profile directly');
-      const { data: profile, error: profileError } = await supabase
+    
+    // Check if we have a customer email
+    if (!customer || !customer.email) {
+      console.error('No customer email found for booking:', bookingId);
+      
+      // Try to get user email as fallback
+      const { data: user, error: userError } = await supabase
         .from('profiles')
-        .select('id, email, full_name')
+        .select('email')
         .eq('id', booking.user_id)
         .single();
         
-      if (!profileError && profile && profile.email) {
-        customerEmail = profile.email;
-        customerName = profile.full_name || 'Valued Customer';
-        firstName = profile.full_name?.split(' ')[0] || 'Valued Customer';
-        console.log('Found email from direct profile query:', customerEmail);
+      if (userError || !user || !user.email) {
+        throw new Error('No email address found for customer');
       }
+      
+      // Use the user email instead
+      customer.email = user.email;
+      console.log('Using user email as fallback:', user.email);
     }
     
-    if (!customerEmail) {
-      console.error('No email address found for this booking');
-      throw new Error('No email address found for sending confirmation');
-    }
-
-    // Prepare customer data for email template
-    const customer = {
-      email: customerEmail,
-      first_name: firstName,
-      name: customerName
-    };
-
-    // Combine booking and customer data
-    const emailBooking = {
-      ...booking,
-      customer: customer
-    };
-
-    // Prepare email data for API call
-    const emailData = {
-      to: [{
-        email: customerEmail,
-        name: customerName
-      }],
+    console.log('Sending confirmation email to:', customer.email);
+    
+    // Format the date for display
+    const departureDate = new Date(booking.departure_date);
+    const formattedDate = departureDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    // Format the time for display
+    const timeParts = booking.departure_time.split(':');
+    const hours = parseInt(timeParts[0]);
+    const minutes = timeParts[1];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    const formattedTime = `${formattedHours}:${minutes} ${ampm}`;
+    
+    // Create email payload
+    const emailPayload = {
       sender: {
-        email: 'noreply@islago.com',
-        name: 'IslaGo Transport'
+        name: 'IslaGO Travel',
+        email: 'bookings@islago.com'
       },
-      subject: `Payment Confirmation - Booking #${booking.id} - IslaGo Transport`,
-      htmlContent: getPaymentConfirmationHtml(emailBooking),
-      replyTo: {
-        email: 'support@islago.com',
-        name: 'IslaGo Support'
-      },
-      params: {
-        booking_id: booking.id,
-        customer_name: firstName
-      }
+      to: [
+        {
+          email: customer.email,
+          name: `${customer.first_name} ${customer.last_name}`
+        }
+      ],
+      subject: 'Your IslaGO Booking Confirmation',
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 5px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #3b82f6;">Booking Confirmation</h1>
+          </div>
+          
+          <p>Dear ${customer.first_name},</p>
+          
+          <p>Thank you for booking with IslaGO! Your payment has been successfully processed and your booking is confirmed.</p>
+          
+          <div style="background-color: #f9fafb; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h2 style="color: #3b82f6; margin-top: 0;">Booking Details</h2>
+            <p><strong>Booking ID:</strong> ${booking.id}</p>
+            <p><strong>From:</strong> ${booking.from_location}</p>
+            <p><strong>To:</strong> ${booking.to_location}</p>
+            <p><strong>Date:</strong> ${formattedDate}</p>
+            <p><strong>Time:</strong> ${formattedTime}</p>
+            <p><strong>Service Type:</strong> ${booking.service_type.charAt(0).toUpperCase() + booking.service_type.slice(1)} Van</p>
+            <p><strong>Amount Paid:</strong> ₱${parseFloat(booking.total_amount).toFixed(2)}</p>
+            ${booking.hotel_pickup ? `<p><strong>Hotel Pickup:</strong> ${booking.hotel_details || 'Not specified'}</p>` : ''}
+          </div>
+          
+          <p>A driver will be assigned to your booking soon. You will receive another email with the driver's details once assigned.</p>
+          
+          <p>If you have any questions or need to make changes to your booking, please contact us at support@islago.com or call +63 917 123 4567.</p>
+          
+          <p>We look forward to serving you!</p>
+          
+          <p>Best regards,<br>The IslaGO Team</p>
+          
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6b7280; font-size: 12px;">
+            <p>© 2023 IslaGO Travel. All rights reserved.</p>
+            <p>This is an automated email, please do not reply.</p>
+          </div>
+        </div>
+      `
     };
-
-    // Send email using fetch API instead of Brevo SDK
-    const apiKey = import.meta.env.VITE_BREVO_API_KEY;
     
-    if (!apiKey) {
-      throw new Error('Brevo API key is not configured');
-    }
-    
-    console.log('Sending payment confirmation email to:', customerEmail);
-    
+    // Send the email using Brevo API
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'api-key': apiKey
+        'api-key': BREVO_API_KEY
       },
-      body: JSON.stringify(emailData)
+      body: JSON.stringify(emailPayload)
     });
     
+    const responseData = await response.json();
+    
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Brevo API error:', errorData);
-      throw new Error(`Failed to send email: ${errorData.message || 'Unknown error'}`);
+      console.error('Failed to send email:', responseData);
+      throw new Error(`Failed to send email: ${responseData.message || 'Unknown error'}`);
     }
     
-    const data = await response.json();
-    console.log('Email sent successfully:', data);
+    console.log('Email sent successfully:', responseData);
     
     // Update booking to mark email as sent
-    const { error: updateError } = await supabase
+    await supabase
       .from('bookings')
-      .update({ 
+      .update({
         payment_confirmation_email_sent: true,
         payment_confirmation_email_sent_at: new Date().toISOString()
       })
       .eq('id', bookingId);
-
-    if (updateError) {
-      console.error('Error updating booking email status:', updateError);
-      throw updateError;
-    }
     
-    return true;
+    return responseData;
   } catch (error) {
     console.error('Failed to send payment confirmation email:', {
       error: error.message,
       stack: error.stack,
       details: error.details || 'No additional details'
     });
+    
+    // Log the error but don't throw it
+    await supabase
+      .from('driver_notification_logs')
+      .insert({
+        booking_id: bookingId,
+        status_code: 500,
+        response: JSON.stringify({ 
+          error: 'Email sending failed',
+          message: error.message
+        }),
+        created_at: new Date().toISOString()
+      });
+    
     throw error;
   }
 };
