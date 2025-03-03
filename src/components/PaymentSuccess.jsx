@@ -252,10 +252,16 @@ export default function PaymentSuccess() {
         .from('bookings')
         .select(`
           *,
-          customers (*)
+          customers (
+            id,
+            first_name,
+            last_name,
+            email,
+            mobile_number
+          )
         `)
-        .eq('id', bookingId)
-        .single();
+        .filter('id', 'eq', bookingId)
+        .maybeSingle();
         
       if (bookingError) {
         console.error('Error fetching booking details:', bookingError);
@@ -270,8 +276,8 @@ export default function PaymentSuccess() {
         const { data: driver, error: driverError } = await supabase
           .from('drivers')
           .select('*')
-          .eq('id', booking.assigned_driver_id)
-          .single();
+          .filter('id', 'eq', booking.assigned_driver_id)
+          .maybeSingle();
           
         if (driverError) {
           console.error('Error fetching driver details:', driverError);
@@ -279,6 +285,8 @@ export default function PaymentSuccess() {
         }
         
         setDriverData(driver);
+        setDriver(driver);
+        setDriverAssigned(true);
       } else {
         // Set up polling for driver assignment
         startDriverPolling(bookingId);
