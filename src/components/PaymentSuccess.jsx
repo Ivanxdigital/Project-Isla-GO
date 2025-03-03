@@ -259,11 +259,11 @@ export default function PaymentSuccess() {
       setCustomerData(booking.customers);
       
       // Check if a driver has been assigned
-      if (booking.driver_id) {
+      if (booking.assigned_driver_id) {
         const { data: driver, error: driverError } = await supabase
           .from('drivers')
           .select('*')
-          .eq('id', booking.driver_id)
+          .eq('id', booking.assigned_driver_id)
           .single();
           
         if (driverError) {
@@ -288,11 +288,11 @@ export default function PaymentSuccess() {
       try {
         console.log('Polling for driver assignment for booking:', bookingId);
         
-        // Use a simpler query to avoid 400 errors
+        // Use a simpler query to avoid 400 errors - use assigned_driver_id instead of driver_id
         const { data, error } = await supabase
           .from('bookings')
-          .select('driver_id, status')
-          .eq('id', bookingId)
+          .select('assigned_driver_id, status')
+          .filter('id', 'eq', bookingId)
           .maybeSingle();
           
         if (error) {
@@ -308,13 +308,13 @@ export default function PaymentSuccess() {
         console.log('Driver polling result:', data);
         
         // If a driver has been assigned, fetch driver details
-        if (data.driver_id) {
+        if (data.assigned_driver_id) {
           clearInterval(driverInterval);
           
           const { data: driver, error: driverError } = await supabase
             .from('drivers')
             .select('*')
-            .eq('id', data.driver_id)
+            .eq('id', data.assigned_driver_id)
             .single();
             
           if (driverError) {

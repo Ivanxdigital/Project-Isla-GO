@@ -54,6 +54,10 @@ export default function DriverDashboard() {
     try {
       console.log('Fetching driver notifications for driver:', user.id);
       
+      // Debug the current time vs expiration time
+      const currentTime = new Date().toISOString();
+      console.log('Current time for comparison:', currentTime);
+      
       const { data, error } = await supabase
         .from('driver_notifications')
         .select(`
@@ -84,16 +88,17 @@ export default function DriverDashboard() {
         throw error;
       }
       
-      console.log('Notifications fetched:', data?.length || 0);
+      console.log('Notifications fetched:', data?.length || 0, data);
       
-      // Check if there are new notifications
+      // Check if there are new notifications - safely handle null/undefined data
       if (data && data.length > 0) {
         // If we have more notifications than before or if the newest notification is newer than our last check
         const newestNotification = data[0];
         
         if (notifications.length === 0 || 
             data.length > notifications.length || 
-            (lastNotificationTime && new Date(newestNotification.created_at) > new Date(lastNotificationTime))) {
+            (lastNotificationTime && newestNotification && 
+             new Date(newestNotification.created_at) > new Date(lastNotificationTime))) {
           
           // Play notification sound
           try {
@@ -112,7 +117,9 @@ export default function DriverDashboard() {
           setHasNewNotifications(true);
           
           // Update last notification time
-          setLastNotificationTime(newestNotification.created_at);
+          if (newestNotification && newestNotification.created_at) {
+            setLastNotificationTime(newestNotification.created_at);
+          }
         }
       }
       
@@ -130,6 +137,9 @@ export default function DriverDashboard() {
       } catch (logError) {
         console.error('Failed to log notification error:', logError);
       }
+      
+      // Set empty array to prevent errors
+      setNotifications([]);
     }
   };
 
@@ -138,6 +148,11 @@ export default function DriverDashboard() {
     try {
       console.log('Fetching pending bookings for driver:', user.id);
       
+      // Debug the current time vs expiration time
+      const currentTime = new Date().toISOString();
+      console.log('Current time for pending bookings comparison:', currentTime);
+      
+      // Use filter instead of eq and simplify the query to avoid 400 errors
       const { data: notifications, error } = await supabase
         .from('driver_notifications')
         .select(`
@@ -147,32 +162,38 @@ export default function DriverDashboard() {
           response_code,
           expires_at,
           created_at,
-          bookings (
+          bookings:booking_id (
             id,
             from_location,
             to_location,
             departure_date,
             departure_time,
             service_type,
-            total_amount,
-            profiles (
-              full_name
-            )
+            total_amount
           )
         `)
-        .eq('driver_id', user.id)
-        .eq('status', 'PENDING')
+        .filter('driver_id', 'eq', user.id)
+        .filter('status', 'eq', 'PENDING')
+        .gt('expires_at', new Date().toISOString()) // Only get non-expired notifications
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching notifications:', error);
+        console.error('Error fetching pending bookings:', error);
+        setPendingBookings([]);
         return;
       }
 
-      console.log('Pending bookings fetched:', notifications?.length || 0);
-      setPendingBookings(notifications || []);
+      console.log('Pending bookings fetched:', notifications?.length || 0, notifications);
+      
+      // Filter out any notifications with null bookings
+      const validNotifications = notifications?.filter(notification => 
+        notification.bookings && notification.bookings.id
+      ) || [];
+      
+      setPendingBookings(validNotifications);
     } catch (error) {
       console.error('Error fetching pending bookings:', error);
+      setPendingBookings([]);
     }
   };
 
