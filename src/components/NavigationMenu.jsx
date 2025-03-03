@@ -197,6 +197,15 @@ export default function NavigationMenu() {
                   <Link
                     to="/admin/dashboard"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      // Scroll to top with smooth animation
+                      window.scrollTo({
+                        top: 0,
+                        left: 0,
+                        behavior: 'smooth'
+                      });
+                    }}
                   >
                     Admin Dashboard
                   </Link>
@@ -613,7 +622,15 @@ export default function NavigationMenu() {
                             {!adminLoading && isAdmin && (
                               <Link
                                 to="/admin/dashboard"
-                                onClick={handleMenuItemClick}
+                                onClick={() => {
+                                  setIsProfileDropdownOpen(false);
+                                  // Scroll to top with smooth animation
+                                  window.scrollTo({
+                                    top: 0,
+                                    left: 0,
+                                    behavior: 'smooth'
+                                  });
+                                }}
                                 className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                               >
                                 Admin Dashboard

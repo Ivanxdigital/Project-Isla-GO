@@ -4,7 +4,9 @@ import {
   RouterProvider, 
   useLocation, 
   Outlet,
-  Link
+  Link,
+  Routes,
+  Route
 } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AdminAuthProvider } from './contexts/AdminAuthContext.jsx';
@@ -21,6 +23,7 @@ import LoginPage from './components/LoginPage.jsx';
 import CompleteRegisterPage from './components/RegisterPage.jsx';
 import ManageBookings from './components/ManageBookings.jsx';
 import PageTransition from './components/PageTransition.jsx';
+import ScrollToTop from './components/ScrollToTop.jsx';
 import AdminLoginPage from './pages/admin/LoginPage.jsx';
 import AdminDashboard from './pages/admin/Dashboard.jsx';
 import BookingsPage from './pages/admin/BookingsPage.jsx';
@@ -48,6 +51,8 @@ import AuthCallback from './components/AuthCallback.jsx';
 import TestDashboard from './pages/driver/test.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Layout from './components/Layout.jsx';
+import { DriverSidebarProvider } from './contexts/DriverSidebarContext.jsx';
+import DriverSidebar from './components/DriverSidebar.jsx';
 
 function RootLayout() {
   const location = useLocation();
@@ -73,6 +78,7 @@ function AdminLayout() {
   
   return (
     <div className="flex min-h-screen bg-gray-50">
+      <ScrollToTop />
       <Sidebar />
       <div className="flex-1">
         <AnimatePresence mode="wait" initial={false}>
@@ -90,6 +96,7 @@ function DriverLayout() {
   
   return (
     <div className="min-h-screen flex flex-col relative">
+      <ScrollToTop />
       <NavigationMenu />
       <main className="flex-grow">
         <AnimatePresence mode="wait" initial={false}>
@@ -98,7 +105,7 @@ function DriverLayout() {
           </PageTransition>
         </AnimatePresence>
       </main>
-      {/* No Footer here to prevent duplicate footers */}
+      <DriverSidebar />
     </div>
   );
 }
@@ -337,15 +344,81 @@ function App() {
         <AuthProvider>
           <AdminAuthProvider>
             <DriverAuthProvider>
-              <Toaster position="top-right" />
-              <RouterProvider 
-                router={router} 
-                fallbackElement={
-                  <div className="flex items-center justify-center min-h-screen">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <DriverSidebarProvider>
+                <Toaster position="top-right" />
+                <div className="flex min-h-screen bg-gray-50">
+                  {/* Driver Sidebar - Only shown on driver pages */}
+                  <Routes>
+                    <Route path="/driver/*" element={<DriverSidebar />} />
+                  </Routes>
+                  
+                  <div className="flex-1">
+                    <NavigationMenu />
+                    <div className="pt-16">
+                      <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="/about" element={<AboutPage />} />
+                        <Route path="/contact" element={<ContactPage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/register" element={<CompleteRegisterPage />} />
+                        <Route path="/driver/register" element={<PrivateRoute><DriverRegister /></PrivateRoute>} />
+                        <Route path="/driver/RegistrationSuccess" element={<RegistrationSuccess />} />
+                        <Route path="/payment/*" element={
+                          <Routes>
+                            <Route path="success" element={<PaymentSuccess />} />
+                            <Route path="cancel" element={<PaymentCancel />} />
+                          </Routes>
+                        } />
+                        <Route path="/manage-bookings" element={<ManageBookings />} />
+                        <Route path="/driver-registration" element={<PrivateRoute><DriverRegistration /></PrivateRoute>} />
+                        <Route path="/admin/*" element={<AdminLayout />}>
+                          <Route index element={<AdminDashboard />} />
+                          <Route path="login" element={<AdminLoginPage />} />
+                          <Route path="dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                          <Route path="settings" element={<AdminRoute allowNonAdmin={true}><AdminSettings /></AdminRoute>} />
+                          <Route path="bookings" element={<AdminRoute><BookingsPage /></AdminRoute>} />
+                          <Route path="drivers" element={<AdminRoute><DriversPage /></AdminRoute>} />
+                          <Route path="vehicles" element={<AdminRoute><VehiclesPage /></AdminRoute>} />
+                          <Route path="routes" element={<AdminRoute><RoutesPage /></AdminRoute>} />
+                          <Route path="driver-applications" element={<AdminRoute><DriverApplicationsPage /></AdminRoute>} />
+                        </Route>
+                        <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+                        <Route path="/driver/before-register" element={<BeforeRegister />} />
+                        <Route path="/driver/*" element={<DriverRoute><Outlet /></DriverRoute>}>
+                          <Route index element={<DriverDashboard />} />
+                          <Route path="dashboard" element={<DriverDashboard />} />
+                          <Route path="profile" element={<DriverProfile />} />
+                          <Route path="trips" element={<DriverTrips />} />
+                          <Route path="availability" element={<DriverAvailability />} />
+                          <Route path="test" element={<TestDashboard />} />
+                        </Route>
+                        <Route path="/auth/callback" element={<AuthCallback />} />
+                        <Route path="*" element={
+                          <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+                            <div className="max-w-md w-full space-y-8 text-center">
+                              <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+                                Page Not Found
+                              </h2>
+                              <p className="mt-2 text-sm text-gray-600">
+                                The page you're looking for doesn't exist or has been moved.
+                              </p>
+                              <div className="mt-5">
+                                <Link
+                                  to="/"
+                                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                  Return to Home
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        } />
+                      </Routes>
+                    </div>
+                    <Footer />
                   </div>
-                } 
-              />
+                </div>
+              </DriverSidebarProvider>
             </DriverAuthProvider>
           </AdminAuthProvider>
         </AuthProvider>
