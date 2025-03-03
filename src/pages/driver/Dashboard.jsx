@@ -148,10 +148,25 @@ export default function DriverDashboard() {
       
       console.log('Valid non-expired notifications:', validNotifications.length);
       
+      // Filter out duplicate booking notifications - keep only the most recent for each booking_id
+      const bookingMap = new Map();
+      validNotifications.forEach(notification => {
+        const existingNotification = bookingMap.get(notification.booking_id);
+        
+        // If we don't have this booking_id yet, or this notification is newer, keep it
+        if (!existingNotification || new Date(notification.created_at) > new Date(existingNotification.created_at)) {
+          bookingMap.set(notification.booking_id, notification);
+        }
+      });
+      
+      // Convert the map values back to an array
+      const uniqueValidNotifications = Array.from(bookingMap.values());
+      console.log('Unique valid notifications after deduplication:', uniqueValidNotifications.length);
+      
       // Now fetch booking details for each notification
       const notificationsWithBookings = [];
       
-      for (const notification of validNotifications) {
+      for (const notification of uniqueValidNotifications) {
         const { data: bookingData, error: bookingError } = await supabase
           .from('bookings')
           .select('*')
@@ -241,17 +256,27 @@ export default function DriverDashboard() {
         setPendingBookings([]);
         return;
       }
-
-      console.log('Pending bookings fetched:', notifications?.length || 0, notifications);
       
-      // Filter out any notifications with null bookings
-      const validNotifications = notifications?.filter(notification => 
-        notification.bookings && notification.bookings.id
-      ) || [];
+      console.log('Pending bookings fetched:', notifications?.length || 0);
       
-      setPendingBookings(validNotifications);
+      // Filter out duplicate booking notifications - keep only the most recent for each booking_id
+      const bookingMap = new Map();
+      notifications?.forEach(notification => {
+        const existingNotification = bookingMap.get(notification.booking_id);
+        
+        // If we don't have this booking_id yet, or this notification is newer, keep it
+        if (!existingNotification || new Date(notification.created_at) > new Date(existingNotification.created_at)) {
+          bookingMap.set(notification.booking_id, notification);
+        }
+      });
+      
+      // Convert the map values back to an array
+      const uniqueNotifications = Array.from(bookingMap.values());
+      console.log('Unique pending bookings after deduplication:', uniqueNotifications.length);
+      
+      setPendingBookings(uniqueNotifications || []);
     } catch (error) {
-      console.error('Error fetching pending bookings:', error);
+      console.error('Error in fetchPendingBookings:', error);
       setPendingBookings([]);
     }
   };
