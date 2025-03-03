@@ -438,16 +438,39 @@ export default function DriverDashboard() {
       const loadingToast = toast.loading(accept ? 'Accepting booking...' : 'Rejecting booking...');
 
       // Get the notification for response code
-      const { data: notification } = await supabase
+      const { data: notification, error: notificationError } = await supabase
         .from('driver_notifications')
-        .select('response_code, expires_at')
+        .select('response_code, expires_at, status')
         .eq('id', notificationId)
         .single();
+        
+      if (notificationError) {
+        console.error('Error fetching notification:', notificationError);
+        toast.dismiss(loadingToast);
+        toast.error(`Error fetching notification: ${notificationError.message}`);
+        return;
+      }
 
       // Check if notification has expired
       if (new Date(notification.expires_at) < new Date()) {
         toast.dismiss(loadingToast);
         toast.error('This booking request has expired');
+        return;
+      }
+      
+      // Update the notification status first
+      const { error: updateError } = await supabase
+        .from('driver_notifications')
+        .update({ 
+          status: accept ? 'ACCEPTED' : 'REJECTED',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', notificationId);
+        
+      if (updateError) {
+        console.error('Error updating notification status:', updateError);
+        toast.dismiss(loadingToast);
+        toast.error(`Error updating notification: ${updateError.message}`);
         return;
       }
 
@@ -489,8 +512,10 @@ export default function DriverDashboard() {
       // Log the response
       await supabase.from('driver_notification_logs').insert({
         booking_id: bookingId,
+        driver_id: user.id,
+        notification_id: notificationId,
         status_code: data === 'SUCCESS' ? 200 : 400,
-        response: JSON.stringify({ status: data }),
+        response: JSON.stringify({ status: data, action: accept ? 'accept' : 'reject' }),
         created_at: new Date().toISOString()
       });
 
@@ -510,6 +535,7 @@ export default function DriverDashboard() {
       // Log the error
       await supabase.from('driver_notification_logs').insert({
         booking_id: bookingId,
+        driver_id: user.id,
         status_code: 500,
         response: JSON.stringify({ error: error.message }),
         created_at: new Date().toISOString()
