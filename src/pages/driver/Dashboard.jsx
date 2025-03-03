@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { supabase } from '../../utils/supabase.js';
 import { useDriverAuth } from '../../contexts/DriverAuthContext.jsx';
+import { useDriverSidebar } from '../../contexts/DriverSidebarContext.jsx';
 import { toast } from 'react-hot-toast';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
@@ -26,6 +27,7 @@ const BOOKING_STATUS = {
 export default function DriverDashboard() {
   const { user } = useAuth();
   const { isDriver, driverStatus, loading: driverAuthLoading } = useDriverAuth();
+  const { openSidebar } = useDriverSidebar();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -57,6 +59,11 @@ export default function DriverDashboard() {
   const [confirmCallback, setConfirmCallback] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmBookingId, setConfirmBookingId] = useState(null);
+
+  // Ensure sidebar is open when component mounts
+  useEffect(() => {
+    openSidebar();
+  }, [openSidebar]);
 
   // Move fetchNotifications to component scope so it can be used by handleBookingResponse
   const fetchNotifications = async () => {
