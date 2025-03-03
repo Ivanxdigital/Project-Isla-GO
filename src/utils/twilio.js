@@ -177,37 +177,39 @@ export const createDriverNotificationsInDatabase = async (bookingId) => {
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select('*')
-      .filter('id', 'eq', bookingId)
-      .maybeSingle();
+      .eq('id', bookingId)
+      .single();
     
     if (bookingError || !booking) {
       console.error('Error fetching booking:', bookingError || 'No booking found');
       throw new Error('Booking not found');
     }
     
-    // Get available drivers
-    const { data: availableDrivers, error: driversError } = await supabase
+    console.log('Booking details:', booking);
+    
+    // Get all drivers first, then filter them in code
+    console.log('Fetching all drivers');
+    const { data: allDrivers, error: driversError } = await supabase
       .from('drivers')
-      .select(`
-        id, 
-        first_name, 
-        last_name, 
-        phone_number,
-        license_number,
-        vehicle_id,
-        status,
-        documents_verified
-      `)
-      .filter('status', 'eq', 'active')
-      .filter('documents_verified', 'eq', true);
+      .select('*');
     
     if (driversError) {
-      console.error('Error fetching available drivers:', driversError);
-      throw new Error('Failed to fetch available drivers');
+      console.error('Error fetching drivers:', driversError);
+      throw new Error('Failed to fetch drivers');
     }
     
+    console.log('All drivers fetched:', allDrivers?.length || 0);
+    
+    // Filter drivers in code instead of in the query
+    const availableDrivers = allDrivers?.filter(driver => 
+      driver.status === 'active' && 
+      driver.documents_verified === true
+    ) || [];
+    
+    console.log('Available drivers after filtering:', availableDrivers.length, availableDrivers);
+    
     if (!availableDrivers || availableDrivers.length === 0) {
-      console.log('No available drivers found');
+      console.log('No available drivers found after filtering');
       
       // Update booking status to indicate no drivers available
       await supabase
@@ -218,7 +220,7 @@ export const createDriverNotificationsInDatabase = async (bookingId) => {
           driver_notification_attempted_at: new Date().toISOString(),
           driver_notification_success: false
         })
-        .filter('id', 'eq', bookingId);
+        .eq('id', bookingId);
       
       // Log the error
       await supabase.from('driver_notification_logs').insert({
@@ -239,12 +241,18 @@ export const createDriverNotificationsInDatabase = async (bookingId) => {
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 30);
       
+      // Generate a unique response code for this notification
+      const responseCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      
+      console.log(`Creating notification for driver ${driver.id} with expiry ${expiresAt.toISOString()}`);
+      
       return supabase
         .from('driver_notifications')
         .insert({
           driver_id: driver.id,
           booking_id: bookingId,
           status: 'PENDING',
+          response_code: responseCode,
           expires_at: expiresAt.toISOString(),
           created_at: new Date().toISOString()
         });
@@ -270,7 +278,7 @@ export const createDriverNotificationsInDatabase = async (bookingId) => {
         driver_notification_attempted_at: new Date().toISOString(),
         driver_notification_success: errors.length < availableDrivers.length
       })
-      .filter('id', 'eq', bookingId);
+      .eq('id', bookingId);
     
     console.log('Created', availableDrivers.length - errors.length, 'driver notifications in database');
     
