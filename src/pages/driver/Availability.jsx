@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useDriverAuth } from '../../contexts/DriverAuthContext';
-import { supabase } from '../../utils/supabase';
+import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useDriverAuth } from '../../contexts/DriverAuthContext.jsx';
+import { supabase } from '../../utils/supabase.ts';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarIcon, ClockIcon, MapPinIcon } from '@heroicons/react/24/outline';
@@ -73,15 +73,30 @@ export default function DriverAvailability() {
 
       if (error) throw error;
 
+      // Create a structured availability object from the data
+      const availObj = {};
+      data.forEach(slot => {
+        if (!availObj[slot.location]) {
+          availObj[slot.location] = {};
+        }
+        // Use start_time as the key
+        const timeKey = slot.start_time.substring(0, 5); // Format: "HH:MM"
+        availObj[slot.location][timeKey] = slot.status === 'available';
+      });
+      
+      setAvailability(availObj);
+
       const calendarEvents = data.map(slot => ({
         id: slot.id,
         title: `Available: ${slot.location}`,
-        start: combineDateTime(slot.day_of_week, slot.time_slot),
-        end: addHour(combineDateTime(slot.day_of_week, slot.time_slot)),
-        backgroundColor: slot.is_available ? '#10B981' : '#EF4444',
+        start: combineDateTime(slot.day_of_week, slot.start_time.substring(0, 5)),
+        end: slot.end_time ? 
+          combineDateTime(slot.day_of_week, slot.end_time.substring(0, 5)) : 
+          addHour(combineDateTime(slot.day_of_week, slot.start_time.substring(0, 5))),
+        backgroundColor: slot.status === 'available' ? '#10B981' : '#EF4444',
         extendedProps: {
           location: slot.location,
-          isAvailable: slot.is_available,
+          isAvailable: slot.status === 'available',
           recurrenceRule: slot.recurrence_rule,
           exceptionDates: slot.exception_dates
         },
@@ -157,14 +172,21 @@ export default function DriverAvailability() {
         }
       };
 
+      // Calculate end time (1 hour after start time)
+      const [hours, minutes] = time.split(':');
+      const endHour = parseInt(hours) + 1;
+      const endTime = `${endHour.toString().padStart(2, '0')}:${minutes}:00`;
+
       const { error } = await supabase
         .from('driver_availability')
         .upsert({
           driver_id: user.id,
           day_of_week: selectedDay,
           location,
-          time_slot: time,
-          is_available: newAvail[location][time]
+          start_time: `${time}:00`, // Add seconds for proper time format
+          end_time: endTime,
+          status: newAvail[location][time] ? 'available' : 'unavailable',
+          date: new Date().toISOString().split('T')[0] // Current date in YYYY-MM-DD format
         });
 
       if (error) throw error;
@@ -189,6 +211,7 @@ export default function DriverAvailability() {
       }
 
       toast.success('Availability updated');
+      await fetchAvailability(); // Refresh the data
     } catch (error) {
       console.error('Error updating availability:', error);
       if (error.message.includes('driver_status')) {
@@ -207,14 +230,25 @@ export default function DriverAvailability() {
     const isRecurring = window.confirm('Would you like this availability to repeat weekly?');
     
     try {
+      // Format the time from the selection
+      const startHour = selectInfo.start.getHours();
+      const startMinute = selectInfo.start.getMinutes();
+      const startTime = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00`;
+      
+      // Calculate end time (1 hour after start time)
+      const endHour = startHour + 1;
+      const endTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00`;
+      
       const event = {
         driver_id: user.id,
         day_of_week: selectInfo.start.getDay(),
-        time_slot: selectInfo.start.toTimeString().slice(0, 5),
+        start_time: startTime,
+        end_time: endTime,
         location: selectedLocation,
-        is_available: true,
+        status: 'available',
         recurrence_rule: isRecurring ? 'FREQ=WEEKLY' : null,
-        exception_dates: []
+        exception_dates: [],
+        date: selectInfo.start.toISOString().split('T')[0] // Format: YYYY-MM-DD
       };
 
       const { error } = await supabase
