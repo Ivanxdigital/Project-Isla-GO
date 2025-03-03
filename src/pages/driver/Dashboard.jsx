@@ -426,6 +426,9 @@ export default function DriverDashboard() {
 
   // Update the handleBookingResponse function
   const handleBookingResponse = async (notificationId, bookingId, accept) => {
+    // Create a reference to the loading toast that we can access in the catch block
+    let loadingToast;
+    
     try {
       const confirmed = await confirmAction(
         accept 
@@ -435,7 +438,12 @@ export default function DriverDashboard() {
 
       if (!confirmed) return;
 
-      const loadingToast = toast.loading(accept ? 'Accepting booking...' : 'Rejecting booking...');
+      // Store the toast ID so we can dismiss it in the catch block
+      loadingToast = toast.loading(accept ? 'Accepting booking...' : 'Rejecting booking...', {
+        id: `booking-response-${notificationId}`
+      });
+
+      console.log(`Processing ${accept ? 'acceptance' : 'rejection'} for notification ${notificationId}, booking ${bookingId}`);
 
       // Get the notification for response code
       const { data: notification, error: notificationError } = await supabase
@@ -459,6 +467,7 @@ export default function DriverDashboard() {
       }
       
       // Update the notification status first
+      console.log(`Updating notification ${notificationId} status to ${accept ? 'ACCEPTED' : 'REJECTED'}`);
       const { error: updateError } = await supabase
         .from('driver_notifications')
         .update({ 
@@ -474,7 +483,36 @@ export default function DriverDashboard() {
         return;
       }
 
-      // Call the database function to handle the response
+      // Skip the RPC call for rejection - it's not needed since we already updated the notification
+      if (!accept) {
+        console.log('Skipping RPC call for rejection since notification is already updated');
+        toast.dismiss(loadingToast);
+        toast.success('Booking rejected successfully');
+        
+        // Log the response for rejection
+        await supabase.from('driver_notification_logs').insert({
+          booking_id: bookingId,
+          driver_id: user.id,
+          notification_id: notificationId,
+          status_code: 200,
+          response: JSON.stringify({ status: 'SUCCESS', action: 'reject' }),
+          created_at: new Date().toISOString()
+        });
+        
+        // Reset new notification flag
+        setHasNewNotifications(false);
+        
+        // Refresh the notifications and bookings
+        await Promise.all([
+          fetchNotifications(),
+          fetchPendingBookings()
+        ]);
+        
+        return;
+      }
+
+      // Only call the RPC function for acceptance
+      console.log('Calling handle_driver_response RPC for acceptance');
       const { data, error } = await supabase
         .rpc('handle_driver_response', {
           p_booking_id: bookingId,
@@ -482,16 +520,17 @@ export default function DriverDashboard() {
           p_response_code: notification.response_code
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error from handle_driver_response RPC:', error);
+        throw error;
+      }
 
       // Handle the response from the database function
+      console.log('RPC response:', data);
       switch (data) {
         case 'SUCCESS':
           toast.dismiss(loadingToast);
-          toast.success(accept 
-            ? 'Booking accepted successfully! Check your trips for details.' 
-            : 'Booking rejected successfully'
-          );
+          toast.success('Booking accepted successfully! Check your trips for details.');
           break;
         case 'EXPIRED':
           toast.dismiss(loadingToast);
@@ -506,6 +545,7 @@ export default function DriverDashboard() {
           toast.error('Invalid response code');
           break;
         default:
+          toast.dismiss(loadingToast);
           throw new Error(`Unexpected response: ${data}`);
       }
 
@@ -515,7 +555,7 @@ export default function DriverDashboard() {
         driver_id: user.id,
         notification_id: notificationId,
         status_code: data === 'SUCCESS' ? 200 : 400,
-        response: JSON.stringify({ status: data, action: accept ? 'accept' : 'reject' }),
+        response: JSON.stringify({ status: data, action: 'accept' }),
         created_at: new Date().toISOString()
       });
 
@@ -530,16 +570,31 @@ export default function DriverDashboard() {
 
     } catch (error) {
       console.error('Error handling booking response:', error);
-      toast.error(`Failed to process response: ${error.message || 'Unknown error'}`);
+      
+      // Make sure to dismiss the loading toast if there's an error
+      if (loadingToast) {
+        toast.dismiss(loadingToast);
+      }
+      
+      toast.error(`Failed to process response: ${error.message || 'Unknown error'}`, {
+        id: `error-${Date.now()}`  // Use a unique ID to prevent duplicate toasts
+      });
       
       // Log the error
       await supabase.from('driver_notification_logs').insert({
         booking_id: bookingId,
         driver_id: user.id,
+        notification_id: notificationId,
         status_code: 500,
         response: JSON.stringify({ error: error.message }),
         created_at: new Date().toISOString()
       });
+      
+      // Still refresh the UI to show current state
+      await Promise.all([
+        fetchNotifications(),
+        fetchPendingBookings()
+      ]);
     }
   };
 
