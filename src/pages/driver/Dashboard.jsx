@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { supabase } from '../../utils/supabase.js';
 import { useDriverAuth } from '../../contexts/DriverAuthContext.jsx';
 import { toast } from 'react-hot-toast';
+import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
 // Add notification status enum to match database
 const NOTIFICATION_STATUS = {
@@ -49,6 +50,13 @@ export default function DriverDashboard() {
 
   // Add a polling interval state
   const POLLING_INTERVAL = 5000; // 5 seconds
+
+  // Add state for the confirmation modal
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmCallback, setConfirmCallback] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmBookingId, setConfirmBookingId] = useState(null);
 
   // Move fetchNotifications to component scope so it can be used by handleBookingResponse
   const fetchNotifications = async () => {
@@ -413,15 +421,25 @@ export default function DriverDashboard() {
     fetchPendingBookings(); // Call the moved function
   }, [user, driverAuthLoading]);
 
-  // Add this function near the top of your component
-  const confirmAction = (message) => {
-    return new Promise((resolve) => {
-      if (window.confirm(message)) {
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    });
+  // Replace the old confirmAction function with this modern UI version
+  const showConfirmationModal = (message, callback) => {
+    setConfirmMessage(message);
+    setConfirmCallback(() => callback);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirm = () => {
+    if (confirmCallback) {
+      confirmCallback(true);
+    }
+    setShowConfirmModal(false);
+  };
+
+  const handleCancel = () => {
+    if (confirmCallback) {
+      confirmCallback(false);
+    }
+    setShowConfirmModal(false);
   };
 
   // Update the handleBookingResponse function
@@ -429,173 +447,175 @@ export default function DriverDashboard() {
     // Create a reference to the loading toast that we can access in the catch block
     let loadingToast;
     
-    try {
-      const confirmed = await confirmAction(
-        accept 
-          ? 'Are you sure you want to accept this booking?' 
-          : 'Are you sure you want to reject this booking?'
-      );
-
-      if (!confirmed) return;
-
-      // Store the toast ID so we can dismiss it in the catch block
-      loadingToast = toast.loading(accept ? 'Accepting booking...' : 'Rejecting booking...', {
-        id: `booking-response-${notificationId}`
-      });
-
-      console.log(`Processing ${accept ? 'acceptance' : 'rejection'} for notification ${notificationId}, booking ${bookingId}`);
-
-      // Get the notification for response code
-      const { data: notification, error: notificationError } = await supabase
-        .from('driver_notifications')
-        .select('response_code, expires_at, status')
-        .eq('id', notificationId)
-        .single();
+    // Use the new confirmation modal instead of the browser's default
+    showConfirmationModal(
+      accept 
+        ? 'Are you sure you want to accept this booking?' 
+        : 'Are you sure you want to reject this booking?',
+      async (confirmed) => {
+        if (!confirmed) return;
         
-      if (notificationError) {
-        console.error('Error fetching notification:', notificationError);
-        toast.dismiss(loadingToast);
-        toast.error(`Error fetching notification: ${notificationError.message}`);
-        return;
+        try {
+          // Store the toast ID so we can dismiss it in the catch block
+          loadingToast = toast.loading(accept ? 'Accepting booking...' : 'Rejecting booking...', {
+            id: `booking-response-${notificationId}`
+          });
+    
+          console.log(`Processing ${accept ? 'acceptance' : 'rejection'} for notification ${notificationId}, booking ${bookingId}`);
+    
+          // Get the notification for response code
+          const { data: notification, error: notificationError } = await supabase
+            .from('driver_notifications')
+            .select('response_code, expires_at, status')
+            .eq('id', notificationId)
+            .single();
+            
+          if (notificationError) {
+            console.error('Error fetching notification:', notificationError);
+            toast.dismiss(loadingToast);
+            toast.error(`Error fetching notification: ${notificationError.message}`);
+            return;
+          }
+    
+          // Check if notification has expired
+          if (new Date(notification.expires_at) < new Date()) {
+            toast.dismiss(loadingToast);
+            toast.error('This booking request has expired');
+            return;
+          }
+          
+          // Update the notification status first
+          console.log(`Updating notification ${notificationId} status to ${accept ? 'ACCEPTED' : 'REJECTED'}`);
+          const { error: updateError } = await supabase
+            .from('driver_notifications')
+            .update({ 
+              status: accept ? 'ACCEPTED' : 'REJECTED',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', notificationId);
+            
+          if (updateError) {
+            console.error('Error updating notification status:', updateError);
+            toast.dismiss(loadingToast);
+            toast.error(`Error updating notification: ${updateError.message}`);
+            return;
+          }
+    
+          // Skip the RPC call for rejection - it's not needed since we already updated the notification
+          if (!accept) {
+            console.log('Skipping RPC call for rejection since notification is already updated');
+            toast.dismiss(loadingToast);
+            toast.success('Booking rejected successfully');
+            
+            // Log the response for rejection
+            await supabase.from('driver_notification_logs').insert({
+              booking_id: bookingId,
+              driver_id: user.id,
+              notification_id: notificationId,
+              status_code: 200,
+              response: JSON.stringify({ status: 'SUCCESS', action: 'reject' }),
+              created_at: new Date().toISOString()
+            });
+            
+            // Reset new notification flag
+            setHasNewNotifications(false);
+            
+            // Refresh the notifications and bookings
+            await Promise.all([
+              fetchNotifications(),
+              fetchPendingBookings()
+            ]);
+            
+            return;
+          }
+    
+          // Only call the RPC function for acceptance
+          console.log('Calling handle_driver_response RPC for acceptance');
+          const { data, error } = await supabase
+            .rpc('handle_driver_response', {
+              p_booking_id: bookingId,
+              p_driver_id: user.id,
+              p_response_code: notification.response_code
+            });
+    
+          if (error) {
+            console.error('Error from handle_driver_response RPC:', error);
+            throw error;
+          }
+    
+          // Handle the response from the database function
+          console.log('RPC response:', data);
+          switch (data) {
+            case 'SUCCESS':
+              toast.dismiss(loadingToast);
+              toast.success('Booking accepted successfully! Check your trips for details.');
+              break;
+            case 'EXPIRED':
+              toast.dismiss(loadingToast);
+              toast.error('This booking request has expired');
+              break;
+            case 'BOOKING_NO_LONGER_AVAILABLE':
+              toast.dismiss(loadingToast);
+              toast.error('This booking is no longer available');
+              break;
+            case 'INVALID_CODE':
+              toast.dismiss(loadingToast);
+              toast.error('Invalid response code');
+              break;
+            default:
+              toast.dismiss(loadingToast);
+              throw new Error(`Unexpected response: ${data}`);
+          }
+    
+          // Log the response
+          await supabase.from('driver_notification_logs').insert({
+            booking_id: bookingId,
+            driver_id: user.id,
+            notification_id: notificationId,
+            status_code: data === 'SUCCESS' ? 200 : 400,
+            response: JSON.stringify({ status: data, action: 'accept' }),
+            created_at: new Date().toISOString()
+          });
+    
+          // Reset new notification flag
+          setHasNewNotifications(false);
+    
+          // Refresh the notifications and bookings
+          await Promise.all([
+            fetchNotifications(),
+            fetchPendingBookings()
+          ]);
+    
+        } catch (error) {
+          console.error('Error handling booking response:', error);
+          
+          // Make sure to dismiss the loading toast if there's an error
+          if (loadingToast) {
+            toast.dismiss(loadingToast);
+          }
+          
+          toast.error(`Failed to process response: ${error.message || 'Unknown error'}`, {
+            id: `error-${Date.now()}`  // Use a unique ID to prevent duplicate toasts
+          });
+          
+          // Log the error
+          await supabase.from('driver_notification_logs').insert({
+            booking_id: bookingId,
+            driver_id: user.id,
+            notification_id: notificationId,
+            status_code: 500,
+            response: JSON.stringify({ error: error.message }),
+            created_at: new Date().toISOString()
+          });
+          
+          // Still refresh the UI to show current state
+          await Promise.all([
+            fetchNotifications(),
+            fetchPendingBookings()
+          ]);
+        }
       }
-
-      // Check if notification has expired
-      if (new Date(notification.expires_at) < new Date()) {
-        toast.dismiss(loadingToast);
-        toast.error('This booking request has expired');
-        return;
-      }
-      
-      // Update the notification status first
-      console.log(`Updating notification ${notificationId} status to ${accept ? 'ACCEPTED' : 'REJECTED'}`);
-      const { error: updateError } = await supabase
-        .from('driver_notifications')
-        .update({ 
-          status: accept ? 'ACCEPTED' : 'REJECTED',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', notificationId);
-        
-      if (updateError) {
-        console.error('Error updating notification status:', updateError);
-        toast.dismiss(loadingToast);
-        toast.error(`Error updating notification: ${updateError.message}`);
-        return;
-      }
-
-      // Skip the RPC call for rejection - it's not needed since we already updated the notification
-      if (!accept) {
-        console.log('Skipping RPC call for rejection since notification is already updated');
-        toast.dismiss(loadingToast);
-        toast.success('Booking rejected successfully');
-        
-        // Log the response for rejection
-        await supabase.from('driver_notification_logs').insert({
-          booking_id: bookingId,
-          driver_id: user.id,
-          notification_id: notificationId,
-          status_code: 200,
-          response: JSON.stringify({ status: 'SUCCESS', action: 'reject' }),
-          created_at: new Date().toISOString()
-        });
-        
-        // Reset new notification flag
-        setHasNewNotifications(false);
-        
-        // Refresh the notifications and bookings
-        await Promise.all([
-          fetchNotifications(),
-          fetchPendingBookings()
-        ]);
-        
-        return;
-      }
-
-      // Only call the RPC function for acceptance
-      console.log('Calling handle_driver_response RPC for acceptance');
-      const { data, error } = await supabase
-        .rpc('handle_driver_response', {
-          p_booking_id: bookingId,
-          p_driver_id: user.id,
-          p_response_code: notification.response_code
-        });
-
-      if (error) {
-        console.error('Error from handle_driver_response RPC:', error);
-        throw error;
-      }
-
-      // Handle the response from the database function
-      console.log('RPC response:', data);
-      switch (data) {
-        case 'SUCCESS':
-          toast.dismiss(loadingToast);
-          toast.success('Booking accepted successfully! Check your trips for details.');
-          break;
-        case 'EXPIRED':
-          toast.dismiss(loadingToast);
-          toast.error('This booking request has expired');
-          break;
-        case 'BOOKING_NO_LONGER_AVAILABLE':
-          toast.dismiss(loadingToast);
-          toast.error('This booking is no longer available');
-          break;
-        case 'INVALID_CODE':
-          toast.dismiss(loadingToast);
-          toast.error('Invalid response code');
-          break;
-        default:
-          toast.dismiss(loadingToast);
-          throw new Error(`Unexpected response: ${data}`);
-      }
-
-      // Log the response
-      await supabase.from('driver_notification_logs').insert({
-        booking_id: bookingId,
-        driver_id: user.id,
-        notification_id: notificationId,
-        status_code: data === 'SUCCESS' ? 200 : 400,
-        response: JSON.stringify({ status: data, action: 'accept' }),
-        created_at: new Date().toISOString()
-      });
-
-      // Reset new notification flag
-      setHasNewNotifications(false);
-
-      // Refresh the notifications and bookings
-      await Promise.all([
-        fetchNotifications(),
-        fetchPendingBookings()
-      ]);
-
-    } catch (error) {
-      console.error('Error handling booking response:', error);
-      
-      // Make sure to dismiss the loading toast if there's an error
-      if (loadingToast) {
-        toast.dismiss(loadingToast);
-      }
-      
-      toast.error(`Failed to process response: ${error.message || 'Unknown error'}`, {
-        id: `error-${Date.now()}`  // Use a unique ID to prevent duplicate toasts
-      });
-      
-      // Log the error
-      await supabase.from('driver_notification_logs').insert({
-        booking_id: bookingId,
-        driver_id: user.id,
-        notification_id: notificationId,
-        status_code: 500,
-        response: JSON.stringify({ error: error.message }),
-        created_at: new Date().toISOString()
-      });
-      
-      // Still refresh the UI to show current state
-      await Promise.all([
-        fetchNotifications(),
-        fetchPendingBookings()
-      ]);
-    }
+    );
   };
 
   // Add notification sound function
@@ -905,6 +925,37 @@ export default function DriverDashboard() {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 transform transition-all">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                <QuestionMarkCircleIcon className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Action</h3>
+              <p className="text-sm text-gray-500 mb-6">{confirmMessage}</p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  type="button"
+                  className="inline-flex justify-center rounded-md border border-transparent bg-red-100 px-4 py-2 text-sm font-medium text-red-900 hover:bg-red-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  onClick={handleConfirm}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
