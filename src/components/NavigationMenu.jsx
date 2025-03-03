@@ -231,8 +231,30 @@ export default function NavigationMenu() {
                         to="/driver/dashboard"
                         onClick={(e) => {
                           e.preventDefault();
-                          toggleSidebar();
-                          navigate('/driver/dashboard');
+                          setIsProfileDropdownOpen(false);
+                          
+                          // Create a fade-out effect before navigation
+                          const mainContent = document.querySelector('main');
+                          if (mainContent) {
+                            // Add transition class
+                            mainContent.style.transition = 'opacity 0.4s ease-out';
+                            mainContent.style.opacity = '0';
+                            
+                            // Wait for animation to complete before toggling sidebar and navigating
+                            setTimeout(() => {
+                              toggleSidebar();
+                              navigate('/driver/dashboard');
+                              
+                              // Fade back in after a short delay
+                              setTimeout(() => {
+                                mainContent.style.opacity = '1';
+                              }, 100);
+                            }, 300);
+                          } else {
+                            // Fallback if main content not found
+                            toggleSidebar();
+                            navigate('/driver/dashboard');
+                          }
                         }}
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
                       >
@@ -658,8 +680,30 @@ export default function NavigationMenu() {
                                     to="/driver/dashboard"
                                     onClick={(e) => {
                                       e.preventDefault();
-                                      toggleSidebar();
-                                      navigate('/driver/dashboard');
+                                      setIsProfileDropdownOpen(false);
+                                      
+                                      // Create a fade-out effect before navigation
+                                      const mainContent = document.querySelector('main');
+                                      if (mainContent) {
+                                        // Add transition class
+                                        mainContent.style.transition = 'opacity 0.4s ease-out';
+                                        mainContent.style.opacity = '0';
+                                        
+                                        // Wait for animation to complete before toggling sidebar and navigating
+                                        setTimeout(() => {
+                                          toggleSidebar();
+                                          navigate('/driver/dashboard');
+                                          
+                                          // Fade back in after a short delay
+                                          setTimeout(() => {
+                                            mainContent.style.opacity = '1';
+                                          }, 100);
+                                        }, 300);
+                                      } else {
+                                        // Fallback if main content not found
+                                        toggleSidebar();
+                                        navigate('/driver/dashboard');
+                                      }
                                     }}
                                     className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
                                   >
