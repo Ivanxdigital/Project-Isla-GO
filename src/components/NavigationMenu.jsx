@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -8,6 +8,12 @@ import { toast } from 'react-hot-toast';
 import { useDriverAuth } from '../contexts/DriverAuthContext.jsx';
 import { Menu, Transition } from '@headlessui/react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDriverSidebar } from '../contexts/DriverSidebarContext.jsx';
+
+// Add this function at the top of the file, after the imports
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
 
 // Update mobile menu items styling
 const MobileMenuItem = ({ to, onClick, children, className }) => (
@@ -31,6 +37,7 @@ export default function NavigationMenu() {
   const [profile, setProfile] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(Date.now());
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const { toggleSidebar } = useDriverSidebar();
 
   // Check if current page is an admin page
   const isAdminPage = location.pathname.startsWith('/admin');
@@ -211,32 +218,17 @@ export default function NavigationMenu() {
                       </Link>
                     )}
                     {driverStatus === 'active' && (
-                      <>
-                        <Link
-                          to="/driver/dashboard"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
-                        >
-                          Driver Dashboard
-                        </Link>
-                        <Link
-                          to="/driver/trips"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
-                        >
-                          My Trips
-                        </Link>
-                        <Link
-                          to="/driver/profile"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
-                        >
-                          Driver Profile
-                        </Link>
-                        <Link
-                          to="/driver/availability"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
-                        >
-                          Manage Availability
-                        </Link>
-                      </>
+                      <Link
+                        to="/driver/dashboard"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleSidebar();
+                          navigate('/driver/dashboard');
+                        }}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
+                      >
+                        Driver Dashboard
+                      </Link>
                     )}
                   </>
                 )}
@@ -519,32 +511,17 @@ export default function NavigationMenu() {
                                   </MobileMenuItem>
                                 )}
                                 {driverStatus === 'active' && (
-                                  <>
-                                    <MobileMenuItem
-                                      to="/driver/dashboard"
-                                      onClick={() => setIsMenuOpen(false)}
-                                    >
-                                      Driver Dashboard
-                                    </MobileMenuItem>
-                                    <MobileMenuItem
-                                      to="/driver/trips"
-                                      onClick={() => setIsMenuOpen(false)}
-                                    >
-                                      My Trips
-                                    </MobileMenuItem>
-                                    <MobileMenuItem
-                                      to="/driver/profile"
-                                      onClick={() => setIsMenuOpen(false)}
-                                    >
-                                      Driver Profile
-                                    </MobileMenuItem>
-                                    <MobileMenuItem
-                                      to="/driver/availability"
-                                      onClick={() => setIsMenuOpen(false)}
-                                    >
-                                      Manage Availability
-                                    </MobileMenuItem>
-                                  </>
+                                  <MobileMenuItem
+                                    to="/driver/dashboard"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setIsMenuOpen(false);
+                                      toggleSidebar();
+                                      navigate('/driver/dashboard');
+                                    }}
+                                  >
+                                    Driver Dashboard
+                                  </MobileMenuItem>
                                 )}
                               </>
                             )}
@@ -660,36 +637,17 @@ export default function NavigationMenu() {
                                   </Link>
                                 )}
                                 {driverStatus === 'active' && (
-                                  <>
-                                    <Link
-                                      to="/driver/dashboard"
-                                      onClick={handleMenuItemClick}
-                                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                                    >
-                                      Driver Dashboard
-                                    </Link>
-                                    <Link
-                                      to="/driver/trips"
-                                      onClick={handleMenuItemClick}
-                                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                                    >
-                                      My Trips
-                                    </Link>
-                                    <Link
-                                      to="/driver/profile"
-                                      onClick={handleMenuItemClick}
-                                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                                    >
-                                      Driver Profile
-                                    </Link>
-                                    <Link
-                                      to="/driver/availability"
-                                      onClick={handleMenuItemClick}
-                                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
-                                    >
-                                      Manage Availability
-                                    </Link>
-                                  </>
+                                  <Link
+                                    to="/driver/dashboard"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      toggleSidebar();
+                                      navigate('/driver/dashboard');
+                                    }}
+                                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                                  >
+                                    Driver Dashboard
+                                  </Link>
                                 )}
                               </>
                             )}
