@@ -85,6 +85,24 @@ function AdminLayout() {
   );
 }
 
+function DriverLayout() {
+  const location = useLocation();
+  
+  return (
+    <div className="min-h-screen flex flex-col relative">
+      <NavigationMenu />
+      <main className="flex-grow">
+        <AnimatePresence mode="wait" initial={false}>
+          <PageTransition key={location.pathname}>
+            <Outlet />
+          </PageTransition>
+        </AnimatePresence>
+      </main>
+      {/* No Footer here to prevent duplicate footers */}
+    </div>
+  );
+}
+
 const routes = [
   {
     element: <RootLayout />,
@@ -229,7 +247,7 @@ const routes = [
       },
       {
         path: "/driver",
-        element: <RootLayout />,
+        element: <DriverLayout />,
         errorElement: <ErrorBoundary />,
         children: [
           {
