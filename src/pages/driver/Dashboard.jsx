@@ -45,6 +45,7 @@ export default function DriverDashboard() {
   const [hasNewNotifications, setHasNewNotifications] = useState(false);
   const [lastNotificationTime, setLastNotificationTime] = useState(null);
   const [notificationSound] = useState(new Audio('/notification-sound.mp3')); // Add a notification sound file to your public folder
+  const [notifiedIds, setNotifiedIds] = useState([]);
 
   // Add a polling interval state
   const POLLING_INTERVAL = 5000; // 5 seconds
@@ -58,31 +59,46 @@ export default function DriverDashboard() {
       const currentTime = new Date().toISOString();
       console.log('Current time for comparison:', currentTime);
       
+      // Debug driver status
+      console.log('Driver status when fetching notifications:', driverStatus);
+      
+      // First, check if the driver is active in the database
+      const { data: driverData, error: driverError } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (driverError) {
+        console.error('Error fetching driver data:', driverError);
+      } else {
+        console.log('Driver data from database:', driverData);
+        
+        // If driver is inactive, update local status
+        if (driverData && driverData.status !== 'active') {
+          console.log('Driver is not active in database. Status:', driverData.status);
+          
+          // Attempt to update driver status to active
+          console.log('Attempting to update driver status to active');
+          const { error: updateError } = await supabase
+            .from('drivers')
+            .update({ status: 'active' })
+            .eq('id', user.id);
+            
+          if (updateError) {
+            console.error('Error updating driver status:', updateError);
+          } else {
+            console.log('Driver status updated to active');
+          }
+        }
+      }
+      
       // Use a simpler query structure to avoid 400 errors
+      console.log('Fetching all notifications for driver');
       const { data, error } = await supabase
         .from('driver_notifications')
-        .select(`
-          id,
-          booking_id,
-          status,
-          response_code,
-          expires_at,
-          created_at,
-          bookings:booking_id (
-            id,
-            from_location,
-            to_location,
-            departure_date,
-            departure_time,
-            total_amount,
-            service_type,
-            booked_seats
-          )
-        `)
-        .filter('driver_id', 'eq', user.id)
-        .filter('status', 'eq', NOTIFICATION_STATUS.PENDING)
-        .gt('expires_at', new Date().toISOString()) // Only get non-expired notifications
-        .order('created_at', { ascending: false });
+        .select('*')
+        .eq('driver_id', user.id);
 
       if (error) {
         console.error('Error fetching notifications:', error);
@@ -90,62 +106,83 @@ export default function DriverDashboard() {
         return;
       }
       
-      console.log('Notifications fetched:', data?.length || 0, data);
+      console.log('Raw notifications fetched:', data?.length || 0, data);
       
-      // Filter out notifications with null bookings
-      const validNotifications = data?.filter(notification => 
-        notification.bookings && notification.bookings.id
+      // Filter for pending notifications
+      const pendingNotifications = data?.filter(notification => 
+        notification.status === 'PENDING'
       ) || [];
       
-      // Check if there are new notifications - safely handle null/undefined data
-      if (validNotifications.length > 0) {
-        // If we have more notifications than before or if the newest notification is newer than our last check
-        const newestNotification = validNotifications[0];
+      console.log('Pending notifications:', pendingNotifications.length);
+      
+      // Check for expired notifications
+      const now = new Date();
+      const validNotifications = pendingNotifications.filter(notification => {
+        if (!notification.expires_at) return false;
         
-        if (notifications.length === 0 || 
-            validNotifications.length > notifications.length || 
-            (lastNotificationTime && newestNotification && 
-             new Date(newestNotification.created_at) > new Date(lastNotificationTime))) {
+        const expiryDate = new Date(notification.expires_at);
+        const isValid = expiryDate > now;
+        
+        console.log(
+          `Notification ${notification.id} expires at ${notification.expires_at}`,
+          isValid ? 'VALID' : 'EXPIRED'
+        );
+        
+        return isValid;
+      });
+      
+      console.log('Valid non-expired notifications:', validNotifications.length);
+      
+      // Now fetch booking details for each notification
+      const notificationsWithBookings = [];
+      
+      for (const notification of validNotifications) {
+        const { data: bookingData, error: bookingError } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('id', notification.booking_id)
+          .single();
           
-          // Play notification sound
-          try {
-            notificationSound.play();
-          } catch (soundError) {
-            console.error('Error playing notification sound:', soundError);
-          }
-          
-          // Show toast notification
-          toast.success('New booking request available!', {
-            duration: 5000,
-            icon: '🔔'
+        if (bookingError) {
+          console.error(`Error fetching booking ${notification.booking_id}:`, bookingError);
+        } else if (bookingData) {
+          notificationsWithBookings.push({
+            ...notification,
+            bookings: bookingData
           });
-          
-          // Set flag for visual indicator
-          setHasNewNotifications(true);
-          
-          // Update last notification time
-          if (newestNotification && newestNotification.created_at) {
-            setLastNotificationTime(newestNotification.created_at);
-          }
         }
       }
       
-      setNotifications(validNotifications);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      // Log to notification_logs table
-      try {
-        await supabase.from('driver_notification_logs').insert({
-          booking_id: null,
-          status_code: 500,
-          response: JSON.stringify({ error: error.message }),
-          created_at: new Date().toISOString()
-        });
-      } catch (logError) {
-        console.error('Failed to log notification error:', logError);
+      console.log('Notifications with valid bookings:', notificationsWithBookings.length, notificationsWithBookings);
+      
+      // Check if there are new notifications that we haven't notified about yet
+      const newNotifications = notificationsWithBookings.filter(
+        notification => !notifiedIds.includes(notification.id)
+      );
+      
+      if (newNotifications.length > 0) {
+        console.log('New notifications detected:', newNotifications.length);
+        
+        // Only play sound and show toast for the first new notification to avoid spam
+        if (newNotifications.length > 0) {
+          console.log('Playing notification sound for new booking request');
+          playNotificationSound();
+          
+          // Show only one toast regardless of how many new notifications
+          toast.success(`You have ${newNotifications.length} new booking request${newNotifications.length > 1 ? 's' : ''}!`, {
+            duration: 5000,
+            position: 'top-right',
+            id: 'new-booking-notification', // Use an ID to prevent duplicate toasts
+          });
+          
+          // Add the new notification IDs to our tracking array
+          setNotifiedIds(prev => [...prev, ...newNotifications.map(n => n.id)]);
+        }
       }
       
-      // Set empty array to prevent errors
+      setNotifications(notificationsWithBookings);
+    } catch (error) {
+      console.error('Error in fetchNotifications:', error);
       setNotifications([]);
     }
   };
@@ -478,6 +515,61 @@ export default function DriverDashboard() {
         created_at: new Date().toISOString()
       });
     }
+  };
+
+  // Add notification sound function
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio('/notification.mp3');
+      audio.play().catch(error => {
+        console.error('Error playing notification sound:', error);
+      });
+    } catch (error) {
+      console.error('Error creating audio object:', error);
+    }
+  };
+
+  // Calculate earnings for different time periods
+  const calculateEarnings = (trips) => {
+    if (!trips || trips.length === 0) {
+      return {
+        today: 0,
+        thisWeek: 0,
+        thisMonth: 0,
+        total: 0
+      };
+    }
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Make sure we have valid created_at dates before filtering
+    const validTrips = trips.filter(trip => trip && trip.created_at);
+
+    const todayEarnings = validTrips
+      .filter(trip => new Date(trip.created_at) >= todayStart)
+      .reduce((sum, trip) => sum + (parseFloat(trip.total_amount) || 0), 0);
+
+    const weekEarnings = validTrips
+      .filter(trip => new Date(trip.created_at) >= weekStart)
+      .reduce((sum, trip) => sum + (parseFloat(trip.total_amount) || 0), 0);
+
+    const monthEarnings = validTrips
+      .filter(trip => new Date(trip.created_at) >= monthStart)
+      .reduce((sum, trip) => sum + (parseFloat(trip.total_amount) || 0), 0);
+
+    const totalEarnings = validTrips
+      .reduce((sum, trip) => sum + (parseFloat(trip.total_amount) || 0), 0);
+
+    return {
+      today: todayEarnings,
+      thisWeek: weekEarnings,
+      thisMonth: monthEarnings,
+      total: totalEarnings
+    };
   };
 
   if (loading || driverAuthLoading) {

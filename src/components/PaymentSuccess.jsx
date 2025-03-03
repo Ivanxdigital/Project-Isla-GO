@@ -31,6 +31,10 @@ export default function PaymentSuccess() {
   const [driver, setDriver] = useState(null);
   const [driverAssigned, setDriverAssigned] = useState(false);
   const [booking, setBooking] = useState(null);
+  
+  // Add state to track if email and notifications have been sent
+  const [emailSent, setEmailSent] = useState(false);
+  const [driversNotified, setDriversNotified] = useState(false);
 
   const pollPaymentStatus = async () => {
     try {
@@ -89,21 +93,37 @@ export default function PaymentSuccess() {
 
           // Send confirmation email via Brevo
           try {
-            console.log('Sending payment confirmation email for booking:', bookingId);
-            await sendPaymentConfirmationEmail(bookingId);
-            console.log('Payment confirmation email sent successfully');
-            toast.success('Payment confirmation email sent');
+            // Only send email if it hasn't been sent already
+            if (!emailSent) {
+              console.log('Sending payment confirmation email for booking:', bookingId);
+              await sendPaymentConfirmationEmail(bookingId);
+              console.log('Payment confirmation email sent successfully');
+              toast.success('Payment confirmation email sent', { id: 'email-sent-toast' });
+              setEmailSent(true);
+            } else {
+              console.log('Email already sent for booking:', bookingId);
+            }
           } catch (emailError) {
             console.error('Failed to send payment confirmation email:', emailError);
-            toast.error('There was an issue sending the confirmation email');
+            toast.error('There was an issue sending the confirmation email', { id: 'email-error-toast' });
           }
 
           // Try to notify drivers
-          console.log('Attempting to send driver notifications for booking:', bookingId);
-          await sendDriverNotifications(bookingId);
-          console.log('Driver notifications sent successfully');
-          toast.success('Drivers have been notified of your booking');
-          
+          if (!driversNotified) {
+            console.log('Attempting to send driver notifications for booking:', bookingId);
+            try {
+              await sendDriverNotifications(bookingId);
+              console.log('Driver notifications sent successfully');
+              toast.success('Drivers have been notified of your booking', { id: 'driver-notified-toast' });
+              setDriversNotified(true);
+            } catch (notificationError) {
+              console.error('Failed to notify drivers:', notificationError);
+              toast.error('There was an issue notifying drivers. Our team will handle this manually.', { id: 'driver-error-toast' });
+            }
+          } else {
+            console.log('Drivers already notified for booking:', bookingId);
+          }
+
           // Fetch booking details with customer for display
           await fetchBookingWithDriver(bookingId);
         } catch (error) {
@@ -184,31 +204,39 @@ export default function PaymentSuccess() {
 
         // Send confirmation email via Brevo
         try {
-          console.log('Sending payment confirmation email for booking:', bookingId);
-          await sendPaymentConfirmationEmail(bookingId);
-          console.log('Payment confirmation email sent successfully');
-          toast.success('Payment confirmation email sent');
+          // Only send email if it hasn't been sent already
+          if (!emailSent) {
+            console.log('Sending payment confirmation email for booking:', bookingId);
+            await sendPaymentConfirmationEmail(bookingId);
+            console.log('Payment confirmation email sent successfully');
+            toast.success('Payment confirmation email sent', { id: 'email-sent-toast' });
+            setEmailSent(true);
+          } else {
+            console.log('Email already sent for booking:', bookingId);
+          }
         } catch (emailError) {
           console.error('Failed to send payment confirmation email:', emailError);
-          toast.error('There was an issue sending the confirmation email');
+          toast.error('There was an issue sending the confirmation email', { id: 'email-error-toast' });
         }
 
         // Try to notify drivers
-        try {
+        if (!driversNotified) {
           console.log('Attempting to send driver notifications for booking:', bookingId);
-          await sendDriverNotifications(bookingId);
-          console.log('Driver notifications sent successfully');
-          toast.success('Drivers have been notified of your booking');
-          
-          // Fetch booking details with customer for display
-          await fetchBookingWithDriver(bookingId);
-        } catch (error) {
-          console.error('Failed to notify drivers:', error);
-          toast.error('There was an issue notifying drivers. Our team will handle this manually.');
-          
-          // Continue with fetching booking details even if driver notification fails
-          await fetchBookingWithDriver(bookingId);
+          try {
+            await sendDriverNotifications(bookingId);
+            console.log('Driver notifications sent successfully');
+            toast.success('Drivers have been notified of your booking', { id: 'driver-notified-toast' });
+            setDriversNotified(true);
+          } catch (notificationError) {
+            console.error('Failed to notify drivers:', notificationError);
+            toast.error('There was an issue notifying drivers. Our team will handle this manually.', { id: 'driver-error-toast' });
+          }
+        } else {
+          console.log('Drivers already notified for booking:', bookingId);
         }
+
+        // Fetch booking details with customer for display
+        await fetchBookingWithDriver(bookingId);
 
         setStatus('success');
         
