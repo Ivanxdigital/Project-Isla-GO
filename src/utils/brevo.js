@@ -34,38 +34,50 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
   try {
     console.log('Preparing to send payment confirmation email for booking:', bookingId);
     
-    // First, get the booking details
+    // First, get the booking details with customer information
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('*')
-      .filter('id', 'eq', bookingId)
-      .maybeSingle();
+      .select(`
+        *,
+        customer:customer_id (
+          id,
+          first_name,
+          last_name,
+          email,
+          phone
+        )
+      `)
+      .eq('id', bookingId)
+      .single();
     
     if (bookingError || !booking) {
       console.error('Error fetching booking details:', bookingError || 'No booking found');
       throw new Error('Booking not found');
     }
     
-    // Get customer details
-    const { data: customer, error: customerError } = await supabase
-      .from('customers')
-      .select('*')
-      .filter('id', 'eq', booking.customer_id)
-      .maybeSingle();
+    // If no customer email found in the joined data, try to get it directly
+    let recipientEmail = booking.customer?.email;
     
-    if (customerError) {
-      console.error('Error fetching customer details:', customerError);
-      throw new Error('Failed to fetch customer details');
+    if (!recipientEmail) {
+      // Try to get customer email directly
+      const { data: customer, error: customerError } = await supabase
+        .from('customers')
+        .select('email')
+        .eq('id', booking.customer_id)
+        .single();
+      
+      if (!customerError && customer) {
+        recipientEmail = customer.email;
+      }
     }
     
-    // If no customer email found, try to get it from the user's profile
-    let recipientEmail = customer?.email;
+    // If still no email, try to get it from the user's profile
     if (!recipientEmail && booking.user_id) {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('email')
-        .filter('id', 'eq', booking.user_id)
-        .maybeSingle();
+        .eq('id', booking.user_id)
+        .single();
       
       if (!profileError && profile) {
         recipientEmail = profile.email;
@@ -73,8 +85,12 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     }
     
     if (!recipientEmail) {
+      console.error('No recipient email found for booking:', bookingId);
       throw new Error('No recipient email found');
     }
+    
+    // Generate the HTML content using the detailed template
+    const htmlContent = getPaymentConfirmationHtml(booking);
     
     // Prepare email content
     const emailData = {
@@ -84,26 +100,15 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       },
       to: [{
         email: recipientEmail,
-        name: customer?.first_name ? `${customer.first_name} ${customer.last_name}` : 'Valued Customer'
+        name: booking.customer?.first_name 
+          ? `${booking.customer.first_name} ${booking.customer.last_name}` 
+          : 'Valued Customer'
       }],
       subject: 'IslaGO - Payment Confirmation',
-      htmlContent: `
-        <h2>Payment Confirmation</h2>
-        <p>Dear ${customer?.first_name || 'Valued Customer'},</p>
-        <p>Thank you for your payment. Your booking has been confirmed.</p>
-        <h3>Booking Details:</h3>
-        <ul>
-          <li>From: ${booking.from_location}</li>
-          <li>To: ${booking.to_location}</li>
-          <li>Date: ${new Date(booking.departure_date).toLocaleDateString()}</li>
-          <li>Time: ${booking.departure_time}</li>
-          <li>Amount Paid: ₱${booking.total_amount}</li>
-        </ul>
-        <p>We are now looking for an available driver for your trip. You will receive another email once a driver has been assigned.</p>
-        <p>If you have any questions, please don't hesitate to contact us.</p>
-        <p>Best regards,<br>IslaGO Team</p>
-      `
+      htmlContent: htmlContent
     };
+    
+    console.log('Sending email to:', recipientEmail);
     
     // Send the email using Brevo API
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -119,7 +124,7 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Brevo API error:', errorData);
-      throw new Error('Failed to send email');
+      throw new Error(`Failed to send email: ${errorData.message || 'Unknown error'}`);
     }
     
     // Update booking to mark email as sent
@@ -129,7 +134,7 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
         payment_confirmation_email_sent: true,
         payment_confirmation_email_sent_at: new Date().toISOString()
       })
-      .filter('id', 'eq', bookingId);
+      .eq('id', bookingId);
     
     console.log('Payment confirmation email sent successfully');
     return true;
@@ -144,7 +149,7 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
           payment_confirmation_email_sent: false,
           payment_confirmation_email_sent_at: new Date().toISOString()
         })
-        .filter('id', 'eq', bookingId);
+        .eq('id', bookingId);
     } catch (updateError) {
       console.error('Failed to update booking email status:', updateError);
     }
@@ -159,6 +164,16 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
  * @returns {string} - HTML content for the email
  */
 const getPaymentConfirmationHtml = (booking) => {
+  // Handle potential missing data gracefully
+  const customerName = booking.customer?.first_name || 'Valued Customer';
+  const bookingId = booking.id || 'Unknown';
+  const fromLocation = booking.from_location || 'Not specified';
+  const toLocation = booking.to_location || 'Not specified';
+  const departureDate = booking.departure_date ? formatDate(booking.departure_date) : 'Not specified';
+  const departureTime = booking.departure_time ? formatTime(booking.departure_time) : 'Not specified';
+  const serviceType = booking.service_type || 'Standard';
+  const totalAmount = booking.total_amount ? formatCurrency(booking.total_amount) : 'Not specified';
+  
   return `
     <!DOCTYPE html>
     <html>
@@ -179,23 +194,23 @@ const getPaymentConfirmationHtml = (booking) => {
         <div class="container">
           <div class="header">
             <h1>Payment Confirmation</h1>
-            <p>Booking Reference: #${booking.id}</p>
+            <p>Booking Reference: #${bookingId}</p>
           </div>
           
           <div class="content">
-            <p>Dear ${booking.customer.first_name},</p>
+            <p>Dear ${customerName},</p>
             <p>Thank you for choosing IslaGo! Your payment has been <span class="highlight">successfully received</span>.</p>
             
             <div class="status">Payment Status: Successful</div>
             
             <div class="booking-details">
               <h2>Your Booking Details</h2>
-              <p><strong>From:</strong> ${booking.from_location}</p>
-              <p><strong>To:</strong> ${booking.to_location}</p>
-              <p><strong>Date:</strong> ${formatDate(booking.departure_date)}</p>
-              <p><strong>Time:</strong> ${formatTime(booking.departure_time)}</p>
-              <p><strong>Service:</strong> ${booking.service_type}</p>
-              <p><strong>Amount Paid:</strong> ${formatCurrency(booking.total_amount)}</p>
+              <p><strong>From:</strong> ${fromLocation}</p>
+              <p><strong>To:</strong> ${toLocation}</p>
+              <p><strong>Date:</strong> ${departureDate}</p>
+              <p><strong>Time:</strong> ${departureTime}</p>
+              <p><strong>Service:</strong> ${serviceType}</p>
+              <p><strong>Amount Paid:</strong> ${totalAmount}</p>
               ${booking.hotel_pickup ? `
                 <p><strong>Pickup Location:</strong> ${booking.hotel_details?.name || 'Hotel'}</p>
                 <p><strong>Hotel Address:</strong> ${booking.hotel_details?.address || 'Address not provided'}</p>
@@ -222,4 +237,43 @@ const getPaymentConfirmationHtml = (booking) => {
       </body>
     </html>
   `;
+};
+
+/**
+ * Test the Brevo API connection
+ * @returns {Promise<boolean>} - True if connection is successful
+ */
+export const testBrevoConnection = async () => {
+  try {
+    const apiKey = import.meta.env.VITE_BREVO_API_KEY;
+    
+    if (!apiKey) {
+      console.error('Brevo API key is missing');
+      return false;
+    }
+    
+    console.log('Testing Brevo API connection with key:', apiKey.substring(0, 10) + '...');
+    
+    // Make a simple request to the Brevo API to check if the key is valid
+    const response = await fetch('https://api.brevo.com/v3/account', {
+      method: 'GET',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey
+      }
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Brevo API connection test failed:', errorData);
+      return false;
+    }
+    
+    const data = await response.json();
+    console.log('Brevo API connection successful:', data);
+    return true;
+  } catch (error) {
+    console.error('Brevo API connection test error:', error);
+    return false;
+  }
 }; 

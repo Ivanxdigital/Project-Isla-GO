@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../utils/supabase.ts';
 import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo.js';
 import { sendDriverNotifications } from '../utils/twilio.js';
-import { sendPaymentConfirmationEmail } from '../utils/brevo.js';
+import { sendPaymentConfirmationEmail, testBrevoConnection } from '../utils/brevo.js';
 import toast from 'react-hot-toast';
 import DriverDetails from './DriverDetails.jsx';
 import ContactOptions from './ContactOptions.jsx';
@@ -35,6 +35,26 @@ export default function PaymentSuccess() {
   // Add state to track if email and notifications have been sent
   const [emailSent, setEmailSent] = useState(false);
   const [driversNotified, setDriversNotified] = useState(false);
+  const [brevoConnected, setBrevoConnected] = useState(null);
+
+  // Test Brevo connection when component mounts
+  useEffect(() => {
+    const checkBrevoConnection = async () => {
+      try {
+        const isConnected = await testBrevoConnection();
+        setBrevoConnected(isConnected);
+        
+        if (!isConnected) {
+          console.error('Brevo API connection failed. Email notifications may not work.');
+        }
+      } catch (error) {
+        console.error('Error testing Brevo connection:', error);
+        setBrevoConnected(false);
+      }
+    };
+    
+    checkBrevoConnection();
+  }, []);
 
   const pollPaymentStatus = async () => {
     try {
@@ -93,19 +113,40 @@ export default function PaymentSuccess() {
 
           // Send confirmation email via Brevo
           try {
-            // Only send email if it hasn't been sent already
+            // Only send email if it hasn't been sent already and Brevo is connected
             if (!emailSent) {
-              console.log('Sending payment confirmation email for booking:', bookingId);
+              console.log('Preparing to send payment confirmation email for booking:', bookingId);
+              
+              // Check if Brevo connection is available
+              if (brevoConnected === false) {
+                console.error('Brevo API connection is not available. Cannot send email.');
+                toast.error('Email service is currently unavailable. Our team will contact you shortly.', { id: 'email-sending-toast' });
+                
+                // Mark as attempted even though it failed
+                setEmailSent(true);
+                return false;
+              }
+              
+              // Show loading toast
+              toast.loading('Sending confirmation email...', { id: 'email-sending-toast' });
+              
               await sendPaymentConfirmationEmail(bookingId);
+              
               console.log('Payment confirmation email sent successfully');
-              toast.success('Payment confirmation email sent', { id: 'email-sent-toast' });
+              toast.success('Payment confirmation email sent', { id: 'email-sending-toast' });
               setEmailSent(true);
             } else {
               console.log('Email already sent for booking:', bookingId);
             }
           } catch (emailError) {
             console.error('Failed to send payment confirmation email:', emailError);
-            toast.error('There was an issue sending the confirmation email', { id: 'email-error-toast' });
+            toast.error('There was an issue sending the confirmation email. Our team will contact you shortly.', { id: 'email-sending-toast' });
+            
+            // Log the specific error for debugging
+            console.error('Email error details:', emailError.message);
+            
+            // Still mark as attempted
+            setEmailSent(true);
           }
 
           // Try to notify drivers
@@ -204,19 +245,40 @@ export default function PaymentSuccess() {
 
         // Send confirmation email via Brevo
         try {
-          // Only send email if it hasn't been sent already
+          // Only send email if it hasn't been sent already and Brevo is connected
           if (!emailSent) {
-            console.log('Sending payment confirmation email for booking:', bookingId);
+            console.log('Preparing to send payment confirmation email for booking:', bookingId);
+            
+            // Check if Brevo connection is available
+            if (brevoConnected === false) {
+              console.error('Brevo API connection is not available. Cannot send email.');
+              toast.error('Email service is currently unavailable. Our team will contact you shortly.', { id: 'email-sending-toast' });
+              
+              // Mark as attempted even though it failed
+              setEmailSent(true);
+              return false;
+            }
+            
+            // Show loading toast
+            toast.loading('Sending confirmation email...', { id: 'email-sending-toast' });
+            
             await sendPaymentConfirmationEmail(bookingId);
+            
             console.log('Payment confirmation email sent successfully');
-            toast.success('Payment confirmation email sent', { id: 'email-sent-toast' });
+            toast.success('Payment confirmation email sent', { id: 'email-sending-toast' });
             setEmailSent(true);
           } else {
             console.log('Email already sent for booking:', bookingId);
           }
         } catch (emailError) {
           console.error('Failed to send payment confirmation email:', emailError);
-          toast.error('There was an issue sending the confirmation email', { id: 'email-error-toast' });
+          toast.error('There was an issue sending the confirmation email. Our team will contact you shortly.', { id: 'email-sending-toast' });
+          
+          // Log the specific error for debugging
+          console.error('Email error details:', emailError.message);
+          
+          // Still mark as attempted
+          setEmailSent(true);
         }
 
         // Try to notify drivers
