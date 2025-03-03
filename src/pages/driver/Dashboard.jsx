@@ -341,38 +341,34 @@ export default function DriverDashboard() {
     };
 
     const fetchEarnings = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-      const { data, error } = await supabase
-        .from('trip_assignments')
-        .select(`
-          *,
-          bookings (
-            total_amount,
-            status,
-            created_at
-          )
-        `)
-        .eq('driver_id', user.id)
-        .eq('bookings.status', 'COMPLETED');
-
-      if (error) throw error;
-
-      const calculateEarnings = (trips, startDate) => {
-        return trips
-          .filter(trip => new Date(trip.bookings.created_at) >= new Date(startDate))
-          .reduce((sum, trip) => sum + (trip.bookings.total_amount * 0.8), 0); // Assuming 80% driver share
-      };
-
-      setEarnings({
-        daily: calculateEarnings(data, today),
-        weekly: calculateEarnings(data, weekAgo),
-        monthly: calculateEarnings(data, monthAgo),
-        totalTrips: data.length,
-        rating: 4.5 // You'll need to implement actual rating calculation
-      });
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('*')
+          .filter('assigned_driver_id', 'eq', user.id)
+          .filter('status', 'eq', 'completed');
+        
+        if (error) {
+          console.error('Error fetching earnings:', error);
+          return;
+        }
+        
+        console.log('Earnings data fetched:', data?.length || 0, data);
+        
+        // Calculate earnings using the calculateEarnings function
+        const earningsData = calculateEarnings(data || []);
+        
+        // Set earnings state with calculated values
+        setEarnings({
+          daily: earningsData.today,
+          weekly: earningsData.thisWeek,
+          monthly: earningsData.thisMonth,
+          totalTrips: data?.length || 0,
+          rating: 4.5 // You'll need to implement actual rating calculation
+        });
+      } catch (error) {
+        console.error('Error in fetchEarnings:', error);
+      }
     };
 
     fetchDriverData();

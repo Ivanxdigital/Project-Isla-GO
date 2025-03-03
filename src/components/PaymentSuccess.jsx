@@ -25,6 +25,13 @@ export default function PaymentSuccess() {
   const [driverData, setDriverData] = useState(null);
   const [customerData, setCustomerData] = useState(null);
 
+  // Add missing state variables for driver polling
+  const [driverPollingActive, setDriverPollingActive] = useState(false);
+  const [driverPollingIntervalId, setDriverPollingIntervalId] = useState(null);
+  const [driver, setDriver] = useState(null);
+  const [driverAssigned, setDriverAssigned] = useState(false);
+  const [booking, setBooking] = useState(null);
+
   const pollPaymentStatus = async () => {
     try {
       // Get booking ID from URL
@@ -281,69 +288,91 @@ export default function PaymentSuccess() {
     }
   };
   
-  // New function to poll for driver assignment
-  const startDriverPolling = async (bookingId) => {
-    // Start a polling interval to check for driver assignment
-    const driverInterval = setInterval(async () => {
+  // Function to start polling for driver assignment
+  const startDriverPolling = (bookingId) => {
+    console.log('Starting driver polling for booking ID:', bookingId);
+    
+    // Set up polling interval - check every 5 seconds
+    const driverPollingInterval = setInterval(async () => {
       try {
-        console.log('Polling for driver assignment for booking:', bookingId);
+        console.log('Polling for driver assignment...');
         
-        // Use a simpler query to avoid 400 errors - use assigned_driver_id instead of driver_id
+        // Query the bookings table to check if a driver has been assigned
         const { data, error } = await supabase
           .from('bookings')
           .select('assigned_driver_id, status')
           .filter('id', 'eq', bookingId)
           .maybeSingle();
-          
+        
         if (error) {
           console.error('Error polling for driver:', error);
-          return; // Continue polling despite errors
+          return;
         }
         
         if (!data) {
-          console.log('No booking data found during polling');
-          return; // Continue polling
+          console.log('No booking data found for ID:', bookingId);
+          return;
         }
         
-        console.log('Driver polling result:', data);
+        console.log('Polling result:', data);
         
-        // If a driver has been assigned, fetch driver details
+        // If the booking status is 'finding_driver_failed', stop polling and show error
+        if (data.status === 'finding_driver_failed') {
+          clearInterval(driverPollingInterval);
+          setDriverPollingActive(false);
+          toast.error('Unable to find a driver at this time. Please try again later or contact support.', {
+            duration: 10000,
+          });
+          return;
+        }
+        
+        // If a driver has been assigned
         if (data.assigned_driver_id) {
-          clearInterval(driverInterval);
+          console.log('Driver assigned:', data.assigned_driver_id);
           
-          const { data: driver, error: driverError } = await supabase
+          // Fetch driver details
+          const { data: driverData, error: driverError } = await supabase
             .from('drivers')
             .select('*')
-            .eq('id', data.assigned_driver_id)
-            .single();
-            
+            .filter('id', 'eq', data.assigned_driver_id)
+            .maybeSingle();
+          
           if (driverError) {
-            console.error('Error fetching assigned driver:', driverError);
-            toast.error('A driver was assigned but we could not fetch their details');
+            console.error('Error fetching driver details:', driverError);
             return;
           }
           
-          setDriverData(driver);
-          toast.success('A driver has been assigned to your booking!');
-        }
-        
-        // If booking status has changed to 'finding_driver_failed', stop polling
-        if (data.status === 'finding_driver_failed') {
-          clearInterval(driverInterval);
-          toast.error('We could not find an available driver. Our team will contact you shortly.');
+          if (driverData) {
+            // Update state with driver data
+            setDriverData(driverData);
+            setDriver(driverData);
+            setDriverAssigned(true);
+            
+            // Stop polling
+            clearInterval(driverPollingInterval);
+            setDriverPollingActive(false);
+            
+            // Show success notification
+            toast.success('Driver assigned! Check your email for details.', {
+              duration: 5000,
+            });
+          }
         }
       } catch (error) {
         console.error('Error in driver polling:', error);
-        // Don't clear interval, continue polling
       }
-    }, 5000); // Check every 5 seconds
+    }, 5000); // Poll every 5 seconds
     
-    // Clean up interval after 5 minutes (300000ms) maximum
+    // Store the interval ID
+    setDriverPollingIntervalId(driverPollingInterval);
+    setDriverPollingActive(true);
+    
+    // Clear the interval after 5 minutes to prevent excessive querying
     setTimeout(() => {
-      clearInterval(driverInterval);
-    }, 300000);
-    
-    return driverInterval;
+      clearInterval(driverPollingInterval);
+      setDriverPollingActive(false);
+      console.log('Driver polling stopped after timeout');
+    }, 5 * 60 * 1000); // 5 minutes
   };
 
   useEffect(() => {
