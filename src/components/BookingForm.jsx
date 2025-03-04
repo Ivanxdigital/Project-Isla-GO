@@ -1,4 +1,4 @@
-import React, { useState, Fragment, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, Fragment, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/20/solid';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -6,7 +6,6 @@ import { Navigation, Pagination } from 'swiper/modules';
 import { motion, AnimatePresence } from 'framer-motion';
 import LanguageSelector from './LanguageSelector.jsx';
 import ReviewsSection from './ReviewsSection.jsx';
-import DriverShowcase from './DriverShowcase.jsx';
 import { createPaymentSession } from '../utils/paymongo.js';
 import { sendBookingEmail as _sendBookingEmail } from '../utils/email.js';
 import { countryCodes } from '../data/countryCodes.js';
@@ -21,6 +20,9 @@ import { useNavigate } from 'react-router-dom';
 import PaymentOptions from './PaymentOptions.jsx';
 import debounce from 'lodash.debounce';
 import HotelAutocomplete from './HotelAutocomplete.jsx';
+import { format, addMinutes } from 'date-fns';
+import toast from 'react-hot-toast';
+import { ArrowRightIcon, ArrowLeftIcon } from '@heroicons/react/20/solid';
 
 const ProgressSteps = ({ currentStep }) => {
   const steps = [
@@ -1392,8 +1394,6 @@ export default function BookingForm() {
             </motion.div>
           </AnimatePresence>
         </div>
-
-        <DriverShowcase />
 
         <ReviewsSection />
       </div>
