@@ -27,7 +27,7 @@ const BOOKING_STATUS = {
 export default function DriverDashboard() {
   const { user } = useAuth();
   const { isDriver, driverStatus, loading: driverAuthLoading } = useDriverAuth();
-  const { openSidebar } = useDriverSidebar();
+  const { openSidebar, isMobile, closeSidebar } = useDriverSidebar();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,10 +60,21 @@ export default function DriverDashboard() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmBookingId, setConfirmBookingId] = useState(null);
 
-  // Ensure sidebar is open when component mounts
+  // Ensure sidebar is open on desktop but closed on mobile when component mounts
+  // Only run this effect once when the component mounts
+  /*
   useEffect(() => {
-    openSidebar();
-  }, [openSidebar]);
+    // Initial setup - only run once
+    if (isMobile) {
+      console.log('Dashboard: Mobile detected, closing sidebar');
+      closeSidebar();
+    } else {
+      console.log('Dashboard: Desktop detected, opening sidebar');
+      openSidebar();
+    }
+    // Empty dependency array ensures this only runs once
+  }, []);
+  */
 
   // Move fetchNotifications to component scope so it can be used by handleBookingResponse
   const fetchNotifications = async () => {
@@ -731,230 +742,234 @@ export default function DriverDashboard() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold mb-4">Driver Dashboard</h1>
+    <div className="bg-gray-50 w-full">
+      <div className="container mx-auto px-4 py-6">
+        <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-8">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl md:text-2xl font-bold mb-4">Driver Dashboard</h1>
+            
+            {/* Notification Bell */}
+            <div className="relative">
+              <button 
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                onClick={() => {
+                  // Clear new notification indicator when clicked
+                  setHasNewNotifications(false);
+                  // Scroll to notifications section
+                  document.getElementById('notifications-section').scrollIntoView({ 
+                    behavior: 'smooth' 
+                  });
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                
+                {/* Notification Badge */}
+                {hasNewNotifications && (
+                  <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
+                    New
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
           
-          {/* Notification Bell */}
-          <div className="relative">
-            <button 
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              onClick={() => {
-                // Clear new notification indicator when clicked
-                setHasNewNotifications(false);
-                // Scroll to notifications section
-                document.getElementById('notifications-section').scrollIntoView({ 
-                  behavior: 'smooth' 
-                });
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              
-              {/* Notification Badge */}
-              {hasNewNotifications && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
-                  New
-                </span>
+          <div className="mb-4 p-2 bg-gray-100 rounded">
+            <p>Status: {driverStatus}</p>
+            <p>Active Driver: {isDriver ? 'Yes' : 'No'}</p>
+            <p>ID: {user?.id}</p>
+          </div>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+            <h2 className="text-lg font-medium mb-2 md:mb-0">{trips[0]?.drivers?.name}</h2>
+            <div className="flex flex-col md:flex-row md:space-x-4">
+              <p className="text-sm text-gray-600 mb-1 md:mb-0">License: {trips[0]?.drivers?.license_number}</p>
+              <p className="text-sm text-gray-600">
+                Expires: {new Date(trips[0]?.drivers?.license_expiry).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+          
+          {/* Stats Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow p-4 md:p-6">
+              <h3 className="text-lg font-semibold mb-2">Total Trips</h3>
+              <p className="text-3xl font-bold text-blue-600">{stats.totalTrips}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4 md:p-6">
+              <h3 className="text-lg font-semibold mb-2">Completed Trips</h3>
+              <p className="text-3xl font-bold text-green-600">{stats.completedTrips}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4 md:p-6">
+              <h3 className="text-lg font-semibold mb-2">Pending Trips</h3>
+              <p className="text-3xl font-bold text-yellow-600">{stats.pendingTrips}</p>
+            </div>
+          </div>
+
+          {/* Recent Trips Section */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-4 md:p-6">
+              <h2 className="text-xl font-semibold mb-4">Recent Trips</h2>
+              {trips.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          From
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          To
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Vehicle
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {trips.map((trip) => (
+                        <tr key={trip.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {trip.bookings?.from_location}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {trip.bookings?.to_location}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {trip.bookings?.departure_date && new Date(trip.bookings.departure_date).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm">
+                              <p className="text-gray-900">{trip.vehicles?.model}</p>
+                              <p className="text-gray-500">{trip.vehicles?.plate_number}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              trip.bookings?.status === 'COMPLETED' 
+                                ? 'bg-green-100 text-green-800' 
+                                : trip.bookings?.status === 'PENDING' 
+                                ? 'bg-yellow-100 text-yellow-800' 
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {trip.bookings?.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-500">No recent trips found</p>
               )}
-            </button>
-          </div>
-        </div>
-        
-        <div className="mb-4 p-2 bg-gray-100 rounded">
-          <p>Status: {driverStatus}</p>
-          <p>Active Driver: {isDriver ? 'Yes' : 'No'}</p>
-          <p>ID: {user?.id}</p>
-        </div>
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-lg font-medium">{trips[0]?.drivers?.name}</h2>
-          <p className="text-sm text-gray-600">License: {trips[0]?.drivers?.license_number}</p>
-          <p className="text-sm text-gray-600">
-            Expires: {new Date(trips[0]?.drivers?.license_expiry).toLocaleDateString()}
-          </p>
-        </div>
-        
-        {/* Stats Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-2">Total Trips</h3>
-            <p className="text-3xl font-bold text-blue-600">{stats.totalTrips}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-2">Completed Trips</h3>
-            <p className="text-3xl font-bold text-green-600">{stats.completedTrips}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-2">Pending Trips</h3>
-            <p className="text-3xl font-bold text-yellow-600">{stats.pendingTrips}</p>
+            </div>
           </div>
         </div>
 
-        {/* Recent Trips Section */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Recent Trips</h2>
-            {trips.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        From
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        To
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Vehicle
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {trips.map((trip) => (
-                      <tr key={trip.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {trip.bookings?.from_location}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {trip.bookings?.to_location}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {trip.bookings?.departure_date && new Date(trip.bookings.departure_date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm">
-                            <p className="text-gray-900">{trip.vehicles?.model}</p>
-                            <p className="text-gray-500">{trip.vehicles?.plate_number}</p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            trip.bookings?.status === 'COMPLETED' 
-                              ? 'bg-green-100 text-green-800' 
-                              : trip.bookings?.status === 'PENDING' 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {trip.bookings?.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-500">No trips found.</p>
+        {/* Add this Notifications Section */}
+        <div id="notifications-section" className="bg-white rounded-lg shadow p-6 mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">New Booking Requests</h2>
+            
+            {hasNewNotifications && (
+              <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded-full animate-pulse">
+                New Requests
+              </span>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Add this Notifications Section */}
-      <div id="notifications-section" className="bg-white rounded-lg shadow p-6 mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">New Booking Requests</h2>
           
-          {hasNewNotifications && (
-            <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded-full animate-pulse">
-              New Requests
-            </span>
-          )}
-        </div>
-        
-        <div className="space-y-4">
-          {notifications.length > 0 ? (
-            <div className="space-y-4">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`bg-white border rounded-lg p-4 shadow-sm ${
-                    lastNotificationTime && new Date(notification.created_at) > new Date(lastNotificationTime) 
-                      ? 'border-blue-500 ring-2 ring-blue-200' 
-                      : 'border-gray-200'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-semibold">
-                        {notification.bookings?.from_location} → {notification.bookings?.to_location}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Date: {new Date(notification.bookings?.departure_date).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Time: {notification.bookings?.departure_time}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Expires: {new Date(notification.expires_at).toLocaleString()}
-                      </p>
-                      <p className="text-sm font-semibold text-green-600">
-                        ₱{notification.bookings?.total_amount}
-                      </p>
-                      
-                      {/* Add time received */}
-                      <p className="text-xs text-gray-500 mt-2">
-                        Received: {new Date(notification.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, true)}
-                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
-                        disabled={new Date(notification.expires_at) < new Date()}
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, false)}
-                        className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-                        disabled={new Date(notification.expires_at) < new Date()}
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Countdown timer */}
-                  {new Date(notification.expires_at) > new Date() && (
-                    <div className="mt-2 pt-2 border-t border-gray-100">
-                      <p className="text-xs text-gray-500">
-                        Expires in: {Math.max(0, Math.floor((new Date(notification.expires_at) - new Date()) / 60000))} minutes
-                      </p>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                        <div 
-                          className="bg-blue-600 h-1.5 rounded-full" 
-                          style={{ 
-                            width: `${Math.max(0, Math.min(100, (new Date(notification.expires_at) - new Date()) / (15 * 60 * 1000) * 100))}%` 
-                          }}
-                        ></div>
+          <div className="space-y-4">
+            {notifications.length > 0 ? (
+              <div className="space-y-4">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`bg-white border rounded-lg p-4 shadow-sm ${
+                      lastNotificationTime && new Date(notification.created_at) > new Date(lastNotificationTime) 
+                        ? 'border-blue-500 ring-2 ring-blue-200' 
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="font-semibold">
+                          {notification.bookings?.from_location} → {notification.bookings?.to_location}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Date: {new Date(notification.bookings?.departure_date).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Time: {notification.bookings?.departure_time}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Expires: {new Date(notification.expires_at).toLocaleString()}
+                        </p>
+                        <p className="text-sm font-semibold text-green-600">
+                          ₱{notification.bookings?.total_amount}
+                        </p>
+                        
+                        {/* Add time received */}
+                        <p className="text-xs text-gray-500 mt-2">
+                          Received: {new Date(notification.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, true)}
+                          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+                          disabled={new Date(notification.expires_at) < new Date()}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, false)}
+                          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+                          disabled={new Date(notification.expires_at) < new Date()}
+                        >
+                          Decline
+                        </button>
                       </div>
                     </div>
-                  )}
-                  
-                  {/* Expired indicator */}
-                  {new Date(notification.expires_at) < new Date() && (
-                    <div className="mt-2 pt-2 border-t border-gray-100">
-                      <p className="text-xs text-red-500 font-medium">
-                        This booking request has expired
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No new booking requests</p>
-          )}
+                    
+                    {/* Countdown timer */}
+                    {new Date(notification.expires_at) > new Date() && (
+                      <div className="mt-2 pt-2 border-t border-gray-100">
+                        <p className="text-xs text-gray-500">
+                          Expires in: {Math.max(0, Math.floor((new Date(notification.expires_at) - new Date()) / 60000))} minutes
+                        </p>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                          <div 
+                            className="bg-blue-600 h-1.5 rounded-full" 
+                            style={{ 
+                              width: `${Math.max(0, Math.min(100, (new Date(notification.expires_at) - new Date()) / (15 * 60 * 1000) * 100))}%` 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Expired indicator */}
+                    {new Date(notification.expires_at) < new Date() && (
+                      <div className="mt-2 pt-2 border-t border-gray-100">
+                        <p className="text-xs text-red-500 font-medium">
+                          This booking request has expired
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No new booking requests</p>
+            )}
+          </div>
         </div>
       </div>
 

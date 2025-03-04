@@ -26,10 +26,15 @@ const DriverSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { isOpen, closeSidebar } = useDriverSidebar();
+  const { isOpen, isMobile, closeSidebar } = useDriverSidebar();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  
+  // Log isOpen state changes
+  useEffect(() => {
+    console.log('DriverSidebar: isOpen state changed to', isOpen);
+  }, [isOpen]);
   
   // Animation variants for the sidebar
   const sidebarVariants = {
@@ -71,6 +76,22 @@ const DriverSidebar = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Ensure the sidebar extends to the full height of the page
+  useEffect(() => {
+    const updateSidebarHeight = () => {
+      const sidebar = document.getElementById('driver-sidebar');
+      if (sidebar) {
+        const windowHeight = window.innerHeight;
+        sidebar.style.minHeight = `${windowHeight}px`;
+      }
+    };
+    
+    updateSidebarHeight();
+    window.addEventListener('resize', updateSidebarHeight);
+    
+    return () => window.removeEventListener('resize', updateSidebarHeight);
+  }, [isOpen]);
 
   // Close mobile menu when location changes
   useEffect(() => {
@@ -127,8 +148,8 @@ const DriverSidebar = () => {
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
+    <AnimatePresence mode="wait">
+      {isOpen ? (
         <>
           {/* Backdrop for mobile */}
           <motion.div
@@ -137,7 +158,12 @@ const DriverSidebar = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-            onClick={closeSidebar}
+            onClick={(e) => {
+              // Only close if clicking directly on the backdrop
+              if (e.target === e.currentTarget) {
+                closeSidebar();
+              }
+            }}
           />
           
           {/* Sidebar */}
@@ -146,61 +172,94 @@ const DriverSidebar = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
+            id="driver-sidebar"
             className={`
-              fixed md:static inset-y-0 left-0 z-40
+              fixed md:sticky top-0 left-0 z-50
               ${isExpanded ? 'w-64' : 'w-16 md:w-16'}
-              min-h-screen bg-white border-r border-gray-200 px-3 py-6 
+              h-screen bg-white border-r border-gray-200
               flex flex-col transition-all duration-300 ease-in-out 
-              md:group md:hover:w-64 relative pt-20
+              md:group md:hover:w-64 overflow-y-auto shadow-md
+              md:flex md:h-auto
             `}
+            style={{ height: '100vh', overflowY: 'auto' }}
             onMouseEnter={() => window.innerWidth >= 768 && setIsExpanded(true)}
             onMouseLeave={() => window.innerWidth >= 768 && setIsExpanded(false)}
           >
-            {/* Logo/Brand */}
-            <div className={`px-3 mb-8 overflow-hidden whitespace-nowrap ${!isExpanded && 'md:group-hover:block'}`}>
+            {/* Mobile header with close button */}
+            <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-ai-600">Driver Menu</h2>
+              <button
+                className="p-1 rounded-full hover:bg-gray-100"
+                onClick={closeSidebar}
+                aria-label="Close sidebar"
+              >
+                <XMarkIcon className="h-6 w-6 text-gray-500" />
+              </button>
+            </div>
+            
+            {/* Logo/Brand - visible on desktop */}
+            <div className={`hidden md:block px-4 py-6 mb-6 overflow-hidden whitespace-nowrap border-b border-gray-100 ${!isExpanded && 'md:group-hover:block'}`}>
               <h2 className="text-xl font-bold text-ai-600">Driver Portal</h2>
             </div>
             
             {/* Navigation Links */}
-            <nav className="flex-1">
-              <ul className="space-y-1">
-                {menuItems.map((item) => {
-                  const isActive = location.pathname === item.path;
-                  const Icon = item.icon;
-                  
-                  return (
-                    <li key={item.path}>
-                      <Link
-                        to={item.path}
-                        className={`
-                          flex items-center px-3 py-2 rounded-lg transition-colors duration-200
-                          ${isActive 
-                            ? 'bg-ai-50 text-ai-600' 
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}
-                        `}
-                      >
-                        <Icon className="w-5 h-5 flex-shrink-0" />
-                        <span className={`ml-3 ${!isExpanded ? 'hidden md:group-hover:inline' : ''}`}>
-                          {item.name}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+            <nav className="flex-1 px-2">
+              <div className="mb-4">
+                <h3 className={`text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 ${!isExpanded && 'sr-only'}`}>
+                  Main Menu
+                </h3>
+                <ul className="mt-2 space-y-1">
+                  {menuItems.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    const Icon = item.icon;
+                    
+                    return (
+                      <li key={item.path}>
+                        <Link
+                          to={item.path}
+                          className={`
+                            flex items-center px-3 py-3 rounded-lg transition-colors duration-200
+                            ${isActive 
+                              ? 'bg-ai-50 text-ai-600 font-medium' 
+                              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}
+                          `}
+                          onClick={(e) => {
+                            // Prevent event propagation to the backdrop
+                            e.stopPropagation();
+                            // Only close the sidebar on mobile if explicitly clicking the close button
+                            // This allows menu items to be clicked without closing the sidebar
+                          }}
+                        >
+                          <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-ai-600' : 'text-gray-500'}`} />
+                          <span className={`ml-3 ${!isExpanded ? 'hidden md:group-hover:inline' : ''}`}>
+                            {item.name}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             </nav>
             
             {/* Sign Out Button */}
-            <div className="mt-auto pt-4 border-t border-gray-200">
+            <div className="mt-auto px-2 pb-6 pt-2 border-t border-gray-100">
+              <h3 className={`text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 pt-4 pb-2 ${!isExpanded && 'sr-only'}`}>
+                Account
+              </h3>
               <button
-                onClick={handleSignOut}
+                onClick={(e) => {
+                  // Prevent event propagation to the backdrop
+                  e.stopPropagation();
+                  handleSignOut();
+                }}
                 disabled={isSigningOut}
                 className={`
-                  flex items-center w-full px-3 py-2 text-left rounded-lg
+                  flex items-center w-full px-3 py-3 text-left rounded-lg
                   text-red-600 hover:bg-red-50 transition-colors duration-200
                 `}
               >
-                <ArrowLeftOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
+                <ArrowLeftOnRectangleIcon className="w-5 h-5 flex-shrink-0 text-red-500" />
                 <span className={`ml-3 ${!isExpanded ? 'hidden md:group-hover:inline' : ''}`}>
                   {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                 </span>
@@ -208,7 +267,7 @@ const DriverSidebar = () => {
             </div>
           </motion.div>
         </>
-      )}
+      ) : null}
     </AnimatePresence>
   );
 };

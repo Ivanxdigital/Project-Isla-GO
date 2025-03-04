@@ -112,7 +112,7 @@ const Sidebar = () => {
           ${isMobile ? 'fixed z-[950]' : 'sticky top-0 z-10'} 
           inset-y-0 left-0
           ${isMobileMenuOpen ? 'translate-x-0' : isMobile ? '-translate-x-full' : 'translate-x-0'}
-          ${isExpanded ? 'w-64' : 'w-16'}
+          ${isExpanded || isMobileMenuOpen ? 'w-64' : 'w-16'}
           h-screen bg-white border-r border-gray-200 px-3 py-6 
           flex flex-col transition-all duration-300 ease-in-out 
           md:group md:hover:w-64 md:shadow-none
@@ -123,7 +123,7 @@ const Sidebar = () => {
         onMouseLeave={() => !isMobile && setIsExpanded(false)}
       >
         {/* Logo/Brand */}
-        <div className={`px-3 mb-8 overflow-hidden whitespace-nowrap ${!isExpanded && 'md:group-hover:block'}`}>
+        <div className={`px-3 mb-8 overflow-hidden whitespace-nowrap ${!isExpanded && !isMobileMenuOpen && 'md:group-hover:block'}`}>
           <h2 className="text-2xl font-bold text-gray-800 flex items-center">
             {isExpanded || isMobileMenuOpen ? (
               <>
@@ -149,7 +149,7 @@ const Sidebar = () => {
                 <li key={path}>
                   <Link
                     to={path}
-                    className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group/item relative ${
+                    className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group/item ${
                       isActive
                         ? 'text-ai-600 bg-ai-50'
                         : 'text-gray-700 hover:text-ai-600 hover:bg-gray-50'
@@ -161,7 +161,9 @@ const Sidebar = () => {
                       }`}
                     />
                     <span className={`whitespace-nowrap transition-all duration-300 ${
-                      (!isExpanded && !isMobileMenuOpen) ? 'opacity-0 md:group-hover:opacity-100 absolute left-12' : 'opacity-100'
+                      (!isExpanded && !isMobileMenuOpen) 
+                        ? 'opacity-0 md:group-hover:opacity-100 absolute left-12' 
+                        : 'opacity-100 relative'
                     }`}>
                       {name}
                     </span>
@@ -202,7 +204,9 @@ const Sidebar = () => {
                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
               </svg>
               <span className={`whitespace-nowrap transition-all duration-300 ${
-                (!isExpanded && !isMobileMenuOpen) ? 'opacity-0 md:group-hover:opacity-100 absolute left-12' : 'opacity-100'
+                (!isExpanded && !isMobileMenuOpen) 
+                  ? 'opacity-0 md:group-hover:opacity-100 absolute left-12' 
+                  : 'opacity-100 relative'
               }`}>
                 Return to Home
               </span>

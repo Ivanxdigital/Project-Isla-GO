@@ -381,7 +381,7 @@ export default function NavigationMenu() {
             duration: 0.3,
             ease: "easeInOut"
           }}
-          className="fixed top-0 inset-x-0 w-full bg-gray-900/75 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] border-b border-gray-800/50 z-[100]"
+          className="fixed top-0 inset-x-0 w-full bg-gray-900/75 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] border-b border-gray-800/50 z-[100] flex-shrink-0 h-16"
         >
           <style>{keyframes}</style>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

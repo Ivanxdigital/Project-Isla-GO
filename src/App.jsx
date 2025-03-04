@@ -49,8 +49,9 @@ import AuthCallback from './components/AuthCallback.jsx';
 import TestDashboard from './pages/driver/test.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import Layout from './components/Layout.jsx';
-import { DriverSidebarProvider } from './contexts/DriverSidebarContext.jsx';
+import { DriverSidebarProvider, useDriverSidebar } from './contexts/DriverSidebarContext.jsx';
 import DriverSidebar from './components/DriverSidebar.jsx';
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 function RootLayout() {
   const location = useLocation();
@@ -106,19 +107,52 @@ function AdminLayout() {
 
 function DriverLayout() {
   const location = useLocation();
+  const { isOpen, isMobile, closeSidebar, openSidebar } = useDriverSidebar();
+  
+  // Log state changes
+  useEffect(() => {
+    console.log('DriverLayout: isOpen state changed to', isOpen);
+    console.log('DriverLayout: isMobile state is', isMobile);
+  }, [isOpen, isMobile]);
   
   return (
-    <div className="min-h-screen flex flex-col relative">
-      <ScrollToTop />
-      <NavigationMenu />
-      <main className="flex-grow">
-        <AnimatePresence mode="wait" initial={false}>
-          <PageTransition key={location.pathname}>
-            <Outlet />
-          </PageTransition>
-        </AnimatePresence>
-      </main>
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
       <DriverSidebar />
+      <div className="flex-1 flex flex-col">
+        <NavigationMenu />
+        <main className="flex-1 pt-16 px-4 sm:px-6 lg:px-8 pb-4 bg-gray-50 overflow-y-auto">
+          {/* Mobile sidebar toggle button - always show on mobile */}
+          {isMobile && (
+            <button
+              type="button"
+              className="md:hidden fixed bottom-4 right-4 z-50 bg-ai-600 text-white p-3 rounded-full shadow-lg hover:bg-ai-700 focus:outline-none focus:ring-2 focus:ring-ai-500 focus:ring-offset-2"
+              onClick={() => {
+                console.log('Toggle button clicked, current isOpen state:', isOpen);
+                // Directly set the opposite of the current state
+                if (isOpen) {
+                  console.log('Closing sidebar');
+                  closeSidebar();
+                } else {
+                  console.log('Opening sidebar');
+                  openSidebar();
+                }
+              }}
+              aria-label="Toggle sidebar"
+            >
+              <Bars3Icon className="h-6 w-6" />
+            </button>
+          )}
+          
+          <AnimatePresence mode="wait" initial={false}>
+            <PageTransition key={location.pathname}>
+              <div className="py-2">
+                <Outlet />
+              </div>
+            </PageTransition>
+          </AnimatePresence>
+        </main>
+        <Footer />
+      </div>
     </div>
   );
 }
@@ -126,6 +160,7 @@ function DriverLayout() {
 function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isDriverRoute = location.pathname.startsWith('/driver');
   
   return (
     <ErrorBoundary>
@@ -140,22 +175,15 @@ function App() {
               <DriverSidebarProvider>
                 <Toaster position="top-right" />
                 <div className="flex min-h-screen bg-gray-50">
-                  {/* Driver Sidebar - Only shown on driver pages */}
-                  <Routes>
-                    <Route path="/driver/*" element={<DriverSidebar />} />
-                  </Routes>
-                  
-                  <div className="flex-1">
-                    {!isAdminRoute && <NavigationMenu />}
-                    <div className={!isAdminRoute ? "pt-16" : ""}>
+                  <div className="flex-1 flex flex-col">
+                    {!isAdminRoute && !isDriverRoute && <NavigationMenu />}
+                    <div className={!isAdminRoute && !isDriverRoute ? "pt-16" : ""}>
                       <Routes>
                         <Route path="/" element={<HomePage />} />
                         <Route path="/about" element={<AboutPage />} />
                         <Route path="/contact" element={<ContactPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/register" element={<CompleteRegisterPage />} />
-                        <Route path="/driver/register" element={<PrivateRoute><DriverRegister /></PrivateRoute>} />
-                        <Route path="/driver/RegistrationSuccess" element={<RegistrationSuccess />} />
                         <Route path="/payment/*" element={
                           <Routes>
                             <Route path="success" element={<PaymentSuccess />} />
@@ -164,6 +192,17 @@ function App() {
                         } />
                         <Route path="/manage-bookings" element={<ManageBookings />} />
                         <Route path="/driver-registration" element={<PrivateRoute><DriverRegistration /></PrivateRoute>} />
+                        <Route path="/driver/register" element={<PrivateRoute><DriverRegister /></PrivateRoute>} />
+                        <Route path="/driver/RegistrationSuccess" element={<RegistrationSuccess />} />
+                        <Route path="/driver/before-register" element={<BeforeRegister />} />
+                        <Route path="/driver/*" element={<DriverLayout />}>
+                          <Route index element={<DriverDashboard />} />
+                          <Route path="dashboard" element={<DriverDashboard />} />
+                          <Route path="profile" element={<DriverProfile />} />
+                          <Route path="trips" element={<DriverTrips />} />
+                          <Route path="availability" element={<DriverAvailability />} />
+                          <Route path="test" element={<TestDashboard />} />
+                        </Route>
                         <Route path="/admin/*" element={<AdminLayout />}>
                           <Route index element={<AdminDashboard />} />
                           <Route path="login" element={<AdminLoginPage />} />
@@ -176,15 +215,6 @@ function App() {
                           <Route path="driver-applications" element={<AdminRoute><DriverApplicationsPage /></AdminRoute>} />
                         </Route>
                         <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
-                        <Route path="/driver/before-register" element={<BeforeRegister />} />
-                        <Route path="/driver/*" element={<DriverRoute><Outlet /></DriverRoute>}>
-                          <Route index element={<DriverDashboard />} />
-                          <Route path="dashboard" element={<DriverDashboard />} />
-                          <Route path="profile" element={<DriverProfile />} />
-                          <Route path="trips" element={<DriverTrips />} />
-                          <Route path="availability" element={<DriverAvailability />} />
-                          <Route path="test" element={<TestDashboard />} />
-                        </Route>
                         <Route path="/auth/callback" element={<AuthCallback />} />
                         <Route path="*" element={
                           <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -208,7 +238,7 @@ function App() {
                         } />
                       </Routes>
                     </div>
-                    <Footer />
+                    {!isDriverRoute && <Footer />}
                   </div>
                 </div>
               </DriverSidebarProvider>

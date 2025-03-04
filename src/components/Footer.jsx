@@ -61,20 +61,20 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-white border-t border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <footer className="bg-white border-t border-gray-200 mt-auto flex-shrink-0">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Company Info */}
           <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
               <Link to="/" aria-label="IslaGo home" className="hover:text-ai-600 focus:outline-none focus:ring-2 focus:ring-ai-600 focus:ring-offset-2 rounded">
                 IslaGo.
               </Link>
             </h2>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 mb-2">
               Making travel easier and haggle free.
             </p>
-            <address className="not-italic space-y-2">
+            <address className="not-italic space-y-1">
               <p className="text-gray-600">
                 <span className="font-medium">Email:</span>{' '}
                 <a 
