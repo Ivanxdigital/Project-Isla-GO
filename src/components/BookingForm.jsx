@@ -180,7 +180,7 @@ export default function BookingForm() {
   const [mobileNumber, setMobileNumber] = useState('');
   const [messenger, setMessenger] = useState('');
   const [messengerType, setMessengerType] = useState('whatsapp');
-  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('online');
   const [selectedCountryCode, setSelectedCountryCode] = useState('+63');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -366,10 +366,9 @@ export default function BookingForm() {
         return;
       }
 
-      // Validate payment method
-      if (!paymentMethod) {
-        console.log('No payment method selected');
-        throw new Error('Please select a payment method');
+      // Payment method is always online now
+      if (paymentMethod !== 'online') {
+        setPaymentMethod('online');
       }
 
       console.log('Creating customer...');
@@ -406,7 +405,7 @@ export default function BookingForm() {
           address: selectedHotel?.address,
           location: selectedHotel?.location
         } : null,
-        payment_method: paymentMethod.toLowerCase(),
+        payment_method: 'online', // Always set to online
         total_amount: calculatePrice(),
         payment_session_id: null,
         status: 'pending',
@@ -419,45 +418,38 @@ export default function BookingForm() {
       // Store booking ID in sessionStorage for polling
       sessionStorage.setItem('lastBookingId', bookingData.id);
       
-      if (paymentMethod?.toLowerCase() === 'online') {
-        console.log('Processing online payment...');
-        try {
-          const totalAmount = calculatePrice();
-          const amountInCents = Math.round(totalAmount * 100);
-          const description = `Booking #${bookingData.id} - ${fromLocation} to ${toLocation}`;
+      // Process online payment (removed cash condition)
+      console.log('Processing online payment...');
+      try {
+        const totalAmount = calculatePrice();
+        const amountInCents = Math.round(totalAmount * 100);
+        const description = `Booking #${bookingData.id} - ${fromLocation} to ${toLocation}`;
 
-          const session = await createPaymentSession(
-            amountInCents,
-            description,
-            bookingData.id  // Pass the booking ID here
-          );
+        const session = await createPaymentSession(
+          amountInCents,
+          description,
+          bookingData.id  // Pass the booking ID here
+        );
 
-          if (!session?.attributes?.checkout_url) {
-            throw new Error('Invalid payment session: Missing checkout URL');
-          }
-
-          // Update booking with payment session ID
-          await supabase
-            .from('bookings')
-            .update({ 
-              payment_session_id: session.id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', bookingData.id);
-
-          // Redirect to PayMongo checkout
-          globalThis.location.href = session.attributes.checkout_url;
-          return;
-        } catch (error) {
-          console.error('Payment error:', error);
-          throw new Error(`Payment failed: ${error.message}`);
+        if (!session?.attributes?.checkout_url) {
+          throw new Error('Invalid payment session: Missing checkout URL');
         }
-      } else if (paymentMethod?.toLowerCase() === 'cash') {
-        console.log('Processing cash payment...');
-        navigate('/booking/success');
-      } else {
-        console.error('Invalid payment method:', paymentMethod);
-        throw new Error('Invalid payment method selected');
+
+        // Update booking with payment session ID
+        await supabase
+          .from('bookings')
+          .update({ 
+            payment_session_id: session.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', bookingData.id);
+
+        // Redirect to PayMongo checkout
+        globalThis.location.href = session.attributes.checkout_url;
+        return;
+      } catch (error) {
+        console.error('Payment error:', error);
+        throw new Error(`Payment failed: ${error.message}`);
       }
     } catch (error) {
       console.error('Booking submission error:', error);
@@ -1289,35 +1281,21 @@ export default function BookingForm() {
                       {t('payment.method')}
                     </label>
                     <PaymentOptions paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
-                    {paymentMethod === 'Cash' && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                        <div className="flex">
-                          <div className="flex-shrink-0">
-                            <ExclamationCircleIcon className="h-5 w-5 text-yellow-400" />
-                          </div>
-                          <div className="ml-3">
-                            <h3 className="text-sm font-medium text-yellow-800">
-                              {t('payment.depositRequired')}
-                            </h3>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* Final Summary Section */}
                   <div className="mt-6">
-                    <div className="flex items-start">
+                    <div className="flex items-center space-x-3">
                       <input
                         id="terms"
                         name="terms"
                         type="checkbox"
                         required
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="terms" className="ml-3 text-sm text-gray-700">
+                      <label htmlFor="terms" className="text-sm text-gray-700">
                         {t('form.termsAndConditions.checkbox')}{' '}
-                        <a href="#" className="text-blue-600 hover:text-blue-800">
+                        <a href="#" className="text-blue-600 hover:text-blue-800 font-medium">
                           {t('form.termsAndConditions.link')}
                         </a>
                       </label>

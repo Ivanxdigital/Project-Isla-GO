@@ -12,17 +12,17 @@ export default function PaymentOptions({ paymentMethod, setPaymentMethod }) {
       name: 'Online Payment',
       iconPlaceholder: '💳',
       description: 'Pay with GCash or Credit Card'
-    },
-    {
-      id: 'cash',
-      name: 'Cash',
-      iconPlaceholder: '💵',
-      description: '₱300 deposit required'
     }
   ];
 
+  React.useEffect(() => {
+    if (!paymentMethod) {
+      setPaymentMethod('online');
+    }
+  }, [paymentMethod, setPaymentMethod]);
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-1">
       {options.map((method) => (
         <label
           key={method.id}
