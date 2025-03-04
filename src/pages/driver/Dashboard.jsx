@@ -743,10 +743,10 @@ export default function DriverDashboard() {
 
   return (
     <div className="bg-gray-50 w-full">
-      <div className="container mx-auto px-4 py-6">
-        <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-8">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 mb-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-xl md:text-2xl font-bold mb-4">Driver Dashboard</h1>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-4">Driver Dashboard</h1>
             
             {/* Notification Bell */}
             <div className="relative">
@@ -775,97 +775,143 @@ export default function DriverDashboard() {
             </div>
           </div>
           
-          <div className="mb-4 p-2 bg-gray-100 rounded">
+          <div className="mb-3 p-2 bg-gray-100 rounded text-sm">
             <p>Status: {driverStatus}</p>
             <p>Active Driver: {isDriver ? 'Yes' : 'No'}</p>
-            <p>ID: {user?.id}</p>
+            <p className="truncate">ID: {user?.id}</p>
           </div>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-            <h2 className="text-lg font-medium mb-2 md:mb-0">{trips[0]?.drivers?.name}</h2>
-            <div className="flex flex-col md:flex-row md:space-x-4">
-              <p className="text-sm text-gray-600 mb-1 md:mb-0">License: {trips[0]?.drivers?.license_number}</p>
-              <p className="text-sm text-gray-600">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-lg font-medium mb-1 md:mb-0">{trips[0]?.drivers?.name}</h2>
+            <div className="flex flex-col md:flex-row md:space-x-4 text-xs sm:text-sm">
+              <p className="text-gray-600 mb-1 md:mb-0">License: {trips[0]?.drivers?.license_number}</p>
+              <p className="text-gray-600">
                 Expires: {new Date(trips[0]?.drivers?.license_expiry).toLocaleDateString()}
               </p>
             </div>
           </div>
           
           {/* Stats Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-4 md:p-6">
-              <h3 className="text-lg font-semibold mb-2">Total Trips</h3>
-              <p className="text-3xl font-bold text-blue-600">{stats.totalTrips}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">Total Trips</h3>
+              <p className="text-2xl sm:text-3xl font-bold text-blue-600">{stats.totalTrips}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4 md:p-6">
-              <h3 className="text-lg font-semibold mb-2">Completed Trips</h3>
-              <p className="text-3xl font-bold text-green-600">{stats.completedTrips}</p>
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">Completed Trips</h3>
+              <p className="text-2xl sm:text-3xl font-bold text-green-600">{stats.completedTrips}</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-4 md:p-6">
-              <h3 className="text-lg font-semibold mb-2">Pending Trips</h3>
-              <p className="text-3xl font-bold text-yellow-600">{stats.pendingTrips}</p>
+            <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
+              <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">Pending Trips</h3>
+              <p className="text-2xl sm:text-3xl font-bold text-yellow-600">{stats.pendingTrips}</p>
             </div>
           </div>
 
-          {/* Recent Trips Section */}
+          {/* Recent Trips Section - Mobile-optimized version */}
           <div className="bg-white rounded-lg shadow">
-            <div className="p-4 md:p-6">
-              <h2 className="text-xl font-semibold mb-4">Recent Trips</h2>
+            <div className="p-3 sm:p-4 md:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Recent Trips</h2>
               {trips.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          From
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          To
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Vehicle
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {trips.map((trip) => (
-                        <tr key={trip.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {trip.bookings?.from_location}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {trip.bookings?.to_location}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {trip.bookings?.departure_date && new Date(trip.bookings.departure_date).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm">
-                              <p className="text-gray-900">{trip.vehicles?.model}</p>
-                              <p className="text-gray-500">{trip.vehicles?.plate_number}</p>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              trip.bookings?.status === 'COMPLETED' 
-                                ? 'bg-green-100 text-green-800' 
-                                : trip.bookings?.status === 'PENDING' 
-                                ? 'bg-yellow-100 text-yellow-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {trip.bookings?.status}
-                            </span>
-                          </td>
+                <>
+                  {/* Mobile view - Card layout */}
+                  <div className="block sm:hidden space-y-3">
+                    {trips.map((trip) => (
+                      <div key={trip.id} className="border rounded-lg p-3 shadow-sm">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">FROM</p>
+                            <p className="text-sm truncate">{trip.bookings?.from_location}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">TO</p>
+                            <p className="text-sm truncate">{trip.bookings?.to_location}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">DATE</p>
+                            <p className="text-sm">{trip.bookings?.departure_date && new Date(trip.bookings.departure_date).toLocaleDateString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">VEHICLE</p>
+                            <p className="text-sm">{trip.vehicles?.model}</p>
+                            <p className="text-xs text-gray-500">{trip.vehicles?.plate_number}</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          <p className="text-xs font-medium text-gray-500">STATUS</p>
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            trip.bookings?.status === 'COMPLETED' 
+                              ? 'bg-green-100 text-green-800' 
+                              : trip.bookings?.status === 'PENDING' 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {trip.bookings?.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Desktop view - Table layout */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            From
+                          </th>
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            To
+                          </th>
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                          </th>
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Vehicle
+                          </th>
+                          <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {trips.map((trip) => (
+                          <tr key={trip.id}>
+                            <td className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">
+                              <div className="truncate max-w-[100px] sm:max-w-none">
+                                {trip.bookings?.from_location}
+                              </div>
+                            </td>
+                            <td className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">
+                              <div className="truncate max-w-[100px] sm:max-w-none">
+                                {trip.bookings?.to_location}
+                              </div>
+                            </td>
+                            <td className="px-3 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">
+                              {trip.bookings?.departure_date && new Date(trip.bookings.departure_date).toLocaleDateString()}
+                            </td>
+                            <td className="px-3 sm:px-6 py-2 sm:py-4">
+                              <div className="text-xs sm:text-sm">
+                                <p className="text-gray-900">{trip.vehicles?.model}</p>
+                                <p className="text-gray-500">{trip.vehicles?.plate_number}</p>
+                              </div>
+                            </td>
+                            <td className="px-3 sm:px-6 py-2 sm:py-4">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                trip.bookings?.status === 'COMPLETED' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : trip.bookings?.status === 'PENDING' 
+                                  ? 'bg-yellow-100 text-yellow-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {trip.bookings?.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <p className="text-gray-500">No recent trips found</p>
               )}
@@ -873,10 +919,10 @@ export default function DriverDashboard() {
           </div>
         </div>
 
-        {/* Add this Notifications Section */}
-        <div id="notifications-section" className="bg-white rounded-lg shadow p-6 mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">New Booking Requests</h2>
+        {/* Notifications Section - Mobile-optimized */}
+        <div id="notifications-section" className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 mt-6 sm:mt-8">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold">New Booking Requests</h2>
             
             {hasNewNotifications && (
               <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded-full animate-pulse">
@@ -885,89 +931,103 @@ export default function DriverDashboard() {
             )}
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {notifications.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`bg-white border rounded-lg p-4 shadow-sm ${
+                    className={`bg-white border rounded-lg p-3 sm:p-4 shadow-sm ${
                       lastNotificationTime && new Date(notification.created_at) > new Date(lastNotificationTime) 
                         ? 'border-blue-500 ring-2 ring-blue-200' 
                         : 'border-gray-200'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-semibold">
-                          {notification.bookings?.from_location} → {notification.bookings?.to_location}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          Date: {new Date(notification.bookings?.departure_date).toLocaleDateString()}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Time: {notification.bookings?.departure_time}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Expires: {new Date(notification.expires_at).toLocaleString()}
-                        </p>
-                        <p className="text-sm font-semibold text-green-600">
-                          ₱{notification.bookings?.total_amount}
-                        </p>
-                        
-                        {/* Add time received */}
-                        <p className="text-xs text-gray-500 mt-2">
-                          Received: {new Date(notification.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, true)}
-                          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
-                          disabled={new Date(notification.expires_at) < new Date()}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, false)}
-                          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-                          disabled={new Date(notification.expires_at) < new Date()}
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Countdown timer */}
-                    {new Date(notification.expires_at) > new Date() && (
-                      <div className="mt-2 pt-2 border-t border-gray-100">
-                        <p className="text-xs text-gray-500">
-                          Expires in: {Math.max(0, Math.floor((new Date(notification.expires_at) - new Date()) / 60000))} minutes
-                        </p>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                          <div 
-                            className="bg-blue-600 h-1.5 rounded-full" 
-                            style={{ 
-                              width: `${Math.max(0, Math.min(100, (new Date(notification.expires_at) - new Date()) / (15 * 60 * 1000) * 100))}%` 
-                            }}
-                          ></div>
+                    <div>
+                      <h3 className="font-semibold text-sm sm:text-base">
+                        {notification.bookings?.from_location} → {notification.bookings?.to_location}
+                      </h3>
+                      <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
+                        <div>
+                          <p className="text-xs text-gray-500">Date:</p>
+                          <p className="text-xs sm:text-sm text-gray-600">
+                            {new Date(notification.bookings?.departure_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Time:</p>
+                          <p className="text-xs sm:text-sm text-gray-600">
+                            {notification.bookings?.departure_time}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Expires:</p>
+                          <p className="text-xs sm:text-sm text-gray-600">
+                            {new Date(notification.expires_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Amount:</p>
+                          <p className="text-xs sm:text-sm font-semibold text-green-600">
+                            ₱{notification.bookings?.total_amount}
+                          </p>
                         </div>
                       </div>
-                    )}
+                      
+                      {/* Add time received */}
+                      <p className="text-xs text-gray-500 mt-2">
+                        Received: {new Date(notification.created_at).toLocaleString()}
+                      </p>
+                      
+                      {/* Countdown timer */}
+                      {new Date(notification.expires_at) > new Date() && (
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          <p className="text-xs text-gray-500">
+                            Expires in: {Math.max(0, Math.floor((new Date(notification.expires_at) - new Date()) / 60000))} minutes
+                          </p>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                            <div 
+                              className="bg-blue-600 h-1.5 rounded-full" 
+                              style={{ 
+                                width: `${Math.max(0, Math.min(100, (new Date(notification.expires_at) - new Date()) / (15 * 60 * 1000) * 100))}%` 
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Expired indicator */}
+                      {new Date(notification.expires_at) < new Date() && (
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          <p className="text-xs text-red-500 font-medium">
+                            This booking request has expired
+                          </p>
+                        </div>
+                      )}
+                    </div>
                     
-                    {/* Expired indicator */}
-                    {new Date(notification.expires_at) < new Date() && (
-                      <div className="mt-2 pt-2 border-t border-gray-100">
-                        <p className="text-xs text-red-500 font-medium">
-                          This booking request has expired
-                        </p>
-                      </div>
-                    )}
+                    {/* Action buttons - Full width on mobile */}
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, true)}
+                        className="bg-green-500 text-white py-2 text-xs sm:text-sm rounded hover:bg-green-600 transition-colors"
+                        disabled={new Date(notification.expires_at) < new Date()}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, false)}
+                        className="bg-red-500 text-white py-2 text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                        disabled={new Date(notification.expires_at) < new Date()}
+                      >
+                        Decline
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500">No new booking requests</p>
+              <p className="text-gray-500 text-sm">No new booking requests</p>
             )}
           </div>
         </div>
@@ -976,24 +1036,24 @@ export default function DriverDashboard() {
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 transform transition-all">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6 transform transition-all">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
                 <QuestionMarkCircleIcon className="h-6 w-6 text-blue-600" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Action</h3>
-              <p className="text-sm text-gray-500 mb-6">{confirmMessage}</p>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">Confirm Action</h3>
+              <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">{confirmMessage}</p>
               <div className="flex justify-center space-x-4">
                 <button
                   type="button"
-                  className="inline-flex justify-center rounded-md border border-transparent bg-red-100 px-4 py-2 text-sm font-medium text-red-900 hover:bg-red-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                  className="inline-flex justify-center rounded-md border border-transparent bg-red-100 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-900 hover:bg-red-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
                   onClick={handleCancel}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                   onClick={handleConfirm}
                 >
                   Confirm
