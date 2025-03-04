@@ -54,6 +54,13 @@ export default function HomePage() {
     }
   }, [location]);
 
+  // Add inline style to ensure proper mobile display
+  const containerStyle = {
+    maxWidth: '100vw',
+    overflowX: 'hidden',
+    width: '100%'
+  };
+
   return (
     <AnimatePresence mode="wait">
       <motion.div 
@@ -62,11 +69,13 @@ export default function HomePage() {
         animate="animate"
         exit="exit"
         variants={pageVariants}
-        className="flex flex-col"
+        className="flex flex-col w-full overflow-hidden"
+        style={containerStyle}
       >
         <motion.div 
           variants={sectionVariants}
-          className="-mt-16 w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]"
+          className="-mt-16 w-full"
+          style={containerStyle}
         >
           <HeroSection />
         </motion.div>

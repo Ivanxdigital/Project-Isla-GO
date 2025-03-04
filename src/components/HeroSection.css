@@ -3,6 +3,9 @@ body, html {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
 }
 
 @keyframes gradient {
@@ -85,10 +88,12 @@ body, html {
   padding: 0;
   min-height: 100vh;
   width: 100%;
+  max-width: 100vw;
   position: relative;
   overflow: hidden;
   transform-style: preserve-3d;
   perspective: 1000px;
+  box-sizing: border-box;
 }
 
 /* Optimize performance with hardware acceleration */
@@ -96,6 +101,7 @@ body, html {
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
   transform: translateZ(0);
+  box-sizing: border-box;
 }
 
 /* Add smooth transitions for interactive elements */
@@ -121,7 +127,10 @@ body, html {
 /* Responsive design adjustments */
 @media (max-width: 640px) {
   .hero-container {
-    min-height: calc(100vh - 60px);
+    min-height: 100vh;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
   
   .animate-gradient {
@@ -130,5 +139,38 @@ body, html {
   
   .animate-float {
     animation-duration: 4s;
+  }
+  
+  /* Ensure content stays within viewport */
+  .hero-container > div {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    box-sizing: border-box;
+  }
+  
+  /* Adjust text sizes for mobile */
+  .hero-container h1 {
+    font-size: 2rem;
+    line-height: 1.2;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  .hero-container p {
+    font-size: 1rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  /* Fix button width on mobile */
+  .hero-container button,
+  .hero-container a {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }

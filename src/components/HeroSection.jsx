@@ -40,8 +40,10 @@ function WaveShape({
           repeatType: "reverse",
         }}
         style={{
-          width,
-          height,
+          width: '100%',
+          height: '100%',
+          maxWidth: width,
+          maxHeight: height,
         }}
         className="relative"
       >
@@ -157,51 +159,51 @@ export default function HeroSection() {
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="hero-container relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500"
+      className="hero-container relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 w-full"
     >
       {/* Geometric Patterns */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Overlay with slight darkness */}
         <div className="absolute inset-0 bg-black/20 z-10" />
         
-        {/* Elegant shapes */}
+        {/* Elegant shapes - adjusted for better mobile display */}
         <WaveShape
           delay={0.3}
           width={600}
           height={140}
           rotate={12}
-          className="left-[-10%] md:left-[-5%] top-[15%] md:top-[20%] bg-gradient-to-r from-blue-500/20"
+          className="left-[-5%] top-[15%] w-[50%] h-auto"
         />
         <WaveShape
           delay={0.5}
           width={500}
           height={120}
           rotate={-15}
-          className="right-[-5%] md:right-[0%] top-[70%] md:top-[75%] bg-gradient-to-l from-purple-500/20"
+          className="right-[-5%] top-[70%] w-[45%] h-auto"
         />
         <WaveShape
           delay={0.4}
           width={300}
           height={80}
           rotate={-8}
-          className="left-[5%] md:left-[10%] bottom-[5%] md:bottom-[10%] bg-gradient-to-b from-pink-500/20"
+          className="left-[5%] bottom-[5%] w-[35%] h-auto"
         />
         <WaveShape
           delay={0.6}
           width={200}
           height={60}
           rotate={20}
-          className="right-[15%] md:right-[20%] top-[10%] md:top-[15%] bg-gradient-to-r from-blue-400/20"
+          className="right-[15%] top-[10%] w-[25%] h-auto"
         />
         <WaveShape
           delay={0.7}
           width={150}
           height={40}
           rotate={-25}
-          className="left-[20%] md:left-[25%] top-[5%] md:top-[10%] bg-gradient-to-l from-purple-400/20"
+          className="left-[20%] top-[5%] w-[20%] h-auto"
         />
 
-        {/* Enhanced rotating ring with pulse effect */}
+        {/* Enhanced rotating ring with pulse effect - made responsive */}
         <motion.div
           initial={{ opacity: 0, rotate: 0, scale: 0.8 }}
           animate={{ 
@@ -216,18 +218,18 @@ export default function HeroSection() {
             times: [0, 0.5, 1],
             repeatType: "loop"
           }}
-          className="absolute top-1/2 left-1/2 w-[800px] h-[800px] border-[40px] border-white/10 rounded-full transform -translate-x-1/2 -translate-y-1/2"
+          className="absolute top-1/2 left-1/2 w-[100vw] max-w-[800px] h-[100vw] max-h-[800px] border-[20px] sm:border-[40px] border-white/10 rounded-full transform -translate-x-1/2 -translate-y-1/2"
         />
       </div>
 
       {/* Content Container */}
-      <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <div className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
         <motion.div
           variants={containerVariants}
-          className="text-center space-y-8"
+          className="text-center space-y-6 sm:space-y-8"
         >
           {/* Animated Text Above */}
-          <div className="h-8 md:h-10 relative mb-4">
+          <div className="h-8 md:h-10 relative mb-2 sm:mb-4">
             <AnimatePresence mode="wait">
               {titles.map((title, index) => (
                 titleNumber === index && (
@@ -251,7 +253,7 @@ export default function HeroSection() {
           {/* Main Heading with enhanced animation */}
           <motion.h1 
             variants={itemVariants}
-            className="text-4xl md:text-6xl font-bold text-white"
+            className="text-3xl sm:text-4xl md:text-6xl font-bold text-white px-2 break-words"
           >
             Your{' '}
             <motion.span
@@ -268,7 +270,7 @@ export default function HeroSection() {
           {/* Main Subheading */}
           <motion.p 
             variants={itemVariants}
-            className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto"
+            className="text-lg sm:text-xl md:text-2xl text-white/90 max-w-3xl mx-auto px-2"
           >
             Experience the perfect blend of comfort and adventure with our premium transportation services.
           </motion.p>
@@ -276,13 +278,13 @@ export default function HeroSection() {
           {/* CTA Buttons with hover animations */}
           <motion.div
             variants={itemVariants}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8"
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-6 sm:mt-8 px-4"
           >
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={scrollToBooking}
-              className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-gray-100 transition-all duration-200"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-600 bg-white hover:bg-gray-100 transition-all duration-200"
             >
               Book Now
               <motion.span
@@ -301,7 +303,7 @@ export default function HeroSection() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               href="/about"
-              className="inline-flex items-center px-8 py-3 border-2 border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-blue-600 transition-colors duration-200"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-3 border-2 border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-blue-600 transition-colors duration-200"
             >
               Learn More
             </motion.a>

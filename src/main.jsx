@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 import './styles/shadcn.css';
@@ -18,7 +19,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       }>
-        <App />
+        <BrowserRouter basename="/">
+          <App />
+        </BrowserRouter>
       </Suspense>
     </ErrorBoundary>
   </React.StrictMode>
