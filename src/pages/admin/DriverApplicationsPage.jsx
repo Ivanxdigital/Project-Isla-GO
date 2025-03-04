@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../utils/supabase.js';
+import { addStaffRole } from '../../utils/supabase.js';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { 
@@ -104,6 +105,16 @@ export default function DriverApplicationsPage() {
       const user = await supabase.auth.getUser();
       if (!user.data?.user?.id) throw new Error('No user found');
 
+      // First, get the application details to use for driver creation
+      const { data: selectedApp, error: appError } = await supabase
+        .from('driver_applications')
+        .select('*')
+        .eq('id', applicationId)
+        .single();
+
+      if (appError) throw appError;
+
+      // Update the application status
       const { error } = await supabase
         .from('driver_applications')
         .update({ 
@@ -116,7 +127,69 @@ export default function DriverApplicationsPage() {
 
       if (error) throw error;
 
-      toast.success(`Application ${newStatus} successfully`);
+      // If application is approved, create a driver record and update user role
+      if (newStatus === 'approved') {
+        try {
+          // Generate a unique driver ID
+          const driverId = `DRV-${Math.floor(100000 + Math.random() * 900000)}`;
+          
+          // Create a new driver record
+          const { data: driverData, error: driverError } = await supabase
+            .from('drivers')
+            .insert({
+              user_id: selectedApp.user_id,
+              driver_id: driverId,
+              full_name: selectedApp.full_name,
+              email: selectedApp.email,
+              mobile_number: selectedApp.mobile_number,
+              photo_url: selectedApp.photo_url,
+              address: selectedApp.address,
+              emergency_contact: selectedApp.emergency_contact,
+              emergency_contact_name: selectedApp.emergency_contact_name,
+              emergency_contact_relation: selectedApp.emergency_contact_relation,
+              license_number: selectedApp.license_number,
+              license_expiration: selectedApp.license_expiration,
+              license_type: selectedApp.license_type,
+              vehicle_make: selectedApp.vehicle_make,
+              vehicle_model: selectedApp.vehicle_model,
+              vehicle_year: selectedApp.vehicle_year,
+              vehicle_color: selectedApp.vehicle_color,
+              plate_number: selectedApp.plate_number,
+              or_cr_number: selectedApp.or_cr_number,
+              seating_capacity: selectedApp.seating_capacity,
+              service_types: selectedApp.service_types,
+              insurance_provider: selectedApp.insurance_provider,
+              policy_number: selectedApp.policy_number,
+              policy_expiration: selectedApp.policy_expiration,
+              tnvs_number: selectedApp.tnvs_number,
+              cpc_number: selectedApp.cpc_number,
+              bank_name: selectedApp.bank_name,
+              account_number: selectedApp.account_number,
+              account_holder: selectedApp.account_holder,
+              status: 'active',
+              application_id: applicationId,
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (driverError) throw driverError;
+          
+          // Update the user's role to 'driver'
+          const { success, error: roleError } = await addStaffRole(selectedApp.user_id, 'driver');
+          
+          if (!success) throw roleError;
+          
+          toast.success(`Driver ${selectedApp.full_name} has been approved and assigned driver ID: ${driverId}`);
+        } catch (driverCreationError) {
+          console.error('Error creating driver record:', driverCreationError);
+          toast.error('Application approved but failed to create driver record. Please check logs.');
+        }
+      } else {
+        // For rejected or other statuses
+        toast.success(`Application ${newStatus} successfully`);
+      }
+
       fetchApplications();
       setSelectedApp(null);
       setNotes('');
