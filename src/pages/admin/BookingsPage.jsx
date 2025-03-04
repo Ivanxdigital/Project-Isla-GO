@@ -251,16 +251,92 @@ export default function BookingsPage() {
   const handleMultiDelete = async () => {
     try {
       setIsProcessing(true);
-      const deletePromises = Array.from(selectedBookings).map(id =>
-        supabase
+      
+      // Get the array of booking IDs
+      const bookingIds = Array.from(selectedBookings);
+      
+      // 1. Delete related records in trip_assignments
+      const { error: tripAssignmentsError } = await supabase
+        .from('trip_assignments')
+        .delete()
+        .in('booking_id', bookingIds);
+      
+      if (tripAssignmentsError) {
+        console.error('Error deleting related trip assignments:', tripAssignmentsError);
+      }
+      
+      // 2. Delete related records in driver_assignments
+      const { error: driverAssignmentsError } = await supabase
+        .from('driver_assignments')
+        .delete()
+        .in('booking_id', bookingIds);
+      
+      if (driverAssignmentsError) {
+        console.error('Error deleting related driver assignments:', driverAssignmentsError);
+      }
+      
+      // 3. Delete related records in driver_notifications
+      const { error: notificationsError } = await supabase
+        .from('driver_notifications')
+        .delete()
+        .in('booking_id', bookingIds);
+      
+      if (notificationsError) {
+        console.error('Error deleting related notifications:', notificationsError);
+      }
+      
+      // 4. Delete related records in driver_notification_logs
+      const { error: notificationLogsError } = await supabase
+        .from('driver_notification_logs')
+        .delete()
+        .in('booking_id', bookingIds);
+      
+      if (notificationLogsError) {
+        console.error('Error deleting related notification logs:', notificationLogsError);
+      }
+      
+      // 5. Delete related records in payments
+      const { error: paymentsError } = await supabase
+        .from('payments')
+        .delete()
+        .in('booking_id', bookingIds);
+      
+      if (paymentsError) {
+        console.error('Error deleting related payments:', paymentsError);
+      }
+      
+      // 6. Clear any references from drivers table
+      const { error: driversError } = await supabase
+        .from('drivers')
+        .update({ current_booking_id: null })
+        .in('current_booking_id', bookingIds);
+      
+      if (driversError) {
+        console.error('Error clearing driver references:', driversError);
+      }
+      
+      // 7. Now delete the bookings
+      const results = [];
+      for (const id of bookingIds) {
+        const { data, error } = await supabase
           .from('bookings')
           .delete()
-          .eq('id', id)
-      );
-
-      await Promise.all(deletePromises);
+          .eq('id', id);
+          
+        if (error) {
+          console.error(`Error deleting booking ${id}:`, error);
+        }
+        results.push({ id, success: !error });
+      }
       
-      toast.success(`${selectedBookings.size} bookings deleted successfully`);
+      const successCount = results.filter(r => r.success).length;
+      
+      if (successCount === 0) {
+        toast.error('Failed to delete bookings. There might be related records preventing deletion.');
+      } else {
+        toast.success(`${successCount} bookings deleted successfully`);
+      }
+      
       setIsMultiDeleteModalOpen(false);
       setSelectedBookings(new Set());
       fetchBookings();
@@ -393,7 +469,7 @@ export default function BookingsPage() {
                   }}
                   className={`${
                     active ? 'bg-gray-100' : ''
-                  } flex w-full items-center px-4 py-2 text-sm text-gray-700`}
+                  } flex w-full items-center px-4 py-3 text-sm text-gray-700`}
                 >
                   <PencilIcon className="h-4 w-4 mr-2" />
                   Edit Booking
@@ -408,7 +484,7 @@ export default function BookingsPage() {
                     onClick={() => updateBookingStatus(booking.id, 'completed')}
                     className={`${
                       active ? 'bg-gray-100' : ''
-                    } flex w-full items-center px-4 py-2 text-sm text-green-700`}
+                    } flex w-full items-center px-4 py-3 text-sm text-green-700`}
                   >
                     <CheckIcon className="h-4 w-4 mr-2" />
                     Mark as Completed
@@ -424,7 +500,7 @@ export default function BookingsPage() {
                     onClick={() => updateBookingStatus(booking.id, 'cancelled')}
                     className={`${
                       active ? 'bg-gray-100' : ''
-                    } flex w-full items-center px-4 py-2 text-sm text-red-700`}
+                    } flex w-full items-center px-4 py-3 text-sm text-red-700`}
                   >
                     <XMarkIcon className="h-4 w-4 mr-2" />
                     Cancel Booking
@@ -442,7 +518,7 @@ export default function BookingsPage() {
                   }}
                   className={`${
                     active ? 'bg-gray-100' : ''
-                  } flex w-full items-center px-4 py-2 text-sm text-red-700`}
+                  } flex w-full items-center px-4 py-3 text-sm text-red-700`}
                 >
                   <TrashIcon className="h-4 w-4 mr-2" />
                   Delete Booking
@@ -580,86 +656,90 @@ export default function BookingsPage() {
   );
 
   const SelectionIndicator = () => (
-    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-full shadow-lg flex items-center space-x-4 z-50">
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          checked={selectedBookings.size === filteredBookings.length}
-          onChange={handleSelectAll}
-          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <span>{selectedBookings.size} selected</span>
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg z-50 w-[95%] max-w-3xl overflow-x-auto">
+      <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-2 md:space-y-0">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={selectedBookings.size === filteredBookings.length}
+            onChange={handleSelectAll}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-5 w-5"
+          />
+          <span className="whitespace-nowrap text-sm md:text-base">{selectedBookings.size} selected</span>
+        </div>
+        
+        <div className="hidden md:block h-4 w-px bg-gray-700"></div>
+        
+        <div className="grid grid-cols-3 md:flex md:flex-row gap-2">
+          <button
+            onClick={() => handleBulkStatusUpdate('completed')}
+            className="flex items-center justify-center space-x-1 px-2 py-1.5 rounded hover:bg-gray-800 text-sm"
+            disabled={isProcessing}
+          >
+            <DocumentCheckIcon className="h-4 w-4 text-green-400" />
+            <span>Complete</span>
+          </button>
+          <button
+            onClick={() => handleBulkStatusUpdate('cancelled')}
+            className="flex items-center justify-center space-x-1 px-2 py-1.5 rounded hover:bg-gray-800 text-sm"
+            disabled={isProcessing}
+          >
+            <XCircleIcon className="h-4 w-4 text-red-400" />
+            <span>Cancel</span>
+          </button>
+          <button
+            onClick={() => handleBulkStatusUpdate('pending')}
+            className="flex items-center justify-center space-x-1 px-2 py-1.5 rounded hover:bg-gray-800 text-sm"
+            disabled={isProcessing}
+          >
+            <ClockIcon className="h-4 w-4 text-yellow-400" />
+            <span>Pending</span>
+          </button>
+          <button
+            onClick={handleExportSelected}
+            className="flex items-center justify-center space-x-1 px-2 py-1.5 rounded hover:bg-gray-800 text-sm"
+          >
+            <DocumentArrowDownIcon className="h-4 w-4 text-blue-400" />
+            <span>Export</span>
+          </button>
+          <button
+            onClick={() => setIsMultiDeleteModalOpen(true)}
+            className="flex items-center justify-center space-x-1 px-2 py-1.5 rounded hover:bg-gray-800 text-sm"
+            disabled={isProcessing}
+          >
+            <TrashIcon className="h-4 w-4 text-red-400" />
+            <span>Delete</span>
+          </button>
+          <button
+            onClick={() => setSelectedBookings(new Set())}
+            className="flex items-center justify-center space-x-1 px-2 py-1.5 rounded hover:bg-gray-800 text-sm"
+          >
+            <XMarkIcon className="h-4 w-4 text-gray-400" />
+            <span>Clear</span>
+          </button>
+        </div>
       </div>
-      <div className="h-4 w-px bg-gray-700" />
-      <div className="flex items-center space-x-2">
-        <button
-          onClick={() => handleBulkStatusUpdate('completed')}
-          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
-          disabled={isProcessing}
-        >
-          <DocumentCheckIcon className="h-4 w-4 text-green-400" />
-          <span>Complete</span>
-        </button>
-        <button
-          onClick={() => handleBulkStatusUpdate('cancelled')}
-          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
-          disabled={isProcessing}
-        >
-          <XCircleIcon className="h-4 w-4 text-red-400" />
-          <span>Cancel</span>
-        </button>
-        <button
-          onClick={() => handleBulkStatusUpdate('pending')}
-          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
-          disabled={isProcessing}
-        >
-          <ClockIcon className="h-4 w-4 text-yellow-400" />
-          <span>Pending</span>
-        </button>
-        <button
-          onClick={handleExportSelected}
-          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
-        >
-          <DocumentArrowDownIcon className="h-4 w-4 text-blue-400" />
-          <span>Export</span>
-        </button>
-        <button
-          onClick={() => setIsMultiDeleteModalOpen(true)}
-          className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-gray-800"
-          disabled={isProcessing}
-        >
-          <TrashIcon className="h-4 w-4 text-red-400" />
-          <span>Delete</span>
-        </button>
-      </div>
-      <div className="h-4 w-px bg-gray-700" />
-      <button
-        onClick={() => setSelectedBookings(new Set())}
-        className="text-gray-400 hover:text-white"
-      >
-        Clear
-      </button>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="px-6 pt-20">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Manage Bookings</h1>
-          <div className="flex space-x-2">
+      <div className="px-4 sm:px-6 pt-16 sm:pt-20 pb-20">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Manage Bookings</h1>
+          <div className="flex flex-wrap gap-2">
             {selectedBookings.size > 0 && (
               <button
                 onClick={() => setIsMultiDeleteModalOpen(true)}
-                className="flex items-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md"
+                className="flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-md"
               >
                 <TrashIcon className="h-4 w-4 mr-2" />
-                Delete Selected ({selectedBookings.size})
+                Delete ({selectedBookings.size})
               </button>
             )}
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+              className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
             >
               <PlusIcon className="h-4 w-4 mr-2" />
               Add Booking
@@ -667,19 +747,19 @@ export default function BookingsPage() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0 gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-600 text-sm leading-6"
+              className="rounded-md border-gray-300 py-2 pl-3 pr-10 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm w-full sm:w-auto"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <div className="relative rounded-md shadow-sm">
+            <div className="relative rounded-md shadow-sm w-full">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
               </div>
@@ -687,7 +767,7 @@ export default function BookingsPage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 text-sm leading-6"
+                className="block w-full rounded-md border-gray-300 py-2 pl-10 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
                 placeholder="Search bookings..."
               />
             </div>
@@ -825,59 +905,73 @@ export default function BookingsPage() {
                   {filteredBookings.map((booking) => (
                     <div key={booking.id} className="p-4 border-b border-gray-200">
                       <div className="flex justify-between items-start mb-3">
-                        <div className="text-sm text-gray-900">
-                          {new Date(booking.created_at).toLocaleString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: 'numeric',
-                            hour12: true
-                          })}
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedBookings.has(booking.id)}
+                            onChange={() => handleBookingSelect(booking.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3 h-5 w-5"
+                          />
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {new Date(booking.created_at).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: 'numeric',
+                                hour12: true
+                              })}
+                            </div>
+                            <div className="text-sm font-medium text-gray-900 mt-1">{getCustomerFullName(booking.customers)}</div>
+                          </div>
                         </div>
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-800'}`}>
                           {booking.status}
                         </span>
                       </div>
 
-                      <div className="mb-3">
-                        <div className="text-sm font-medium text-gray-900">{getCustomerFullName(booking.customers)}</div>
-                        <div className="text-sm text-gray-500">{getCustomerContact(booking.customers)}</div>
-                      </div>
-
-                      <div className="mb-3">
-                        <div className="text-sm text-gray-900">
-                          <div className="mb-1">From: {booking.from_location}</div>
-                          <div>To: {booking.to_location}</div>
+                      <div className="grid grid-cols-1 gap-2 mb-3">
+                        <div className="bg-gray-50 p-2 rounded">
+                          <div className="text-xs font-medium text-gray-500 mb-1">Customer Info</div>
+                          <div className="text-sm text-gray-500">{getCustomerContact(booking.customers)}</div>
                         </div>
-                        <div className="text-sm text-gray-500 mt-1">
-                          <div>Departure: {formatDateTime(booking.departure_date, booking.departure_time)}</div>
-                          {booking.return_date && (
-                            <div>Return: {formatDateTime(booking.return_date, booking.return_time)}</div>
-                          )}
-                          {booking.pickup_option === 'hotel' && booking.hotel_details && (
-                            <div className="mt-1 text-xs">
-                              <div>Hotel: {booking.hotel_details.name}</div>
-                              <div className="text-gray-400">{booking.hotel_details.address}</div>
+                        
+                        <div className="bg-gray-50 p-2 rounded">
+                          <div className="text-xs font-medium text-gray-500 mb-1">Trip Details</div>
+                          <div className="text-sm text-gray-900">
+                            <div className="flex items-start">
+                              <span className="font-medium mr-1">From:</span> {booking.from_location}
                             </div>
-                          )}
+                            <div className="flex items-start mt-1">
+                              <span className="font-medium mr-1">To:</span> {booking.to_location}
+                            </div>
+                          </div>
+                          <div className="text-sm text-gray-500 mt-1">
+                            <div>Departure: {formatDateTime(booking.departure_date, booking.departure_time)}</div>
+                            {booking.return_date && (
+                              <div>Return: {formatDateTime(booking.return_date, booking.return_time)}</div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-
-                      <div className="mb-3">
-                        <div className="text-sm text-gray-900">{booking.service_type}</div>
-                        <div className="text-sm text-gray-500">Group Size: {booking.group_size}</div>
-                      </div>
-
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{formatCurrency(booking.total_amount)}</div>
-                        <div className="text-sm text-gray-500">
-                          {booking.payment_method}
-                          {booking.payment_session_id && (
-                            <div className="text-xs">Ref: {booking.payment_session_id}</div>
-                          )}
+                        
+                        <div className="bg-gray-50 p-2 rounded">
+                          <div className="text-xs font-medium text-gray-500 mb-1">Service Info</div>
+                          <div className="text-sm text-gray-900 capitalize">{booking.service_type.replace('_', ' ')}</div>
+                          <div className="text-sm text-gray-500">Group Size: {booking.group_size}</div>
                         </div>
-                        <div className="text-sm text-gray-500">{booking.payment_status}</div>
+                        
+                        <div className="bg-gray-50 p-2 rounded">
+                          <div className="text-xs font-medium text-gray-500 mb-1">Payment Details</div>
+                          <div className="text-sm text-gray-900">{formatCurrency(booking.total_amount)}</div>
+                          <div className="text-sm text-gray-500 capitalize">
+                            {booking.payment_method.replace('_', ' ')}
+                            {booking.payment_session_id && (
+                              <div className="text-xs">Ref: {booking.payment_session_id}</div>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500 capitalize">{booking.payment_status.replace('_', ' ')}</div>
+                        </div>
                       </div>
 
                       <div className="mt-4 flex justify-end">
