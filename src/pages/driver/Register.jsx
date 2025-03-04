@@ -42,6 +42,7 @@ export default function DriverRegister() {
       mobileNumber: '',
       address: '',
       emergencyContact: '',
+      emergencyContactName: '',
       emergencyContactRelation: '',
       photoUrl: '',
       
@@ -419,10 +420,16 @@ export default function DriverRegister() {
   // Function to format Philippine mobile number
   const formatPhilippineNumber = (value) => {
     if (!value) return value;
+    // Remove all non-digit characters
     const number = value.replace(/[^\d]/g, '');
-    if (number.length <= 3) return number;
-    if (number.length <= 6) return `${number.slice(0, 3)} ${number.slice(3)}`;
-    return `${number.slice(0, 3)} ${number.slice(3, 6)} ${number.slice(6, 10)}`;
+    
+    // Limit to 11 digits
+    const limitedNumber = number.slice(0, 11);
+    
+    // Format with spaces
+    if (limitedNumber.length <= 3) return limitedNumber;
+    if (limitedNumber.length <= 6) return `${limitedNumber.slice(0, 3)} ${limitedNumber.slice(3)}`;
+    return `${limitedNumber.slice(0, 3)} ${limitedNumber.slice(3, 6)} ${limitedNumber.slice(6, 11)}`;
   };
 
   // Handle mobile number input
@@ -463,13 +470,113 @@ export default function DriverRegister() {
     }
   };
 
+  // Function to clear saved data
+  const clearSavedData = () => {
+    try {
+      // Clear localStorage data
+      if (typeof window !== 'undefined' && user?.id) {
+        localStorage.removeItem(`driver_registration_${user.id}`);
+      }
+      
+      // Clear Supabase draft data
+      const clearSupabaseDraft = async () => {
+        if (user?.id) {
+          try {
+            const { error } = await supabase
+              .from('driver_application_drafts')
+              .delete()
+              .eq('user_id', user.id);
+              
+            if (error) {
+              console.error('Error deleting draft:', error);
+            }
+          } catch (err) {
+            console.error('Error in clearSupabaseDraft:', err);
+          }
+        }
+      };
+      
+      // Execute the Supabase clear operation
+      clearSupabaseDraft();
+      
+      // Reset form to default values
+      methods.reset({
+        // Personal Information
+        fullName: '',
+        email: user?.email || '',
+        mobileNumber: '',
+        address: '',
+        emergencyContact: '',
+        emergencyContactName: '',
+        emergencyContactRelation: '',
+        photoUrl: '',
+        
+        // License Details
+        licenseNumber: '',
+        licenseExpiration: '',
+        licenseType: '',
+        
+        // Vehicle Information
+        vehicleMake: '',
+        vehicleModel: '',
+        vehicleYear: '',
+        vehicleColor: '',
+        plateNumber: '',
+        orCrNumber: '',
+        seatingCapacity: '',
+        
+        // Service Types
+        serviceTypes: [],
+        
+        // Insurance Details
+        insuranceProvider: '',
+        policyNumber: '',
+        policyExpiration: '',
+        
+        // LTFRB Details
+        tnvsNumber: '',
+        cpcNumber: '',
+        
+        // Banking Information
+        bankName: '',
+        accountNumber: '',
+        accountHolder: '',
+        
+        // Agreement
+        termsAccepted: false,
+        privacyAccepted: false
+      });
+      
+      // Reset to first step
+      setCurrentStep(1);
+      
+      // Reset loadedRef to allow fresh loading
+      loadedRef.current = false;
+      
+      // Show success message
+      toast.success('All saved data has been cleared');
+    } catch (error) {
+      console.error('Error clearing data:', error);
+      toast.error('Failed to clear data. Please try again.');
+    }
+  };
+
   // Modified steps rendering to be more mobile-friendly
   const renderStep = () => {
     switch (currentStep) {
       case 1:
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Personal Information</h3>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2 sm:mb-0">Personal Information</h3>
+              <button
+                type="button"
+                onClick={clearSavedData}
+                className="text-sm text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors duration-200 self-start"
+              >
+                Clear Saved Data
+              </button>
+            </div>
             <div className="grid grid-cols-1 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
@@ -492,19 +599,28 @@ export default function DriverRegister() {
                   <span className="text-red-500">*</span>
                   <span className="text-xs text-gray-500 ml-1">(e.g., 0917 123 4567)</span>
                 </label>
-                <input
-                  type="tel"
-                  {...methods.register('mobileNumber', {
-                    required: 'Mobile number is required',
-                    pattern: {
-                      value: /^09\d{2} \d{3} \d{4}$/,
-                      message: 'Please enter a valid Philippine mobile number'
-                    }
-                  })}
-                  onChange={handleMobileNumberChange}
-                  placeholder="0917 123 4567"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
+                <div className="flex">
+                  <input
+                    type="tel"
+                    {...methods.register('mobileNumber', {
+                      required: 'Mobile number is required',
+                      validate: value => {
+                        const digitsOnly = value.replace(/\D/g, '');
+                        return digitsOnly.length === 11 || 'Mobile number must be 11 digits';
+                      }
+                    })}
+                    onChange={handleMobileNumberChange}
+                    placeholder="0917 123 4567"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => methods.setValue('mobileNumber', '')}
+                    className="ml-2 mt-1 inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                </div>
                 {methods.formState.errors.mobileNumber && (
                   <p className="mt-1 text-sm text-red-600">{methods.formState.errors.mobileNumber.message}</p>
                 )}
@@ -515,19 +631,28 @@ export default function DriverRegister() {
                   Emergency Contact Number
                   <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="tel"
-                  {...methods.register('emergencyContact', {
-                    required: 'Emergency contact number is required',
-                    pattern: {
-                      value: /^09\d{2} \d{3} \d{4}$/,
-                      message: 'Please enter a valid Philippine mobile number'
-                    }
-                  })}
-                  onChange={handleEmergencyContactChange}
-                  placeholder="0917 123 4567"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
+                <div className="flex">
+                  <input
+                    type="tel"
+                    {...methods.register('emergencyContact', {
+                      required: 'Emergency contact number is required',
+                      validate: value => {
+                        const digitsOnly = value.replace(/\D/g, '');
+                        return digitsOnly.length === 11 || 'Mobile number must be 11 digits';
+                      }
+                    })}
+                    onChange={handleEmergencyContactChange}
+                    placeholder="0917 123 4567"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => methods.setValue('emergencyContact', '')}
+                    className="ml-2 mt-1 inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                </div>
                 {methods.formState.errors.emergencyContact && (
                   <p className="mt-1 text-sm text-red-600">{methods.formState.errors.emergencyContact.message}</p>
                 )}

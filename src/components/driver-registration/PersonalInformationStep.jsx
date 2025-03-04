@@ -1,8 +1,13 @@
 import React from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, Controller } from 'react-hook-form';
 
 export default function PersonalInformationStep() {
-  const { register, formState: { errors } } = useFormContext();
+  const { register, formState: { errors }, control, setValue, getValues } = useFormContext();
+
+  // Function to clear input field
+  const clearPhoneField = (fieldName) => {
+    setValue(fieldName, '');
+  };
 
   const PhoneNumberInput = ({ id, label, registerName, required = true }) => (
     <div>
@@ -19,26 +24,49 @@ export default function PersonalInformationStep() {
             <option>+63</option>
           </select>
         </div>
-        <input
-          {...register(registerName, {
+        <Controller
+          name={registerName}
+          control={control}
+          rules={{
             required: required ? `${label} is required` : false,
-            pattern: {
-              value: /^(09\d{9})$/,
-              message: "Please enter a valid 11-digit number starting with '09'"
-            },
-            minLength: {
-              value: 11,
-              message: "Mobile number must be 11 digits"
-            },
-            maxLength: {
-              value: 11,
-              message: "Mobile number must be 11 digits"
-            }
-          })}
-          type="tel"
-          id={id}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-16"
-          placeholder="09XX XXX XXXX"
+            validate: value => 
+              (!value || value.replace(/\D/g, '').length === 11) || "Mobile number must be 11 digits"
+          }}
+          render={({ field }) => (
+            <div className="flex w-full">
+              <input
+                {...field}
+                type="text"
+                inputMode="numeric"
+                id={id}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pl-16"
+                placeholder="09XX XXX XXXX"
+                maxLength={13} // Allow for formatting spaces
+                onChange={(e) => {
+                  // Only allow numeric input and format
+                  const rawValue = e.target.value.replace(/[^0-9]/g, '');
+                  let formattedValue = rawValue;
+                  
+                  // Apply simple formatting (09XX XXX XXXX)
+                  if (rawValue.length > 3 && rawValue.length <= 6) {
+                    formattedValue = `${rawValue.slice(0, 3)} ${rawValue.slice(3)}`;
+                  } else if (rawValue.length > 6) {
+                    formattedValue = `${rawValue.slice(0, 3)} ${rawValue.slice(3, 6)} ${rawValue.slice(6, 11)}`;
+                  }
+                  
+                  field.onChange(formattedValue);
+                }}
+              />
+              <button 
+                type="button"
+                onClick={() => clearPhoneField(registerName)}
+                className="ml-2 inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                aria-label="Clear field"
+              >
+                Clear
+              </button>
+            </div>
+          )}
         />
       </div>
       {errors[registerName] && (
@@ -50,8 +78,40 @@ export default function PersonalInformationStep() {
     </div>
   );
 
+  // Add a function to clear saved data
+  const clearSavedData = () => {
+    // Clear localStorage data
+    if (typeof window !== 'undefined') {
+      const userId = localStorage.getItem('supabase.auth.token')
+        ? JSON.parse(localStorage.getItem('supabase.auth.token')).user.id
+        : null;
+      
+      if (userId) {
+        localStorage.removeItem(`driver_registration_${userId}`);
+      }
+    }
+    
+    // Reset form fields
+    setValue('mobileNumber', '');
+    setValue('emergencyContact', '');
+    
+    alert('Saved data cleared. Please refresh the page to start fresh.');
+  };
+
   return (
     <div className="space-y-6">
+      {/* Mobile-friendly clear data button */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+        <h3 className="text-lg font-medium text-gray-900 mb-2 sm:mb-0">Personal Information</h3>
+        <button
+          type="button"
+          onClick={clearSavedData}
+          className="text-sm text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors duration-200 self-start"
+        >
+          Clear Saved Data
+        </button>
+      </div>
+      
       <div>
         <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
           Full Name
