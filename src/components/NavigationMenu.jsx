@@ -381,7 +381,7 @@ export default function NavigationMenu() {
             duration: 0.3,
             ease: "easeInOut"
           }}
-          className="fixed top-0 inset-x-0 w-full bg-gray-900/75 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] border-b border-gray-800/50 z-[100] flex-shrink-0 h-16"
+          className="fixed top-0 inset-x-0 w-full bg-gradient-to-r from-indigo-900/90 via-violet-900/90 to-purple-900/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(79,70,229,0.2)] border-b border-indigo-800/50 z-[100] flex-shrink-0 h-16"
         >
           <style>{keyframes}</style>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -391,10 +391,17 @@ export default function NavigationMenu() {
                 <div className="transition-transform duration-300 hover:scale-105" 
                      style={{ animation: 'float 3s ease-in-out infinite' }}>
                   <Link to="/" className="flex items-center space-x-2">
-                    <span style={gradientTextStyle} className="text-xl md:text-2xl font-extrabold tracking-tight">
+                    <span style={{
+                      backgroundImage: 'linear-gradient(to right, #818CF8, #C084FC, #818CF8)',
+                      backgroundSize: '200% auto',
+                      color: 'transparent',
+                      WebkitBackgroundClip: 'text',
+                      backgroundClip: 'text',
+                      animation: 'gradient 3s linear infinite',
+                    }} className="text-xl md:text-2xl font-extrabold tracking-tight">
                       IslaGO
                     </span>
-                    <svg className="w-4 h-4 md:w-5 md:h-5 text-blue-400 animate-pulse" viewBox="0 0 24 24" fill="none">
+                    <svg className="w-4 h-4 md:w-5 md:h-5 text-violet-400 animate-pulse" viewBox="0 0 24 24" fill="none">
                       <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -410,12 +417,12 @@ export default function NavigationMenu() {
                     <Link
                       key={item.name}
                       to={item.path}
-                      className={`relative text-gray-300 hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 group hover:bg-gray-800/50 ${
+                      className={`relative text-indigo-100 hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 group hover:bg-white/10 ${
                         item.className || ''
                       }`}
                     >
                       <span className="relative z-10">{item.name}</span>
-                      <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/10 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></span>
+                      <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-indigo-400/10 to-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></span>
                     </Link>
                   ))}
                 </div>
@@ -425,7 +432,7 @@ export default function NavigationMenu() {
               <div className="flex md:hidden">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="inline-flex items-center justify-center p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800/50 focus:outline-none transition-all duration-200 mr-2"
+                  className="inline-flex items-center justify-center p-2 rounded-xl text-indigo-200 hover:text-white hover:bg-white/10 focus:outline-none transition-all duration-200 mr-2"
                   aria-label="Menu"
                 >
                   {isMenuOpen ? (
@@ -444,7 +451,7 @@ export default function NavigationMenu() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-[calc(100%+0.75rem)] left-2 right-2 bg-gray-900/95 backdrop-blur-lg rounded-2xl border border-gray-800 shadow-xl md:hidden overflow-hidden"
+                    className="absolute top-[calc(100%+0.75rem)] left-2 right-2 bg-gradient-to-b from-indigo-900/95 to-purple-900/95 backdrop-blur-lg rounded-2xl border border-indigo-700/50 shadow-xl md:hidden overflow-hidden"
                   >
                     <div className="py-3 space-y-1.5">
                       {menuItems.map((item) => (
@@ -459,7 +466,7 @@ export default function NavigationMenu() {
                       ))}
                       
                       {!user ? (
-                        <div className="px-3 pt-2 pb-3 space-y-3 mt-2 border-t border-gray-800">
+                        <div className="px-3 pt-2 pb-3 space-y-3 mt-2 border-t border-indigo-700/50">
                           <MobileMenuItem
                             to="/login"
                             onClick={() => setIsMenuOpen(false)}
@@ -469,16 +476,16 @@ export default function NavigationMenu() {
                           <Link
                             to="/register"
                             onClick={() => setIsMenuOpen(false)}
-                            className="block w-full text-center px-4 py-3 bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white rounded-lg text-[15px] font-medium transition-all duration-200"
+                            className="block w-full text-center px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg text-[15px] font-medium transition-all duration-200"
                           >
                             Register
                           </Link>
                         </div>
                       ) : (
-                        <div className="border-t border-gray-800 mt-2 pt-2">
+                        <div className="border-t border-indigo-700/50 mt-2 pt-2">
                           <div className="px-4 py-3 flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-emerald-400 p-0.5">
-                              <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-indigo-400 to-purple-400 p-0.5">
+                              <div className="w-full h-full rounded-full overflow-hidden bg-indigo-950">
                                 {profile?.avatar_url ? (
                                   <img
                                     src={profile.avatar_url}
@@ -487,7 +494,7 @@ export default function NavigationMenu() {
                                   />
                                 ) : (
                                   <svg 
-                                    className="w-full h-full text-gray-400 p-1.5" 
+                                    className="w-full h-full text-indigo-200 p-1.5" 
                                     fill="currentColor" 
                                     viewBox="0 0 24 24"
                                   >
@@ -497,7 +504,7 @@ export default function NavigationMenu() {
                               </div>
                             </div>
                             <div>
-                              <p className="text-[15px] font-medium text-gray-200">
+                              <p className="text-[15px] font-medium text-indigo-100">
                                 {profile?.full_name || 'User'}
                               </p>
                             </div>
@@ -533,7 +540,7 @@ export default function NavigationMenu() {
                                     to="/driver/pending"
                                     onClick={() => setIsMenuOpen(false)}
                                   >
-                                    <span className="flex items-center text-yellow-400">
+                                    <span className="flex items-center text-amber-300">
                                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6z" clipRule="evenodd" />
                                       </svg>
@@ -563,7 +570,7 @@ export default function NavigationMenu() {
                                 handleSignOut(e);
                               }}
                               disabled={isSigningOut || adminLoading}
-                              className="w-full text-left block px-4 py-3.5 text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-lg transition-colors duration-150 text-[15px] font-normal"
+                              className="w-full text-left block px-4 py-3.5 text-red-300 hover:text-red-200 hover:bg-red-900/30 rounded-lg transition-colors duration-150 text-[15px] font-normal"
                             >
                               {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                             </button>
@@ -586,8 +593,8 @@ export default function NavigationMenu() {
                           className="flex items-center space-x-3 cursor-pointer transition-transform duration-200 hover:scale-105"
                           onClick={handleAvatarClick}
                         >
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-emerald-400 p-0.5">
-                            <div className="w-full h-full rounded-full overflow-hidden bg-gray-900">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-indigo-400 to-purple-400 p-0.5">
+                            <div className="w-full h-full rounded-full overflow-hidden bg-indigo-950">
                               {profile?.avatar_url ? (
                                 <img
                                   src={profile.avatar_url}
@@ -596,7 +603,7 @@ export default function NavigationMenu() {
                                 />
                               ) : (
                                 <svg 
-                                  className="w-full h-full text-gray-400 p-1.5" 
+                                  className="w-full h-full text-indigo-200 p-1.5" 
                                   fill="currentColor" 
                                   viewBox="0 0 24 24"
                                 >
@@ -618,9 +625,9 @@ export default function NavigationMenu() {
                           leaveTo="transform opacity-0 scale-95 -translate-y-2"
                           className="absolute right-0 w-48 mt-2 z-50"
                         >
-                          <div className="bg-gray-900/95 backdrop-blur-xl rounded-lg shadow-lg ring-1 ring-gray-700 py-1">
-                            <div className="px-4 py-2 border-b border-gray-800">
-                              <p className="text-sm font-medium text-gray-200">
+                          <div className="bg-gradient-to-b from-indigo-900/95 to-purple-900/95 backdrop-blur-xl rounded-lg shadow-lg ring-1 ring-indigo-700/50 py-1">
+                            <div className="px-4 py-2 border-b border-indigo-700/50">
+                              <p className="text-sm font-medium text-indigo-100">
                                 {profile?.full_name || 'User'}
                               </p>
                             </div>
@@ -628,7 +635,7 @@ export default function NavigationMenu() {
                             <Link
                               to="/profile"
                               onClick={handleMenuItemClick}
-                              className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                              className="block px-4 py-2 text-sm text-indigo-200 hover:bg-white/10 hover:text-white transition-colors duration-150"
                             >
                               Your Profile
                             </Link>
@@ -636,7 +643,7 @@ export default function NavigationMenu() {
                             <Link
                               to="/manage-bookings"
                               onClick={handleMenuItemClick}
-                              className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                              className="block px-4 py-2 text-sm text-indigo-200 hover:bg-white/10 hover:text-white transition-colors duration-150"
                             >
                               Manage Bookings
                             </Link>
@@ -653,7 +660,7 @@ export default function NavigationMenu() {
                                     behavior: 'smooth'
                                   });
                                 }}
-                                className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                                className="block px-4 py-2 text-sm text-indigo-200 hover:bg-white/10 hover:text-white transition-colors duration-150"
                               >
                                 Admin Dashboard
                               </Link>
@@ -665,9 +672,9 @@ export default function NavigationMenu() {
                                   <Link
                                     to="/driver/pending"
                                     onClick={handleMenuItemClick}
-                                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                                    className="block px-4 py-2 text-sm text-indigo-200 hover:bg-white/10 hover:text-white transition-colors duration-150"
                                   >
-                                    <span className="text-sm text-yellow-600 flex items-center">
+                                    <span className="text-sm text-amber-300 flex items-center">
                                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6z" clipRule="evenodd" />
                                       </svg>
@@ -705,7 +712,7 @@ export default function NavigationMenu() {
                                         navigate('/driver/dashboard');
                                       }
                                     }}
-                                    className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors duration-150"
+                                    className="block px-4 py-2 text-sm text-indigo-200 hover:bg-white/10 hover:text-white transition-colors duration-150"
                                   >
                                     Driver Dashboard
                                   </Link>
@@ -719,7 +726,7 @@ export default function NavigationMenu() {
                                 handleSignOut(e);
                               }}
                               disabled={isSigningOut || adminLoading}
-                              className="w-full text-left block px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors duration-150"
+                              className="w-full text-left block px-4 py-2 text-sm text-red-300 hover:bg-red-900/20 hover:text-red-200 transition-colors duration-150"
                             >
                               {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                             </button>
@@ -731,13 +738,13 @@ export default function NavigationMenu() {
                     <>
                       <Link
                         to="/login"
-                        className="text-gray-300 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-gray-800"
+                        className="text-indigo-200 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-white/10"
                       >
                         Sign In
                       </Link>
                       <Link
                         to="/register"
-                        className="bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-emerald-500/20 transform hover:-translate-y-0.5"
+                        className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-lg shadow-indigo-500/20 hover:shadow-purple-500/20 transform hover:-translate-y-0.5"
                       >
                         Register
                       </Link>
