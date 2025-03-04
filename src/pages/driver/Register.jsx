@@ -454,13 +454,13 @@ export default function DriverRegister() {
       const fileName = `${user.id}/profile.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('driver-photos')
+        .from('avatars')
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('driver-photos')
+        .from('avatars')
         .getPublicUrl(fileName);
 
       methods.setValue('photoUrl', publicUrl);
