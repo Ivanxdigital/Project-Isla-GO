@@ -115,6 +115,14 @@ function DriverLayout() {
     console.log('DriverLayout: isMobile state is', isMobile);
   }, [isOpen, isMobile]);
   
+  // Ensure sidebar is open on desktop when component mounts
+  useEffect(() => {
+    if (!isMobile) {
+      console.log('DriverLayout: Desktop detected on mount, ensuring sidebar is open');
+      openSidebar();
+    }
+  }, [isMobile, openSidebar]);
+  
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
       <DriverSidebar />

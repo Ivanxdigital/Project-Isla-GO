@@ -26,7 +26,7 @@ const DriverSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { isOpen, isMobile, closeSidebar } = useDriverSidebar();
+  const { isOpen, isMobile, closeSidebar, pageHeight, openSidebar } = useDriverSidebar();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -35,6 +35,15 @@ const DriverSidebar = () => {
   useEffect(() => {
     console.log('DriverSidebar: isOpen state changed to', isOpen);
   }, [isOpen]);
+  
+  // Ensure sidebar is open on driver routes for desktop
+  useEffect(() => {
+    const isDriverRoute = location.pathname.startsWith('/driver');
+    if (isDriverRoute && !isMobile) {
+      console.log('DriverSidebar: Driver route detected on desktop, ensuring sidebar is open');
+      openSidebar();
+    }
+  }, [location.pathname, isMobile, openSidebar]);
   
   // Animation variants for the sidebar
   const sidebarVariants = {
@@ -76,22 +85,6 @@ const DriverSidebar = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // Ensure the sidebar extends to the full height of the page
-  useEffect(() => {
-    const updateSidebarHeight = () => {
-      const sidebar = document.getElementById('driver-sidebar');
-      if (sidebar) {
-        const windowHeight = window.innerHeight;
-        sidebar.style.minHeight = `${windowHeight}px`;
-      }
-    };
-    
-    updateSidebarHeight();
-    window.addEventListener('resize', updateSidebarHeight);
-    
-    return () => window.removeEventListener('resize', updateSidebarHeight);
-  }, [isOpen]);
 
   // Close mobile menu when location changes
   useEffect(() => {
@@ -176,12 +169,16 @@ const DriverSidebar = () => {
             className={`
               fixed md:sticky top-0 left-0 z-50
               ${isExpanded ? 'w-64' : 'w-16 md:w-16'}
-              h-screen bg-white border-r border-gray-200
+              bg-white border-r border-gray-200
               flex flex-col transition-all duration-300 ease-in-out 
               md:group md:hover:w-64 overflow-y-auto shadow-md
-              md:flex md:h-auto
+              md:flex
             `}
-            style={{ height: '100vh', overflowY: 'auto' }}
+            style={{ 
+              height: pageHeight || '100vh', 
+              minHeight: '100vh',
+              overflowY: 'auto'
+            }}
             onMouseEnter={() => window.innerWidth >= 768 && setIsExpanded(true)}
             onMouseLeave={() => window.innerWidth >= 768 && setIsExpanded(false)}
           >

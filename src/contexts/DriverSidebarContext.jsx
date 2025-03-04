@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 const DriverSidebarContext = createContext();
 
@@ -13,11 +14,13 @@ export function useDriverSidebar() {
 
 // Provider component
 export function DriverSidebarProvider({ children }) {
-  // Initialize isOpen to false for all devices
-  const [isOpen, setIsOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  // Initialize isOpen based on screen size - default to true for desktop
+  const [isOpen, setIsOpen] = useState(window.innerWidth >= 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [pageHeight, setPageHeight] = useState('100vh');
+  const location = useLocation();
   
-  // Handle sidebar visibility based on screen size
+  // Handle sidebar visibility based on screen size and route changes
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
@@ -25,17 +28,59 @@ export function DriverSidebarProvider({ children }) {
       
       // Auto-open on desktop, close on mobile
       setIsOpen(!mobile);
+      
+      // Update the page height
+      updatePageHeight();
+    };
+    
+    const updatePageHeight = () => {
+      // Get the document height or viewport height, whichever is greater
+      const docHeight = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.offsetHeight,
+        document.body.clientHeight,
+        document.documentElement.clientHeight
+      );
+      const viewportHeight = window.innerHeight;
+      
+      // Use the greater of the two heights
+      setPageHeight(`${Math.max(docHeight, viewportHeight)}px`);
     };
     
     // Set initial state
     handleResize();
     
-    // Add event listener
+    // Add event listeners
     window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', updatePageHeight);
+    
+    // Update height when content changes
+    const observer = new MutationObserver(updatePageHeight);
+    observer.observe(document.body, { 
+      childList: true, 
+      subtree: true,
+      attributes: true,
+      characterData: true 
+    });
     
     // Cleanup
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', updatePageHeight);
+      observer.disconnect();
+    };
   }, []);
+  
+  // Ensure sidebar is open on driver routes for desktop
+  useEffect(() => {
+    const isDriverRoute = location.pathname.startsWith('/driver');
+    if (isDriverRoute && !isMobile) {
+      console.log('Driver route detected on desktop, ensuring sidebar is open');
+      setIsOpen(true);
+    }
+  }, [location.pathname, isMobile]);
 
   const toggleSidebar = () => {
     console.log('Toggle sidebar called. Current state:', isOpen);
@@ -54,7 +99,7 @@ export function DriverSidebarProvider({ children }) {
   };
 
   return (
-    <DriverSidebarContext.Provider value={{ isOpen, isMobile, toggleSidebar, openSidebar, closeSidebar }}>
+    <DriverSidebarContext.Provider value={{ isOpen, isMobile, toggleSidebar, openSidebar, closeSidebar, pageHeight }}>
       {children}
     </DriverSidebarContext.Provider>
   );

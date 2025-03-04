@@ -285,7 +285,13 @@ export default function DriverDashboard() {
       const uniqueNotifications = Array.from(bookingMap.values());
       console.log('Unique pending bookings after deduplication:', uniqueNotifications.length);
       
-      setPendingBookings(uniqueNotifications || []);
+      // Double-check that we're not showing any rejected notifications
+      // This is a safeguard in case there's a race condition with the database updates
+      const filteredNotifications = uniqueNotifications.filter(
+        notification => notification.status === 'PENDING'
+      );
+      
+      setPendingBookings(filteredNotifications || []);
     } catch (error) {
       console.error('Error in fetchPendingBookings:', error);
       setPendingBookings([]);
@@ -562,6 +568,12 @@ export default function DriverDashboard() {
             
             // Reset new notification flag
             setHasNewNotifications(false);
+            
+            // Immediately remove this notification from the pendingBookings state
+            // This ensures the UI updates immediately without waiting for the next fetch
+            setPendingBookings(prevBookings => 
+              prevBookings.filter(booking => booking.id !== notificationId)
+            );
             
             // Refresh the notifications and bookings
             await Promise.all([
