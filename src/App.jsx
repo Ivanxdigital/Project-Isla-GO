@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { 
   useLocation, 
   Outlet,
@@ -73,18 +73,33 @@ function RootLayout() {
 
 function AdminLayout() {
   const location = useLocation();
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
       <ScrollToTop />
       <Sidebar />
-      <div className="flex-1">
-        <AnimatePresence mode="wait" initial={false}>
-          <PageTransition key={location.pathname}>
-            <Outlet />
-          </PageTransition>
-        </AnimatePresence>
-      </div>
+      <main className="flex-1 w-full">
+        <div className={isMobile ? "pt-16" : ""}>
+          <AnimatePresence mode="wait" initial={false}>
+            <PageTransition key={location.pathname}>
+              <div className="p-4 md:p-6">
+                <Outlet />
+              </div>
+            </PageTransition>
+          </AnimatePresence>
+        </div>
+      </main>
     </div>
   );
 }
@@ -109,6 +124,9 @@ function DriverLayout() {
 }
 
 function App() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  
   return (
     <ErrorBoundary>
       <Suspense fallback={
@@ -128,8 +146,8 @@ function App() {
                   </Routes>
                   
                   <div className="flex-1">
-                    <NavigationMenu />
-                    <div className="pt-16">
+                    {!isAdminRoute && <NavigationMenu />}
+                    <div className={!isAdminRoute ? "pt-16" : ""}>
                       <Routes>
                         <Route path="/" element={<HomePage />} />
                         <Route path="/about" element={<AboutPage />} />

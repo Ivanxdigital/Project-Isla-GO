@@ -26,11 +26,15 @@ const Sidebar = () => {
   const location = useLocation();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      
+      if (mobile) {
         setIsExpanded(false);
       } else {
         setIsExpanded(true);
@@ -70,40 +74,53 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile Menu Toggle Button */}
-      <button
-        id="sidebar-toggle"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-white shadow-lg border border-gray-200 text-gray-600 hover:text-ai-600 transition-colors duration-200"
-      >
-        {isMobileMenuOpen ? (
-          <XMarkIcon className="w-6 h-6" />
-        ) : (
-          <Bars3Icon className="w-6 h-6" />
-        )}
-      </button>
+      {/* Mobile Header - Only visible on mobile */}
+      {isMobile && (
+        <div className="md:hidden fixed top-0 left-0 right-0 z-[1000] bg-gray-800 p-2 flex justify-between items-center">
+          <button
+            id="sidebar-toggle"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 rounded-lg bg-ai-600 text-white hover:bg-ai-700 transition-colors duration-200 flex items-center justify-center"
+            aria-label="Toggle sidebar menu"
+          >
+            {isMobileMenuOpen ? (
+              <XMarkIcon className="w-6 h-6" />
+            ) : (
+              <Bars3Icon className="w-6 h-6" />
+            )}
+          </button>
+          <div className="text-white font-bold">
+            <span className="text-ai-600">Isla</span>GO Admin
+          </div>
+          <div className="w-10"></div> {/* Empty div for balance */}
+        </div>
+      )}
 
       {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-gray-800/50 backdrop-blur-sm z-30"
+          className="md:hidden fixed inset-0 bg-gray-800/50 backdrop-blur-sm z-[900]"
+          onClick={() => setIsMobileMenuOpen(false)}
           aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
-      <div
+      <aside
         id="sidebar"
         className={`
-          fixed md:static inset-y-0 left-0 z-40
-          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${isExpanded ? 'w-64' : 'w-16 md:w-16'}
-          min-h-screen bg-white border-r border-gray-200 px-3 py-6 
+          ${isMobile ? 'fixed z-[950]' : 'sticky top-0 z-10'} 
+          inset-y-0 left-0
+          ${isMobileMenuOpen ? 'translate-x-0' : isMobile ? '-translate-x-full' : 'translate-x-0'}
+          ${isExpanded ? 'w-64' : 'w-16'}
+          h-screen bg-white border-r border-gray-200 px-3 py-6 
           flex flex-col transition-all duration-300 ease-in-out 
-          md:group md:hover:w-64 relative
+          md:group md:hover:w-64 md:shadow-none
+          ${isMobile ? 'pt-16 shadow-lg' : ''}
+          overflow-y-auto
         `}
-        onMouseEnter={() => window.innerWidth >= 768 && setIsExpanded(true)}
-        onMouseLeave={() => window.innerWidth >= 768 && setIsExpanded(false)}
+        onMouseEnter={() => !isMobile && setIsExpanded(true)}
+        onMouseLeave={() => !isMobile && setIsExpanded(false)}
       >
         {/* Logo/Brand */}
         <div className={`px-3 mb-8 overflow-hidden whitespace-nowrap ${!isExpanded && 'md:group-hover:block'}`}>
@@ -163,6 +180,35 @@ const Sidebar = () => {
 
         {/* Bottom section */}
         <div className="mt-auto pt-4 border-t border-gray-200">
+          {/* Return to Home button */}
+          <div className="px-3 mb-4">
+            <Link
+              to="/"
+              className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-gray-700 hover:text-ai-600 hover:bg-gray-50 ${
+                (!isExpanded && !isMobileMenuOpen) ? 'justify-center' : ''
+              }`}
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={`w-5 h-5 ${(!isExpanded && !isMobileMenuOpen) ? 'mr-0' : 'mr-3'} text-gray-400 group-hover:text-ai-600`}
+              >
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+              <span className={`whitespace-nowrap transition-all duration-300 ${
+                (!isExpanded && !isMobileMenuOpen) ? 'opacity-0 md:group-hover:opacity-100 absolute left-12' : 'opacity-100'
+              }`}>
+                Return to Home
+              </span>
+            </Link>
+          </div>
+
           <div className={`px-3 py-2 transition-all duration-300 ${
             (!isExpanded && !isMobileMenuOpen) ? 'opacity-0 md:group-hover:opacity-100' : 'opacity-100'
           }`}>
@@ -171,7 +217,7 @@ const Sidebar = () => {
             </p>
           </div>
         </div>
-      </div>
+      </aside>
     </>
   );
 };
