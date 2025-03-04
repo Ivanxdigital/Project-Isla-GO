@@ -32,7 +32,7 @@ export default function TestDashboard() {
           total_amount: 500,
           status: 'PENDING',
           group_size: 1,
-          payment_method: 'CASH',
+          payment_method: 'ONLINE',
           payment_status: 'PENDING',
           pickup_option: 'airport'
         })
