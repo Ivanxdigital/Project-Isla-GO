@@ -169,6 +169,8 @@ function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isDriverRoute = location.pathname.startsWith('/driver');
+  // Special case for driver registration - we want to show the navigation menu here
+  const isDriverRegistration = location.pathname === '/driver/register';
   
   return (
     <ErrorBoundary>
@@ -184,8 +186,8 @@ function App() {
                 <Toaster position="top-right" />
                 <div className="flex min-h-screen bg-gray-50">
                   <div className="flex-1 flex flex-col">
-                    {!isAdminRoute && !isDriverRoute && <NavigationMenu />}
-                    <div className={!isAdminRoute && !isDriverRoute ? "pt-16" : ""}>
+                    {(!isAdminRoute && !isDriverRoute) || isDriverRegistration ? <NavigationMenu /> : null}
+                    <div className={(!isAdminRoute && !isDriverRoute) || isDriverRegistration ? "pt-16" : ""}>
                       <Routes>
                         <Route path="/" element={<HomePage />} />
                         <Route path="/about" element={<AboutPage />} />
