@@ -87,14 +87,14 @@ function AdminLayout() {
   }, []);
   
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
       <ScrollToTop />
       <Sidebar />
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full flex flex-col bg-gray-100">
         <div className={isMobile ? "pt-16" : ""}>
           <AnimatePresence mode="wait" initial={false}>
             <PageTransition key={location.pathname}>
-              <div className="p-4 md:p-6">
+              <div className="p-0">
                 <Outlet />
               </div>
             </PageTransition>

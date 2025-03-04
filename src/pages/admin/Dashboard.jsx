@@ -285,8 +285,8 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="px-6 pt-20">
+    <div className="bg-gray-100">
+      <div className="p-4 pt-6 md:p-6">
         <div className={`mb-8 bg-gradient-to-r from-blue-600 to-blue-800 p-6 rounded-lg shadow-lg text-white transform transition-all duration-500 ease-in-out ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
             <div>
