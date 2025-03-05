@@ -209,7 +209,7 @@ export default function BookingForm() {
     messenger: ''
   });
 
-  const locations = ['Puerto Princesa', 'El Nido', 'San Vicente'];
+  const locations = ['Puerto Princesa', 'El Nido', 'San Vicente', 'Port Barton'];
   const basePrice = {
     'El Nido': 700,
     'San Vicente': 500
@@ -222,30 +222,208 @@ export default function BookingForm() {
   };
 
   const generateTimeSlots = () => {
-    // Define fixed time slots
-    const fixedTimeSlots = [
-      '05:00', // Early Morning
-      '07:30', // Morning
-      '10:30', // Morning
-      '13:30', // Afternoon
-      '15:30', // Afternoon
-      '17:30', // Evening
-      '19:30'  // Evening
-    ];
+    // For Puerto Princesa to El Nido shared van, show specific time slots
+    if (fromLocation === 'Puerto Princesa' && toLocation === 'El Nido' && serviceType === 'shared') {
+      const specificTimeSlots = [
+        '07:30', // 07:30 AM
+        '09:30', // 09:30 AM
+        '12:30', // 12:30 PM
+        '18:45'  // 06:45 PM
+      ];
+      
+      return specificTimeSlots.map(time => {
+        const [hours] = time.split(':');
+        const hour = parseInt(hours);
+        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
+        
+        // Format the time for display (convert to 12-hour format with AM/PM)
+        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
+        
+        return {
+          time,
+          isPeak,
+          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
+        };
+      });
+    }
+    // For Puerto Princesa to San Vicente shared van, show specific time slots
+    else if (fromLocation === 'Puerto Princesa' && toLocation === 'San Vicente' && serviceType === 'shared') {
+      const sanVicenteTimeSlots = [
+        '07:00', // 7:00 AM
+        '09:00', // 9:00 AM
+        '11:00'  // 11:00 AM
+      ];
+      
+      return sanVicenteTimeSlots.map(time => {
+        const [hours] = time.split(':');
+        const hour = parseInt(hours);
+        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
+        
+        // Format the time for display (convert to 12-hour format with AM/PM)
+        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
+        
+        return {
+          time,
+          isPeak,
+          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
+        };
+      });
+    }
+    // For Puerto Princesa to Port Barton shared van, show specific time slots
+    else if (fromLocation === 'Puerto Princesa' && toLocation === 'Port Barton' && serviceType === 'shared') {
+      const portBartonTimeSlots = [
+        '07:30', // 7:30 AM
+        '09:00', // 9:00 AM
+        '11:00'  // 11:00 AM
+      ];
+      
+      return portBartonTimeSlots.map(time => {
+        const [hours] = time.split(':');
+        const hour = parseInt(hours);
+        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
+        
+        // Format the time for display (convert to 12-hour format with AM/PM)
+        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
+        
+        return {
+          time,
+          isPeak,
+          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
+        };
+      });
+    }
+    // For El Nido to Puerto Princesa shared van, show specific time slots
+    else if (fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && serviceType === 'shared') {
+      const elNidoToPPTimeSlots = [
+        '07:00', // 7:00 AM
+        '09:00', // 9:00 AM
+        '11:00', // 11:00 AM
+        '16:00'  // 4:00 PM
+      ];
+      
+      return elNidoToPPTimeSlots.map(time => {
+        const [hours] = time.split(':');
+        const hour = parseInt(hours);
+        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
+        
+        // Format the time for display (convert to 12-hour format with AM/PM)
+        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
+        
+        return {
+          time,
+          isPeak,
+          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
+        };
+      });
+    }
+    // For San Vicente to Puerto Princesa shared van, show specific time slots
+    else if (fromLocation === 'San Vicente' && toLocation === 'Puerto Princesa' && serviceType === 'shared') {
+      const sanVicenteToPPTimeSlots = [
+        '07:00', // 7:00 AM
+        '09:00', // 9:00 AM
+        '11:00', // 11:00 AM
+        '13:00'  // 1:00 PM
+      ];
+      
+      return sanVicenteToPPTimeSlots.map(time => {
+        const [hours] = time.split(':');
+        const hour = parseInt(hours);
+        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
+        
+        // Format the time for display (convert to 12-hour format with AM/PM)
+        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
+        
+        return {
+          time,
+          isPeak,
+          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
+        };
+      });
+    }
+    // For Port Barton to Puerto Princesa shared van, show specific time slots
+    else if (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa' && serviceType === 'shared') {
+      const portBartonToPPTimeSlots = [
+        '08:00', // 8:00 AM
+        '10:00', // 10:00 AM
+        '13:00', // 1:00 PM
+        '15:00', // 3:00 PM
+        '17:00'  // 5:00 PM
+      ];
+      
+      return portBartonToPPTimeSlots.map(time => {
+        const [hours] = time.split(':');
+        const hour = parseInt(hours);
+        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
+        
+        // Format the time for display (convert to 12-hour format with AM/PM)
+        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
+        
+        return {
+          time,
+          isPeak,
+          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
+        };
+      });
+    }
+    // For private vans, show times from 6 AM to 7 PM
+    else if (serviceType === 'private15' || serviceType === 'private10') {
+      const privateTimeSlots = [];
+      
+      // Generate hourly slots from 6 AM to 7 PM
+      for (let hour = 6; hour <= 19; hour++) {
+        // Add both on the hour and half past
+        privateTimeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+        if (hour < 19) { // Don't add 19:30 (7:30 PM)
+          privateTimeSlots.push(`${hour.toString().padStart(2, '0')}:30`);
+        }
+      }
+      
+      return privateTimeSlots.map(time => {
+        const [hours] = time.split(':');
+        const hour = parseInt(hours);
+        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
+        
+        // Format the time for display (convert to 12-hour format with AM/PM)
+        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
+        
+        return {
+          time,
+          isPeak,
+          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
+        };
+      });
+    }
+    // Default time slots for other routes
+    else {
+      const defaultTimeSlots = [
+        '05:00', // Early Morning
+        '07:30', // Morning
+        '10:30', // Morning
+        '13:30', // Afternoon
+        '15:30', // Afternoon
+        '17:30', // Evening
+        '19:30'  // Evening
+      ];
 
-    return fixedTimeSlots.map(time => {
-      const [hours] = time.split(':');
-      const hour = parseInt(hours);
-      const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
-      return {
-        time,
-        isPeak,
-        label: `${time} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
-      };
-    });
+      return defaultTimeSlots.map(time => {
+        const [hours] = time.split(':');
+        const hour = parseInt(hours);
+        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
+        
+        // Format the time for display (convert to 12-hour format with AM/PM)
+        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
+        
+        return {
+          time,
+          isPeak,
+          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
+        };
+      });
+    }
   };
 
-  const timeSlots = generateTimeSlots();
+  // Recalculate time slots when route or service type changes
+  const timeSlots = useMemo(() => generateTimeSlots(), [fromLocation, toLocation, serviceType, t]);
 
   const calculatePrice = () => {
     if (!toLocation || !departureTime) return 0;
@@ -671,9 +849,9 @@ export default function BookingForm() {
   );
 
   const getAvailableDestinations = useCallback((from) => {
-    // If starting from Puerto Princesa, allow travel to both El Nido and San Vicente
+    // If starting from Puerto Princesa, allow travel to El Nido, San Vicente, and Port Barton
     if (from === 'Puerto Princesa') {
-      return ['El Nido', 'San Vicente'];
+      return ['El Nido', 'San Vicente', 'Port Barton'];
     }
     // From any other location, only allow travel to Puerto Princesa
     return ['Puerto Princesa'];
@@ -682,6 +860,13 @@ export default function BookingForm() {
   const handleFromLocationChange = useCallback((newFrom) => {
     setFromLocation(newFrom);
     setToLocation('');  // Reset the destination when changing origin
+    setDepartureTime(''); // Reset departure time when origin changes
+  }, []);
+
+  // Handle destination change
+  const handleToLocationChange = useCallback((newTo) => {
+    setToLocation(newTo);
+    setDepartureTime(''); // Reset departure time when destination changes
   }, []);
 
   const tomorrow = new Date();
@@ -690,7 +875,7 @@ export default function BookingForm() {
 
   const _availableDestinations = useMemo(() => {
     return fromLocation === 'Puerto Princesa'
-      ? ['El Nido', 'San Vicente']
+      ? ['El Nido', 'San Vicente', 'Port Barton']
       : ['Puerto Princesa'];
   }, [fromLocation]);
 
@@ -832,7 +1017,7 @@ export default function BookingForm() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         {t('form.to')}
                       </label>
-                      <Listbox value={toLocation} onChange={setToLocation}>
+                      <Listbox value={toLocation} onChange={handleToLocationChange}>
                         <div className="relative mt-1">
                           <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-3 pl-4 pr-10 text-left border focus:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-300">
                             <span className="block truncate">{toLocation || 'Select destination'}</span>
@@ -913,6 +1098,24 @@ export default function BookingForm() {
                       </select>
                     </div>
                   </div>
+
+                  {/* Information box for private van time flexibility */}
+                  {(serviceType === 'private15' || serviceType === 'private10') && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <h4 className="text-sm font-medium text-blue-800">Private Van Time Flexibility</h4>
+                          <p className="text-sm text-blue-700 mt-1">
+                            With private van hire, you have more flexibility in choosing your departure time. 
+                            Select any available time between 6:00 AM and 7:00 PM.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Pickup Option Selection */}
                   <div className="mb-8">
@@ -1029,6 +1232,19 @@ export default function BookingForm() {
                   {/* Service Type Selection */}
                   <div className="mb-8">
                     <h3 className="text-lg font-semibold mb-4">Select Your Service Type</h3>
+                    
+                    {/* Information about service types and time flexibility */}
+                    <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Time Flexibility:</span> Shared vans have fixed departure times, while private vans offer flexible scheduling between 6:00 AM and 7:00 PM.
+                        </p>
+                      </div>
+                    </div>
+                    
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <motion.div
                         whileHover={{ scale: 1.02 }}
@@ -1040,6 +1256,7 @@ export default function BookingForm() {
                         onClick={() => {
                           setServiceType('shared');
                           setGroupSize(1);
+                          setDepartureTime('');
                         }}
                       >
                         <h4 className="font-semibold text-lg mb-2">Shared Van</h4>
@@ -1063,6 +1280,7 @@ export default function BookingForm() {
                         onClick={() => {
                           setServiceType('private15');
                           setGroupSize(Math.min(groupSize, 15));
+                          setDepartureTime('');
                         }}
                       >
                         <h4 className="font-semibold text-lg mb-2">Private 15-Seater</h4>
@@ -1086,6 +1304,7 @@ export default function BookingForm() {
                         onClick={() => {
                           setServiceType('private10');
                           setGroupSize(Math.min(groupSize, 10));
+                          setDepartureTime('');
                         }}
                       >
                         <h4 className="font-semibold text-lg mb-2">Private 10-Seater</h4>
