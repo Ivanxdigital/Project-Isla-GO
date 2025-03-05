@@ -90,6 +90,7 @@ export default function HomePage() {
         
         <motion.div
           variants={sectionVariants}
+          className="-mt-8 sm:-mt-12"
         >
           <WhyIslaGO />
         </motion.div>

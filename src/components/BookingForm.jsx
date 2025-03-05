@@ -750,7 +750,7 @@ export default function BookingForm() {
 
   return (
     <div className="bg-gray-50 pb-0">
-      <div className="max-w-3xl mx-auto py-12 px-4 booking-form-container">
+      <div className="max-w-3xl mx-auto py-12 px-4 pb-0 booking-form-container">
         <div className="flex justify-end mb-4">
           <LanguageSelector />
         </div>

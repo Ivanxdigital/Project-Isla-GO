@@ -45,8 +45,8 @@ export default function ReviewsSection() {
   const review = reviews[currentReview];
 
   return (
-    <section className="relative w-screen -mx-[50vw] left-[50%] right-[50%] bg-blue-50 mb-[-1px]" id="reviews">
-      <div className="py-8">
+    <section className="relative w-screen -mx-[50vw] left-[50%] right-[50%] bg-blue-50 pb-12 sm:pb-16" id="reviews">
+      <div className="pt-8 pb-8 sm:pb-12">
         {/* Section Header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-6 sm:mb-8">
@@ -63,7 +63,7 @@ export default function ReviewsSection() {
           </div>
 
           {/* Reviews Display */}
-          <div className="mb-0">
+          <div className="mb-4 sm:mb-6">
             <AnimatePresence mode="wait">
               <motion.div
                 key={review.id}

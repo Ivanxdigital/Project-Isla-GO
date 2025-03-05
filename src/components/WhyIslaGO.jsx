@@ -50,10 +50,13 @@ const benefits = [
 
 export default function WhyIslaGO() {
   return (
-    <section className="pt-0 pb-16 bg-white" id="why-islago">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="pt-8 sm:pt-12 pb-16 bg-white" id="why-islago">
+      {/* Visual separator between sections */}
+      <div className="w-full h-12 sm:h-16 bg-gradient-to-b from-blue-50 to-white"></div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8">
         {/* Section Header */}
-        <div className="text-center pt-12 sm:pt-16 mb-16">
+        <div className="text-center mb-16">
           <div className="inline-block mb-3">
             <div className="h-1.5 w-12 bg-blue-600 rounded-full mx-auto mb-3"></div>
             <motion.h2 

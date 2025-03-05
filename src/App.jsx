@@ -60,14 +60,11 @@ function RootLayout() {
   
   return (
     <Layout noTopPadding={isHomePage}>
-      {!isAdminRoute && (
-        <AnimatePresence mode="wait" initial={false}>
-          <PageTransition key={location.pathname} type="fade">
-            <Outlet />
-          </PageTransition>
-        </AnimatePresence>
-      )}
-      {isAdminRoute && <Outlet />}
+      <AnimatePresence mode="wait" initial={false}>
+        <PageTransition key={location.pathname} type="fade">
+          <Outlet />
+        </PageTransition>
+      </AnimatePresence>
     </Layout>
   );
 }
@@ -159,7 +156,6 @@ function DriverLayout() {
             </PageTransition>
           </AnimatePresence>
         </main>
-        <Footer />
       </div>
     </div>
   );
@@ -171,6 +167,11 @@ function App() {
   const isDriverRoute = location.pathname.startsWith('/driver');
   // Special case for driver registration - we want to show the navigation menu here
   const isDriverRegistration = location.pathname === '/driver/register';
+  
+  // Check if the current route is handled by RootLayout
+  const isRootLayoutRoute = location.pathname === '/' || 
+                           location.pathname === '/about' || 
+                           location.pathname === '/contact';
   
   return (
     <ErrorBoundary>
@@ -184,73 +185,72 @@ function App() {
             <DriverAuthProvider>
               <DriverSidebarProvider>
                 <Toaster position="top-right" />
-                <div className="flex min-h-screen bg-gray-50">
-                  <div className="flex-1 flex flex-col">
-                    {(!isAdminRoute && !isDriverRoute) || isDriverRegistration ? <NavigationMenu /> : null}
-                    <div className={(!isAdminRoute && !isDriverRoute) || isDriverRegistration ? "pt-16" : ""}>
-                      <Routes>
-                        <Route path="/" element={<HomePage />} />
-                        <Route path="/about" element={<AboutPage />} />
-                        <Route path="/contact" element={<ContactPage />} />
-                        <Route path="/login" element={<LoginPage />} />
-                        <Route path="/register" element={<CompleteRegisterPage />} />
-                        <Route path="/payment/*" element={
-                          <Routes>
-                            <Route path="success" element={<PaymentSuccess />} />
-                            <Route path="cancel" element={<PaymentCancel />} />
-                          </Routes>
-                        } />
-                        <Route path="/manage-bookings" element={<ManageBookings />} />
-                        <Route path="/driver-registration" element={<PrivateRoute><DriverRegistration /></PrivateRoute>} />
-                        <Route path="/driver/register" element={<PrivateRoute><DriverRegister /></PrivateRoute>} />
-                        <Route path="/driver/RegistrationSuccess" element={<RegistrationSuccess />} />
-                        <Route path="/driver/before-register" element={<BeforeRegister />} />
-                        <Route path="/driver/*" element={<DriverLayout />}>
-                          <Route index element={<DriverDashboard />} />
-                          <Route path="dashboard" element={<DriverDashboard />} />
-                          <Route path="profile" element={<DriverProfile />} />
-                          <Route path="trips" element={<DriverTrips />} />
-                          <Route path="availability" element={<DriverAvailability />} />
-                          <Route path="test" element={<TestDashboard />} />
-                        </Route>
-                        <Route path="/admin/*" element={<AdminLayout />}>
-                          <Route index element={<AdminDashboard />} />
-                          <Route path="login" element={<AdminLoginPage />} />
-                          <Route path="dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-                          <Route path="settings" element={<AdminRoute allowNonAdmin={true}><AdminSettings /></AdminRoute>} />
-                          <Route path="bookings" element={<AdminRoute><BookingsPage /></AdminRoute>} />
-                          <Route path="drivers" element={<AdminRoute><DriversPage /></AdminRoute>} />
-                          <Route path="vehicles" element={<AdminRoute><VehiclesPage /></AdminRoute>} />
-                          <Route path="routes" element={<AdminRoute><RoutesPage /></AdminRoute>} />
-                          <Route path="driver-applications" element={<AdminRoute><DriverApplicationsPage /></AdminRoute>} />
-                        </Route>
-                        <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
-                        <Route path="/auth/callback" element={<AuthCallback />} />
-                        <Route path="*" element={
-                          <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-                            <div className="max-w-md w-full space-y-8 text-center">
-                              <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-                                Page Not Found
-                              </h2>
-                              <p className="mt-2 text-sm text-gray-600">
-                                The page you're looking for doesn't exist or has been moved.
-                              </p>
-                              <div className="mt-5">
-                                <Link
-                                  to="/"
-                                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                >
-                                  Return to Home
-                                </Link>
-                              </div>
-                            </div>
+                <Routes>
+                  {/* Root layout routes */}
+                  <Route path="/" element={<RootLayout />}>
+                    <Route index element={<HomePage />} />
+                    <Route path="about" element={<AboutPage />} />
+                    <Route path="contact" element={<ContactPage />} />
+                  </Route>
+                  
+                  {/* Admin routes */}
+                  <Route path="/admin/*" element={<AdminLayout />}>
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="login" element={<AdminLoginPage />} />
+                    <Route path="dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                    <Route path="settings" element={<AdminRoute allowNonAdmin={true}><AdminSettings /></AdminRoute>} />
+                    <Route path="bookings" element={<AdminRoute><BookingsPage /></AdminRoute>} />
+                    <Route path="drivers" element={<AdminRoute><DriversPage /></AdminRoute>} />
+                    <Route path="vehicles" element={<AdminRoute><VehiclesPage /></AdminRoute>} />
+                    <Route path="routes" element={<AdminRoute><RoutesPage /></AdminRoute>} />
+                    <Route path="driver-applications" element={<AdminRoute><DriverApplicationsPage /></AdminRoute>} />
+                  </Route>
+                  
+                  {/* Driver routes */}
+                  <Route path="/driver/*" element={<DriverLayout />}>
+                    <Route index element={<DriverDashboard />} />
+                    <Route path="dashboard" element={<DriverDashboard />} />
+                    <Route path="profile" element={<DriverProfile />} />
+                    <Route path="trips" element={<DriverTrips />} />
+                    <Route path="availability" element={<DriverAvailability />} />
+                    <Route path="test" element={<TestDashboard />} />
+                  </Route>
+                  
+                  {/* Other routes wrapped in Layout */}
+                  <Route element={<Layout />}>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<CompleteRegisterPage />} />
+                    <Route path="/payment/success" element={<PaymentSuccess />} />
+                    <Route path="/payment/cancel" element={<PaymentCancel />} />
+                    <Route path="/manage-bookings" element={<ManageBookings />} />
+                    <Route path="/driver-registration" element={<PrivateRoute><DriverRegistration /></PrivateRoute>} />
+                    <Route path="/driver/register" element={<PrivateRoute><DriverRegister /></PrivateRoute>} />
+                    <Route path="/driver/RegistrationSuccess" element={<RegistrationSuccess />} />
+                    <Route path="/driver/before-register" element={<BeforeRegister />} />
+                    <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+                    <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="*" element={
+                      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+                        <div className="max-w-md w-full space-y-8 text-center">
+                          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+                            Page Not Found
+                          </h2>
+                          <p className="mt-2 text-sm text-gray-600">
+                            The page you're looking for doesn't exist or has been moved.
+                          </p>
+                          <div className="mt-5">
+                            <Link
+                              to="/"
+                              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              Return to Home
+                            </Link>
                           </div>
-                        } />
-                      </Routes>
-                    </div>
-                    {!isDriverRoute && <Footer />}
-                  </div>
-                </div>
+                        </div>
+                      </div>
+                    } />
+                  </Route>
+                </Routes>
               </DriverSidebarProvider>
             </DriverAuthProvider>
           </AdminAuthProvider>
