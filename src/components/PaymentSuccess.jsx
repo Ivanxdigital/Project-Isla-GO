@@ -594,6 +594,7 @@ export default function PaymentSuccess() {
 
   // Wrap the component with the error boundary
   return (
+<<<<<<< Updated upstream
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
         {/* Debug information (only in development) */}
@@ -667,6 +668,84 @@ export default function PaymentSuccess() {
             
             {/* Show contact options regardless of driver assignment */}
             <ContactOptions 
+=======
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+      {/* Show error if no booking ID */}
+      {!location.search.includes('bookingId') ? (
+        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
+          <div className="text-center">
+            <ExclamationCircleIcon className="h-16 w-16 text-red-500 mx-auto" />
+            <h2 className="mt-6 text-3xl font-bold text-gray-900">Invalid Request</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              No booking ID was provided. Please try your payment again.
+            </p>
+            <div className="mt-4">
+              <Link
+                to="/"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+              >
+                Return to Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
+          <div className="text-center">
+            <div className="mx-auto h-16 w-16">
+              {status === 'success' ? (
+                <CheckCircleIcon className="h-16 w-16 text-green-500" />
+              ) : status === 'error' || status === 'failed' ? (
+                <ExclamationCircleIcon className="h-16 w-16 text-red-500" />
+              ) : (
+                <div className="h-16 w-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              )}
+            </div>
+            <h2 className="mt-6 text-3xl font-bold text-gray-900">
+              {status === 'success'
+                ? t('payment.success.title', 'Payment Successful')
+                : status === 'error' || status === 'failed'
+                ? t('payment.failed.title', 'Payment Failed')
+                : t('payment.processing.title', 'Payment Processing')}
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              {status === 'success'
+                ? t('payment.success.message', 'Your payment has been confirmed.')
+                : status === 'error' || status === 'failed'
+                ? error || t('payment.failed.message', 'There was an issue processing your payment.')
+                : t('payment.processing.message', 'Please wait while we verify your payment...')}
+            </p>
+            
+            {status === 'success' && !driverData && (
+              <div className="mt-4 p-4 border border-yellow-200 bg-yellow-50 rounded-md">
+                <p className="text-sm text-yellow-700">
+                  We're looking for available drivers. Please wait a moment...
+                </p>
+              </div>
+            )}
+            
+            {(status === 'error' || status === 'failed') && (
+              <div className="mt-4">
+                <Link
+                  to="/"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  {t('payment.failed.returnHome', 'Return to Home')}
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Show driver details and contact options only if payment successful */}
+      {status === 'success' && bookingData && customerData && (
+        <div className="mt-8 max-w-md w-full space-y-6">
+          {/* Show driver details if a driver is assigned */}
+          {driverData && (
+            <DriverDetails 
+              driver={driverData} 
+>>>>>>> Stashed changes
               booking={bookingData}
               driver={driverData}
               customer={customerData}

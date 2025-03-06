@@ -222,9 +222,19 @@ function App() {
                   <Route element={<Layout />}>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<CompleteRegisterPage />} />
-                    <Route path="/payment/success" element={<PaymentSuccess />} />
+                    <Route path="/payment/success" element={
+                      <ErrorBoundary>
+                        <PaymentSuccess />
+                      </ErrorBoundary>
+                    } />
                     <Route path="/payment/cancel" element={<PaymentCancel />} />
-                    <Route path="/manage-bookings" element={<ManageBookings />} />
+                    <Route path="/manage-bookings" element={
+                      <ErrorBoundary>
+                        <PrivateRoute>
+                          <ManageBookings />
+                        </PrivateRoute>
+                      </ErrorBoundary>
+                    } />
                     <Route path="/driver-registration" element={<PrivateRoute><DriverRegistration /></PrivateRoute>} />
                     <Route path="/driver/register" element={<PrivateRoute><DriverRegister /></PrivateRoute>} />
                     <Route path="/driver/RegistrationSuccess" element={<RegistrationSuccess />} />

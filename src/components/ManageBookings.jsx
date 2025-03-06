@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../utils/supabase';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { supabase } from '../utils/supabase.ts';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 
 // Helper function to compute the hotel pickup time based on the departure time and an offset (default is 60 minutes)
 function getHotelPickupTime(departureTime, offset = 60) {
@@ -45,10 +45,15 @@ export default function ManageBookings() {
   const [bookings, setBookings] = useState({ upcoming: [], past: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Debug state removed
 
   useEffect(() => {
     if (user) {
       fetchBookings();
+    } else {
+      setLoading(false);
+      setError('Please log in to view your bookings.');
     }
   }, [user]);
 
@@ -66,6 +71,10 @@ export default function ManageBookings() {
       setLoading(true);
       setError(null);
 
+      if (!user || !user.id) {
+        throw new Error('User not authenticated');
+      }
+
       // Fetch the bookings for the logged-in user
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
@@ -73,7 +82,10 @@ export default function ManageBookings() {
         .eq('user_id', user.id)
         .order('departure_date', { ascending: true });
 
-      if (bookingsError) throw bookingsError;
+      if (bookingsError) {
+        console.error('Error fetching bookings:', bookingsError);
+        throw bookingsError;
+      }
 
       // Fetch related payments (if any)
       const bookingIds = bookingsData.map(booking => booking.id);
@@ -161,6 +173,25 @@ export default function ManageBookings() {
     }
   };
 
+  if (!user) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-lg shadow-xl p-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Manage Your Bookings</h1>
+          <div className="text-center py-8">
+            <p className="text-lg text-gray-600 mb-4">Please log in to view your bookings.</p>
+            <Link
+              to="/login"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Log In
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -179,6 +210,8 @@ export default function ManageBookings() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Debug panel removed */}
+      
       <div className="bg-white rounded-lg shadow-xl p-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Manage Your Bookings</h1>
         
@@ -214,131 +247,125 @@ export default function ManageBookings() {
           </nav>
         </div>
 
-        {/* Bookings Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {bookings[activeTab].map((booking) => {
-            // For hotel pickups, compute the pickup time (default offset: 60 minutes) 
-            // and a "ready by" time (10 minutes earlier)
-            let hotelPickupDisplay = null;
-            if (booking.pickup_option === 'hotel' && booking.hotel_details && booking.departure_time) {
-              const departureTimeStr = booking.departure_time.slice(0, 5);
-              const hotelPickupTime = getHotelPickupTime(departureTimeStr, 60);
-              const readyByTime = subtractMinutes(hotelPickupTime, 10);
-              const mapUrl = getStaticMapUrl(booking.hotel_details.location);
-              
-              hotelPickupDisplay = (
-                <div className="mt-4 space-y-3">
-                  {/* Hotel Info Section */}
-                  <div className="text-sm text-gray-600">
-                    <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between">
-                      <div>
-                        <p><strong>Hotel:</strong> {booking.hotel_details.name}</p>
-                        <p className="text-xs text-gray-500 mt-1 sm:mt-0">{booking.hotel_details.address}</p>
-                      </div>
-                      <p className="mt-2 sm:mt-0 sm:ml-4 text-sm whitespace-nowrap">
-                        <strong>Pickup:</strong> {hotelPickupTime}
-                        <span className="text-xs text-gray-500 block sm:inline sm:ml-1">
-                          (be ready by {readyByTime})
-                        </span>
-                      </p>
-                    </div>
-                  </div>
+        {/* Show message if no bookings */}
+        {bookings[activeTab].length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-lg text-gray-600">
+              {activeTab === 'upcoming' 
+                ? 'You have no upcoming bookings.' 
+                : 'You have no past bookings.'}
+            </p>
+            {activeTab === 'upcoming' && (
+              <Link
+                to="/"
+                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Book a Trip
+              </Link>
+            )}
+          </div>
+        )}
 
-                  {/* Map Section */}
-                  {mapUrl && (
-                    <div className="relative rounded-lg overflow-hidden bg-gray-100">
-                      {/* Aspect ratio container for consistent height */}
-                      <div className="aspect-w-16 aspect-h-9 sm:aspect-h-7">
+        {/* Bookings Grid */}
+        {bookings[activeTab].length > 0 && (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {bookings[activeTab].map((booking) => {
+              // For hotel pickups, compute the pickup time (default offset: 60 minutes) 
+              // and a "ready by" time (10 minutes earlier)
+              let hotelPickupDisplay = null;
+              if (booking.pickup_option === 'hotel' && booking.hotel_details && booking.departure_time) {
+                const departureTimeStr = booking.departure_time.slice(0, 5);
+                const hotelPickupTime = getHotelPickupTime(departureTimeStr, 60);
+                const readyByTime = subtractMinutes(hotelPickupTime, 10);
+                const mapUrl = getStaticMapUrl(booking.hotel_details.location);
+                
+                hotelPickupDisplay = (
+                  <div className="mt-4 space-y-3">
+                    {/* Hotel Info Section */}
+                    <div className="text-sm text-gray-600">
+                      <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between">
+                        <div>
+                          <p><strong>Hotel:</strong> {booking.hotel_details.name}</p>
+                          <p className="text-xs text-gray-500 mt-1 sm:mt-0">{booking.hotel_details.address}</p>
+                        </div>
+                        <p className="mt-2 sm:mt-0 sm:ml-4 text-sm whitespace-nowrap">
+                          <strong>Pickup:</strong> {hotelPickupTime}
+                          <span className="text-xs text-gray-500 block sm:inline sm:ml-1">
+                            (be ready by {readyByTime})
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Map Section */}
+                    {mapUrl && (
+                      <div className="relative rounded-lg overflow-hidden bg-gray-100">
                         <img 
-                          src={mapUrl}
-                          alt={`Map showing ${booking.hotel_details.name}`}
-                          className="w-full h-full object-cover"
+                          src={mapUrl} 
+                          alt="Hotel location map" 
+                          className="w-full h-auto object-cover"
+                          onError={(e) => {
+                            console.error('Error loading map image');
+                            e.target.style.display = 'none';
+                          }}
                         />
                       </div>
-                      
-                      {/* Map Controls */}
-                      <div className="absolute bottom-2 right-2 flex space-x-2">
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${booking.hotel_details.location.lat},${booking.hotel_details.location.lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1.5 text-xs font-medium text-white bg-black/75 rounded-full hover:bg-black/90 transition-colors flex items-center space-x-1"
-                        >
-                          <span>Open in Maps</span>
-                          {/* Optional: Add an external link icon */}
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={booking.id}
+                  className="bg-gray-50 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow duration-200"
+                >
+                  <div className="flex flex-col sm:flex-row justify-between items-start mb-4">
+                    <div className="w-full sm:w-auto mb-2 sm:mb-0">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {booking.from_location} → {booking.to_location}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(booking.departure_date), 'MMM d, yyyy')} at {booking.departure_time.slice(0, 5)}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Service: {booking.service_type}
+                      </p>
                     </div>
-                  )}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
+                      {booking.status}
+                    </span>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <p>Group Size: {booking.group_size}</p>
+                    <p>Amount: ₱{parseFloat(booking.total_amount).toLocaleString()}</p>
+                    <p>Payment Status: {booking.payment_status}</p>
+                    {booking.payment && (
+                      <p>Payment Provider: {booking.payment.provider}</p>
+                    )}
+                  </div>
+
+                  {hotelPickupDisplay}
+
+                  <div className="space-y-2 mt-4 sm:flex sm:space-y-0 sm:space-x-2">
+                    <button 
+                      className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-ai-600 bg-ai-50 rounded-md hover:bg-ai-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ai-500 transition-colors duration-200"
+                    >
+                      View Details
+                    </button>
+                    {activeTab === 'upcoming' && booking.status !== 'cancelled' && (
+                      <button 
+                        onClick={() => handleCancelBooking(booking.id)}
+                        className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                      >
+                        Cancel Booking
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
-            }
-
-            return (
-              <div
-                key={booking.id}
-                className="bg-gray-50 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow duration-200"
-              >
-                <div className="flex flex-col sm:flex-row justify-between items-start mb-4">
-                  <div className="w-full sm:w-auto mb-2 sm:mb-0">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {booking.from_location} → {booking.to_location}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {format(new Date(booking.departure_date), 'MMM d, yyyy')} at {booking.departure_time.slice(0, 5)}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Service: {booking.service_type}
-                    </p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
-                    {booking.status}
-                  </span>
-                </div>
-                
-                <div className="mt-4 text-sm text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <p>Group Size: {booking.group_size}</p>
-                  <p>Amount: ₱{parseFloat(booking.total_amount).toLocaleString()}</p>
-                  <p>Payment Status: {booking.payment_status}</p>
-                  {booking.payment && (
-                    <p>Payment Provider: {booking.payment.provider}</p>
-                  )}
-                </div>
-
-                {hotelPickupDisplay}
-
-                <div className="space-y-2 mt-4 sm:flex sm:space-y-0 sm:space-x-2">
-                  <button 
-                    className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-ai-600 bg-ai-50 rounded-md hover:bg-ai-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ai-500 transition-colors duration-200"
-                  >
-                    View Details
-                  </button>
-                  {activeTab === 'upcoming' && booking.status !== 'cancelled' && (
-                    <button 
-                      onClick={() => handleCancelBooking(booking.id)}
-                      className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
-                    >
-                      Cancel Booking
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Empty State */}
-        {bookings[activeTab].length === 0 && (
-          <div className="text-center py-12">
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No bookings found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {activeTab === 'upcoming' 
-                ? "You don't have any upcoming bookings."
-                : "You don't have any past bookings."}
-            </p>
+            })}
           </div>
         )}
       </div>
