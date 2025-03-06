@@ -1,11 +1,11 @@
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import twilio from 'twilio';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Initialize Supabase client
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 );
 
 // Initialize Twilio client
@@ -13,6 +13,14 @@ const twilioClient = new twilio.Twilio(
   process.env.TWILIO_ACCOUNT_SID!,
   process.env.TWILIO_AUTH_TOKEN!
 );
+
+// Add notification status enum to match database
+const NOTIFICATION_STATUS = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'declined',
+  EXPIRED: 'expired'
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
@@ -60,18 +68,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .select(`
         id,
         booking_id,
-        driver_id,
-        status,
-        created_at,
-        bookings (
+        response_code,
+        bookings:booking_id (
           id,
-          status,
           from_location,
           to_location,
           departure_date,
           departure_time,
-          customers (
-            id,
+          service_type,
+          group_size,
+          profiles:user_id (
             first_name,
             last_name,
             mobile_number
@@ -79,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       `)
       .eq('driver_id', driver.id)
-      .eq('status', 'PENDING')
+      .eq('status', NOTIFICATION_STATUS.PENDING)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -96,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { error: updateError } = await supabase
       .from('driver_notifications')
       .update({
-        status: accepted ? 'ACCEPTED' : 'DECLINED',
+        status: accepted ? NOTIFICATION_STATUS.ACCEPTED : NOTIFICATION_STATUS.REJECTED,
         response_time: new Date().toISOString(),
         twilio_message_id: messageId
       })
@@ -127,9 +133,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Notify customer via SMS
-      if (notification.bookings?.customers?.mobile_number) {
-        const customerNumber = notification.bookings.customers.mobile_number;
-        const customerName = `${notification.bookings.customers.first_name} ${notification.bookings.customers.last_name}`;
+      if (notification.bookings?.profiles?.mobile_number) {
+        const customerNumber = notification.bookings.profiles.mobile_number;
+        const customerName = `${notification.bookings.profiles.first_name} ${notification.bookings.profiles.last_name}`;
         const driverName = `${driver.first_name} ${driver.last_name}`;
         
         // Create customer notification message
@@ -146,8 +152,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Send confirmation to driver with booking details
       const driverResponse = `
 Booking Confirmed!
-Customer: ${notification.bookings?.customers?.first_name} ${notification.bookings?.customers?.last_name}
-Contact: +63${notification.bookings?.customers?.mobile_number}
+Customer: ${notification.bookings?.profiles?.first_name} ${notification.bookings?.profiles?.last_name}
+Contact: +63${notification.bookings?.profiles?.mobile_number}
 From: ${notification.bookings?.from_location}
 To: ${notification.bookings?.to_location}
 Date: ${notification.bookings?.departure_date}

@@ -8,11 +8,12 @@ import { useDriverSidebar } from '../../contexts/DriverSidebarContext.jsx';
 import { toast } from 'react-hot-toast';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
-// Add notification status enum to match database
+// Update notification status enum to match database enum values (lowercase)
 const NOTIFICATION_STATUS = {
-  PENDING: 'PENDING',
-  ACCEPTED: 'ACCEPTED',
-  REJECTED: 'REJECTED'
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'declined',
+  EXPIRED: 'expired'
 };
 
 const BOOKING_STATUS = {
@@ -134,8 +135,10 @@ export default function DriverDashboard() {
       
       console.log('Raw notifications fetched:', data?.length || 0, data);
       
-      // Filter for pending notifications
+      // Check if we have any notifications with status 'PENDING' (uppercase) or 'pending' (lowercase)
+      // This handles both old and new notifications
       const pendingNotifications = data?.filter(notification => 
+        notification.status === NOTIFICATION_STATUS.PENDING || 
         notification.status === 'PENDING'
       ) || [];
       
@@ -237,7 +240,7 @@ export default function DriverDashboard() {
       const currentTime = new Date().toISOString();
       console.log('Current time for pending bookings comparison:', currentTime);
       
-      // Use filter instead of eq and simplify the query to avoid 400 errors
+      // Use a more flexible query to handle both uppercase and lowercase status values
       const { data: notifications, error } = await supabase
         .from('driver_notifications')
         .select(`
@@ -254,44 +257,36 @@ export default function DriverDashboard() {
             departure_date,
             departure_time,
             service_type,
-            total_amount
+            group_size,
+            total_amount,
+            status,
+            created_at,
+            pickup_option,
+            hotel_pickup,
+            hotel_details
           )
         `)
-        .filter('driver_id', 'eq', user.id)
-        .filter('status', 'eq', 'PENDING')
-        .gt('expires_at', new Date().toISOString()) // Only get non-expired notifications
-        .order('created_at', { ascending: false });
+        .eq('driver_id', user.id)
+        .or(`status.eq.${NOTIFICATION_STATUS.PENDING},status.eq.PENDING`)
+        .filter('expires_at', 'gt', currentTime);
 
       if (error) {
         console.error('Error fetching pending bookings:', error);
         setPendingBookings([]);
         return;
       }
+
+      console.log('Pending bookings raw data:', notifications);
       
-      console.log('Pending bookings fetched:', notifications?.length || 0);
-      
-      // Filter out duplicate booking notifications - keep only the most recent for each booking_id
-      const bookingMap = new Map();
-      notifications?.forEach(notification => {
-        const existingNotification = bookingMap.get(notification.booking_id);
-        
-        // If we don't have this booking_id yet, or this notification is newer, keep it
-        if (!existingNotification || new Date(notification.created_at) > new Date(existingNotification.created_at)) {
-          bookingMap.set(notification.booking_id, notification);
-        }
-      });
-      
-      // Convert the map values back to an array
-      const uniqueNotifications = Array.from(bookingMap.values());
-      console.log('Unique pending bookings after deduplication:', uniqueNotifications.length);
-      
-      // Double-check that we're not showing any rejected notifications
-      // This is a safeguard in case there's a race condition with the database updates
-      const filteredNotifications = uniqueNotifications.filter(
-        notification => notification.status === 'PENDING'
+      // Filter out notifications with no booking data or expired notifications
+      const validBookings = notifications.filter(
+        notification => notification.bookings && 
+        (notification.status === NOTIFICATION_STATUS.PENDING || notification.status === 'PENDING') && 
+        new Date(notification.expires_at) > new Date()
       );
       
-      setPendingBookings(filteredNotifications || []);
+      console.log('Valid pending bookings:', validBookings);
+      setPendingBookings(validBookings);
     } catch (error) {
       console.error('Error in fetchPendingBookings:', error);
       setPendingBookings([]);
@@ -301,6 +296,8 @@ export default function DriverDashboard() {
   // Set up real-time subscription for new notifications
   useEffect(() => {
     if (!user) return;
+    
+    console.log('Setting up real-time subscription for driver notifications');
     
     // Set up real-time subscription
     const subscription = supabase
@@ -331,6 +328,7 @@ export default function DriverDashboard() {
         
         // Fetch updated notifications
         fetchNotifications();
+        fetchPendingBookings();
       })
       .subscribe();
     
@@ -533,12 +531,12 @@ export default function DriverDashboard() {
             return;
           }
           
-          // Update the notification status first
-          console.log(`Updating notification ${notificationId} status to ${accept ? 'ACCEPTED' : 'REJECTED'}`);
+          // Update the notification status first - using lowercase values to match database enum
+          console.log(`Updating notification ${notificationId} status to ${accept ? NOTIFICATION_STATUS.ACCEPTED : NOTIFICATION_STATUS.REJECTED}`);
           const { error: updateError } = await supabase
             .from('driver_notifications')
             .update({ 
-              status: accept ? 'ACCEPTED' : 'REJECTED',
+              status: accept ? NOTIFICATION_STATUS.ACCEPTED : NOTIFICATION_STATUS.REJECTED,
               updated_at: new Date().toISOString()
             })
             .eq('id', notificationId);
@@ -676,7 +674,15 @@ export default function DriverDashboard() {
   // Add notification sound function
   const playNotificationSound = () => {
     try {
+      // Check if the notification sound file exists in the public folder
       const audio = new Audio('/notification.mp3');
+      
+      // Add an error handler
+      audio.onerror = (error) => {
+        console.error('Error loading notification sound:', error);
+      };
+      
+      // Play the sound
       audio.play().catch(error => {
         console.error('Error playing notification sound:', error);
       });

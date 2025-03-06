@@ -38,6 +38,14 @@ const handleError = (error: any) => {
   );
 };
 
+// Add notification status enum to match database
+const NOTIFICATION_STATUS = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'declined',
+  EXPIRED: 'expired'
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { 
@@ -225,18 +233,11 @@ Reply YES to accept this booking.
           }
 
           // Create notification record
-          const { error: notificationError } = await supabaseClient
-            .from('driver_notifications')
-            .insert({
-              booking_id: bookingId,
-              driver_id: driver.id,
-              status: 'PENDING',
-            });
-
-          if (notificationError) {
-            console.error('Notification creation error:', notificationError);
-            throw new Error(`Failed to create notification: ${notificationError.message}`);
-          }
+          await supabaseClient.from('driver_notifications').insert({
+            booking_id: bookingId,
+            driver_id: driver.id,
+            status: NOTIFICATION_STATUS.PENDING,
+          });
         } catch (error) {
           console.error(`Failed to process driver ${driver.name}:`, error);
           throw error;
@@ -286,7 +287,7 @@ Reply YES to accept this booking.
         .from('driver_notifications')
         .select('booking_id')
         .eq('driver_id', driver.id)
-        .eq('status', 'PENDING')
+        .eq('status', NOTIFICATION_STATUS.PENDING)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
@@ -305,7 +306,7 @@ Reply YES to accept this booking.
       const { error: updateError } = await supabaseClient
         .from('driver_notifications')
         .update({
-          status: accepted ? 'ACCEPTED' : 'DECLINED',
+          status: accepted ? NOTIFICATION_STATUS.ACCEPTED : NOTIFICATION_STATUS.REJECTED,
           updated_at: new Date().toISOString()
         })
         .match({ driver_id: driver.id, booking_id: notification.booking_id });

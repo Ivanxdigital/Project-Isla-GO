@@ -2,6 +2,14 @@ import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Add notification status enum to match database
+const NOTIFICATION_STATUS = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'declined',
+  EXPIRED: 'expired'
+};
+
 // Define interfaces for type safety
 interface MessageResult {
   type: string;
@@ -205,7 +213,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .insert({
             booking_id: bookingId,
             driver_id: driver.id,
-            status: 'PENDING',
+            status: NOTIFICATION_STATUS.PENDING,
             twilio_message_id: message.sid,
             notification_channels: includeWhatsapp ? ['sms', 'whatsapp'] : ['sms']
           });

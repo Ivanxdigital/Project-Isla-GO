@@ -13,10 +13,18 @@ console.log('Twilio Config:', {
   hasAuthToken: !!TWILIO_AUTH_TOKEN
 });
 
+// Add notification status enum to match database
+const NOTIFICATION_STATUS = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'declined',
+  EXPIRED: 'expired'
+};
+
 // Function to send SMS notifications to drivers
 export const sendDriverNotifications = async (bookingId) => {
   try {
-    console.log('1. Starting notification process:', bookingId);
+    console.log('1. Starting notification process for booking:', bookingId);
     
     const { data: { session } } = await supabase.auth.getSession();
     console.log('2. Auth session:', {
@@ -46,118 +54,46 @@ export const sendDriverNotifications = async (bookingId) => {
     // Create driver notifications in the database first
     // This will ensure drivers see notifications in their dashboard even if SMS fails
     try {
-      await createDriverNotificationsInDatabase(bookingId);
-      console.log('Driver notifications created in database successfully');
+      const result = await createDriverNotificationsInDatabase(bookingId);
+      console.log('4. Driver notifications created in database:', result);
+      
+      if (!result.success || result.notified === 0) {
+        console.warn('No driver notifications were created in the database');
+        return {
+          success: false,
+          message: 'No driver notifications were created'
+        };
+      }
     } catch (dbError) {
       console.error('Failed to create driver notifications in database:', dbError);
-      // Log the error but continue with the API call
-      await supabase.from('driver_notification_logs').insert({
-        booking_id: bookingId,
-        status_code: 500,
-        response: JSON.stringify({ error: dbError.message, phase: 'database_creation' }),
-        created_at: new Date().toISOString()
-      });
+      // Continue with SMS attempt even if database notifications failed
     }
 
-    try {
-      // Make the API call to send SMS notifications
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ 
-          bookingId,
-          includeWhatsapp: true // Add flag to include WhatsApp notifications
-        }),
-        mode: 'cors'
-      });
+    // Make the API request to send SMS notifications
+    console.log('5. Sending API request to notify drivers via SMS');
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ bookingId })
+    });
 
-      console.log('4. Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
-      const responseText = await response.text();
-      console.log('5. Raw response:', responseText);
-
-      let data;
-      try {
-        // Only try to parse JSON if there's actual content
-        if (responseText && responseText.trim()) {
-          data = JSON.parse(responseText);
-        } else {
-          console.log('6. Empty response received');
-          data = { message: 'Empty response from server' };
-        }
-      } catch (e) {
-        console.error('6. Failed to parse JSON:', e);
-        // Don't throw here, just create a fallback data object
-        data = { 
-          error: 'Invalid JSON response from server',
-          rawResponse: responseText
-        };
-      }
-
-      if (!response.ok) {
-        console.error('7. Error response:', data);
-        
-        // Log the error to the database
-        await supabase.from('driver_notification_logs').insert({
-          booking_id: bookingId,
-          status_code: response.status,
-          response: JSON.stringify({ 
-            error: data.message || 'API error',
-            details: data
-          }),
-          created_at: new Date().toISOString()
-        });
-        
-        // Don't throw here, just return a fallback response
-        return {
-          success: true,
-          notified: 0,
-          total: 0,
-          fallback: true,
-          message: 'Created database notifications only. SMS delivery failed but will be handled by the backend.'
-        };
-      }
-
-      console.log('8. Success:', data);
-      return data;
-    } catch (apiError) {
-      console.error('API call failed:', apiError);
-      
-      // If the API call fails, we'll still consider it a success since we've already
-      // created the notifications in the database
-      console.log('Falling back to database notifications only');
-      
-      // Log the error but don't throw it
-      await supabase.from('driver_notification_logs').insert({
-        booking_id: bookingId,
-        status_code: 404,
-        response: JSON.stringify({ 
-          error: apiError.message,
-          fallback: 'Using database notifications only' 
-        }),
-        created_at: new Date().toISOString()
-      });
-      
-      // Return a fallback success response
-      return {
-        success: true,
-        notified: 0,
-        total: 0,
-        fallback: true,
-        message: 'Created database notifications only. SMS delivery will be handled by the backend.'
-      };
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('6. API request failed:', response.status, errorText);
+      throw new Error(`API request failed: ${response.status} ${errorText}`);
     }
+
+    const data = await response.json();
+    console.log('7. API response:', data);
+
+    return data;
   } catch (error) {
-    console.error('9. Error in sendDriverNotifications:', error);
+    console.error('8. Error in sendDriverNotifications:', error);
     
-    // Log the error to the database - fixed table name to driver_notification_logs
+    // Log the error to the database
     try {
       await supabase.from('driver_notification_logs').insert({
         booking_id: bookingId,
@@ -165,8 +101,9 @@ export const sendDriverNotifications = async (bookingId) => {
         response: JSON.stringify({ error: error.message }),
         created_at: new Date().toISOString()
       });
+      console.log('9. Error logged to database');
     } catch (logError) {
-      console.error('Failed to log notification error:', logError);
+      console.error('10. Failed to log error to database:', logError);
     }
     
     throw error;
@@ -178,75 +115,49 @@ export const createDriverNotificationsInDatabase = async (bookingId) => {
   try {
     console.log('Creating driver notifications in database for booking:', bookingId);
     
-    // First, get the booking details
+    // Get the booking details
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select('*')
       .eq('id', bookingId)
       .single();
-    
-    if (bookingError || !booking) {
-      console.error('Error fetching booking:', bookingError || 'No booking found');
-      throw new Error('Booking not found');
+      
+    if (bookingError) {
+      console.error('Error fetching booking:', bookingError);
+      throw bookingError;
     }
     
-    console.log('Booking details:', booking);
+    console.log('Booking details fetched successfully:', booking.id);
     
-    // Get all drivers first, then filter them in code
-    console.log('Fetching all drivers');
-    const { data: allDrivers, error: driversError } = await supabase
+    // Get available drivers
+    const { data: availableDrivers, error: driversError } = await supabase
       .from('drivers')
-      .select('*');
-    
+      .select('*')
+      .eq('status', 'active');
+      
     if (driversError) {
-      console.error('Error fetching drivers:', driversError);
-      throw new Error('Failed to fetch drivers');
+      console.error('Error fetching available drivers:', driversError);
+      throw driversError;
     }
     
-    console.log('All drivers fetched:', allDrivers?.length || 0);
+    console.log('Found', availableDrivers.length, 'available drivers');
     
-    // Filter drivers in code instead of in the query
-    const availableDrivers = allDrivers?.filter(driver => 
-      driver.status === 'active' && 
-      driver.documents_verified === true
-    ) || [];
-    
-    console.log('Available drivers after filtering:', availableDrivers.length, availableDrivers);
-    
-    if (!availableDrivers || availableDrivers.length === 0) {
-      console.log('No available drivers found after filtering');
-      
-      // Update booking status to indicate no drivers available
-      await supabase
-        .from('bookings')
-        .update({
-          status: 'finding_driver_failed',
-          driver_notification_attempted: true,
-          driver_notification_attempted_at: new Date().toISOString(),
-          driver_notification_success: false
-        })
-        .eq('id', bookingId);
-      
-      // Log the error
-      await supabase.from('driver_notification_logs').insert({
-        booking_id: bookingId,
-        status_code: 404,
-        response: JSON.stringify({ error: 'No available drivers found' }),
-        created_at: new Date().toISOString()
-      });
-      
-      throw new Error('No available drivers found');
+    if (availableDrivers.length === 0) {
+      console.log('No available drivers found');
+      return {
+        success: false,
+        notified: 0,
+        total: 0
+      };
     }
     
-    console.log('Available drivers found:', availableDrivers.length, availableDrivers);
-    
-    // Create notifications for each available driver
+    // Create notifications for each driver
     const notificationPromises = availableDrivers.map(driver => {
-      // Calculate expiration time (30 minutes from now)
+      // Set expiry time to 5 minutes from now
       const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+      expiresAt.setMinutes(expiresAt.getMinutes() + 5);
       
-      // Generate a unique response code for this notification
+      // Generate a random response code
       const responseCode = Math.random().toString(36).substring(2, 10).toUpperCase();
       
       console.log(`Creating notification for driver ${driver.id} with expiry ${expiresAt.toISOString()}`);
@@ -256,7 +167,7 @@ export const createDriverNotificationsInDatabase = async (bookingId) => {
         .insert({
           driver_id: driver.id,
           booking_id: bookingId,
-          status: 'PENDING',
+          status: NOTIFICATION_STATUS.PENDING,
           response_code: responseCode,
           expires_at: expiresAt.toISOString(),
           created_at: new Date().toISOString()
@@ -272,10 +183,18 @@ export const createDriverNotificationsInDatabase = async (bookingId) => {
     const errors = results.filter(result => result.error);
     if (errors.length > 0) {
       console.error('Errors creating some notifications:', errors);
+      
+      // Log the specific errors
+      errors.forEach((result, index) => {
+        console.error(`Error creating notification ${index}:`, result.error);
+      });
     }
     
+    const successCount = availableDrivers.length - errors.length;
+    console.log(`Successfully created ${successCount} out of ${availableDrivers.length} notifications`);
+    
     // Update booking to indicate notification was attempted
-    await supabase
+    const { error: updateError } = await supabase
       .from('bookings')
       .update({
         status: 'finding_driver',
@@ -284,6 +203,12 @@ export const createDriverNotificationsInDatabase = async (bookingId) => {
         driver_notification_success: errors.length < availableDrivers.length
       })
       .eq('id', bookingId);
+      
+    if (updateError) {
+      console.error('Error updating booking status:', updateError);
+    } else {
+      console.log('Booking status updated to finding_driver');
+    }
     
     console.log('Created', availableDrivers.length - errors.length, 'driver notifications in database');
     
@@ -314,7 +239,7 @@ export const createDriverNotificationsInDatabase = async (bookingId) => {
 // Add function to handle driver responses
 export const handleDriverResponse = async (driverId, bookingId, accepted) => {
   try {
-    const status = accepted ? 'ACCEPTED' : 'DECLINED';
+    const status = accepted ? NOTIFICATION_STATUS.ACCEPTED : NOTIFICATION_STATUS.REJECTED;
     
     // Update the driver notification status
     const { error: updateError } = await supabase
