@@ -2,6 +2,20 @@ import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Define interfaces for type safety
+interface MessageResult {
+  type: string;
+  id?: string;
+  error?: string;
+}
+
+interface DriverNotificationResult {
+  driverId: string;
+  success: boolean;
+  messageIds: MessageResult[];
+  error?: string;
+}
+
 // Initialize Twilio client using ES module syntax
 const twilioClient = new twilio.Twilio(
   process.env.TWILIO_ACCOUNT_SID!,
@@ -22,7 +36,7 @@ const formatPhoneNumber = (number: string) => {
   return cleaned.startsWith('63') ? `+${cleaned}` : `+63${cleaned}`;
 };
 
-// Remove WhatsApp deep link function and replace with simple message function
+// Create SMS message content
 const createSmsMessage = (booking: any) => {
   return `
 New Booking Alert!
@@ -34,6 +48,24 @@ Service: ${booking.service_type}
 Customer: ${booking.customers.first_name} ${booking.customers.last_name}
 
 Reply YES to accept this booking.
+`.trim();
+};
+
+// Create WhatsApp message content (can be more detailed with formatting)
+const createWhatsAppMessage = (booking: any) => {
+  return `
+*New Booking Alert!* 📣
+
+*Trip Details:*
+📍 *From:* ${booking.from_location}
+🏁 *To:* ${booking.to_location}
+📅 *Date:* ${booking.departure_date}
+⏰ *Time:* ${booking.departure_time}
+🚗 *Service:* ${booking.service_type}
+👤 *Customer:* ${booking.customers.first_name} ${booking.customers.last_name}
+${booking.customers.mobile_number ? `📱 *Contact:* ${booking.customers.mobile_number}` : ''}
+
+*Reply YES to accept this booking.*
 `.trim();
 };
 
@@ -61,12 +93,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       hasTwilioSid: !!process.env.TWILIO_ACCOUNT_SID,
       hasTwilioToken: !!process.env.TWILIO_AUTH_TOKEN,
       hasTwilioPhone: !!process.env.TWILIO_PHONE_NUMBER,
+      hasTwilioWhatsApp: !!process.env.TWILIO_WHATSAPP_NUMBER,
       hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
     });
 
-    const { bookingId } = req.body;
-    console.log('4. Booking ID:', bookingId);
+    const { bookingId, includeWhatsapp = false } = req.body;
+    console.log('4. Booking ID:', bookingId, 'Include WhatsApp:', includeWhatsapp);
 
     if (!bookingId) {
       return res.status(400).json({ error: 'Booking ID is required' });
@@ -120,21 +153,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'No available drivers found' });
     }
 
-    // Create message content using the new function
-    const messageContent = createSmsMessage(booking);
+    // Create message content
+    const smsMessageContent = createSmsMessage(booking);
+    const whatsAppMessageContent = createWhatsAppMessage(booking);
+    
+    // Get WhatsApp number from environment or use default
+    const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER || '+14155238886';
 
-    // Send SMS to each driver
+    // Send notifications to each driver
     const notificationPromises = drivers.map(async (driver) => {
       try {
         // Format phone number
         const formattedNumber = formatPhoneNumber(driver.mobile_number);
+        const results: DriverNotificationResult = { 
+          driverId: driver.id, 
+          success: false, 
+          messageIds: []
+        };
 
         // Send SMS via Twilio
         const message = await twilioClient.messages.create({
-          body: messageContent,
+          body: smsMessageContent,
           to: formattedNumber,
           from: process.env.TWILIO_PHONE_NUMBER
         });
+        
+        results.success = true;
+        results.messageIds.push({ type: 'sms', id: message.sid });
+
+        // Send WhatsApp message if enabled
+        if (includeWhatsapp) {
+          try {
+            const whatsappMessage = await twilioClient.messages.create({
+              body: whatsAppMessageContent,
+              to: `whatsapp:${formattedNumber}`,
+              from: `whatsapp:${whatsappNumber}`
+            });
+            
+            results.messageIds.push({ type: 'whatsapp', id: whatsappMessage.sid });
+            console.log(`WhatsApp message sent to driver ${driver.id}:`, whatsappMessage.sid);
+          } catch (whatsappError: any) {
+            console.error(`Failed to send WhatsApp to driver ${driver.id}:`, whatsappError);
+            // Don't fail the entire notification if WhatsApp fails
+            results.messageIds.push({ type: 'whatsapp', error: whatsappError.message });
+          }
+        }
 
         // Create notification record
         await supabase
@@ -143,16 +206,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             booking_id: bookingId,
             driver_id: driver.id,
             status: 'PENDING',
-            twilio_message_id: message.sid
+            twilio_message_id: message.sid,
+            notification_channels: includeWhatsapp ? ['sms', 'whatsapp'] : ['sms']
           });
 
-        return {
-          driverId: driver.id,
-          success: true,
-          messageId: message.sid
-        };
+        return results;
       } catch (error: any) {
-        console.error(`Failed to send SMS to driver ${driver.id}:`, error);
+        console.error(`Failed to send notifications to driver ${driver.id}:`, error);
         return {
           driverId: driver.id,
           success: false,
@@ -180,6 +240,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: true,
       notified: results.filter(r => r.success).length,
       total: drivers.length,
+      includesWhatsapp: includeWhatsapp,
       results
     });
 

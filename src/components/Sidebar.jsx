@@ -10,6 +10,7 @@ import {
   ClipboardDocumentCheckIcon,
   Bars3Icon,
   XMarkIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 
 const menuItems = [
@@ -19,6 +20,7 @@ const menuItems = [
   { path: '/admin/vehicles', name: 'Vehicles', icon: TruckIcon },
   { path: '/admin/routes', name: 'Routes', icon: MapIcon },
   { path: '/admin/driver-applications', name: 'Applications', icon: ClipboardDocumentCheckIcon },
+  { path: '/admin/whatsapp-test', name: 'WhatsApp Test', icon: ChatBubbleLeftRightIcon },
   { path: '/admin/settings', name: 'Settings', icon: Cog6ToothIcon },
 ];
 

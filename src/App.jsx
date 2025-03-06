@@ -52,6 +52,7 @@ import Layout from './components/Layout.jsx';
 import { DriverSidebarProvider, useDriverSidebar } from './contexts/DriverSidebarContext.jsx';
 import DriverSidebar from './components/DriverSidebar.jsx';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import WhatsAppTest from './components/WhatsAppTest.jsx';
 
 function RootLayout() {
   const location = useLocation();
@@ -204,6 +205,7 @@ function App() {
                     <Route path="vehicles" element={<AdminRoute><VehiclesPage /></AdminRoute>} />
                     <Route path="routes" element={<AdminRoute><RoutesPage /></AdminRoute>} />
                     <Route path="driver-applications" element={<AdminRoute><DriverApplicationsPage /></AdminRoute>} />
+                    <Route path="whatsapp-test" element={<AdminRoute><WhatsAppTest /></AdminRoute>} />
                   </Route>
                   
                   {/* Driver routes */}
@@ -229,6 +231,7 @@ function App() {
                     <Route path="/driver/before-register" element={<BeforeRegister />} />
                     <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/whatsapp-test" element={<WhatsAppTest />} />
                     <Route path="*" element={
                       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
                         <div className="max-w-md w-full space-y-8 text-center">

@@ -3,11 +3,13 @@ import { supabase } from './supabase.js';
 const TWILIO_ACCOUNT_SID = import.meta.env.VITE_TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = import.meta.env.VITE_TWILIO_AUTH_TOKEN;
 const TWILIO_PHONE_NUMBER = import.meta.env.VITE_TWILIO_PHONE_NUMBER;
+const TWILIO_WHATSAPP_NUMBER = import.meta.env.VITE_TWILIO_WHATSAPP_NUMBER || '+14155238886';
 
 // Add debug logs
 console.log('Twilio Config:', {
   accountSid: TWILIO_ACCOUNT_SID,
   phoneNumber: TWILIO_PHONE_NUMBER,
+  whatsappNumber: TWILIO_WHATSAPP_NUMBER,
   hasAuthToken: !!TWILIO_AUTH_TOKEN
 });
 
@@ -65,7 +67,10 @@ export const sendDriverNotifications = async (bookingId) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ bookingId }),
+        body: JSON.stringify({ 
+          bookingId,
+          includeWhatsapp: true // Add flag to include WhatsApp notifications
+        }),
         mode: 'cors'
       });
 
