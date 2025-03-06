@@ -10,6 +10,55 @@ import toast from 'react-hot-toast';
 import DriverDetails from './DriverDetails.jsx';
 import ContactOptions from './ContactOptions.jsx';
 
+// Add a simple error boundary component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("PaymentSuccess component error:", error, errorInfo);
+    this.setState({ error, errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
+            <div className="text-center">
+              <ExclamationCircleIcon className="h-16 w-16 text-red-500 mx-auto" />
+              <h2 className="mt-6 text-3xl font-bold text-gray-900">Something went wrong</h2>
+              <p className="mt-2 text-sm text-gray-600">
+                We encountered an error while processing your payment confirmation.
+              </p>
+              <div className="mt-4 p-4 border border-red-200 bg-red-50 rounded-md text-left">
+                <p className="text-sm text-red-700 font-mono overflow-auto">
+                  {this.state.error && this.state.error.toString()}
+                </p>
+              </div>
+              <div className="mt-4">
+                <Link
+                  to="/"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Return to Home
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function PaymentSuccess() {
   const { t } = useTranslation();
   const location = useLocation();
@@ -37,8 +86,37 @@ export default function PaymentSuccess() {
   const [driversNotified, setDriversNotified] = useState(false);
   const [brevoConnected, setBrevoConnected] = useState(null);
 
+  // Add debugging state
+  const [debugInfo, setDebugInfo] = useState({
+    urlParams: null,
+    bookingId: null,
+    initialLoadTime: new Date().toISOString()
+  });
+
   // Test Brevo connection when component mounts
   useEffect(() => {
+    // Log component mount for debugging
+    console.log('PaymentSuccess component mounted at:', new Date().toISOString());
+    
+    // Extract URL parameters for debugging
+    const urlParams = new URLSearchParams(location.search);
+    const bookingId = urlParams.get('bookingId');
+    
+    setDebugInfo(prev => ({
+      ...prev,
+      urlParams: Object.fromEntries(urlParams.entries()),
+      bookingId
+    }));
+    
+    console.log('URL parameters:', Object.fromEntries(urlParams.entries()));
+    
+    if (!bookingId) {
+      console.error('Missing booking ID in URL parameters');
+      setStatus('error');
+      setError('Missing booking information. Please contact support.');
+      return;
+    }
+
     const checkBrevoConnection = async () => {
       try {
         const isConnected = await testBrevoConnection();
@@ -54,7 +132,7 @@ export default function PaymentSuccess() {
     };
     
     checkBrevoConnection();
-  }, []);
+  }, [location.search]);
 
   const pollPaymentStatus = async () => {
     try {
@@ -506,90 +584,108 @@ export default function PaymentSuccess() {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
+      
+      // Clear driver polling interval if active
+      if (driverPollingIntervalId) {
+        clearInterval(driverPollingIntervalId);
+      }
     };
   }, []); // Empty dependency array since we manage polling internally
 
+  // Wrap the component with the error boundary
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16">
-            {status === 'success' ? (
-              <CheckCircleIcon className="h-16 w-16 text-green-500" />
-            ) : status === 'error' || status === 'failed' ? (
-              <ExclamationCircleIcon className="h-16 w-16 text-red-500" />
-            ) : (
-              <div className="h-16 w-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+        {/* Debug information (only in development) */}
+        {import.meta.env.DEV && (
+          <div className="max-w-md w-full mb-4 p-4 bg-gray-100 rounded-lg text-xs font-mono overflow-auto">
+            <details>
+              <summary className="cursor-pointer font-bold">Debug Info</summary>
+              <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+            </details>
+          </div>
+        )}
+        
+        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
+          <div className="text-center">
+            <div className="mx-auto h-16 w-16">
+              {status === 'success' ? (
+                <CheckCircleIcon className="h-16 w-16 text-green-500" />
+              ) : status === 'error' || status === 'failed' ? (
+                <ExclamationCircleIcon className="h-16 w-16 text-red-500" />
+              ) : (
+                <div className="h-16 w-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              )}
+            </div>
+            <h2 className="mt-6 text-3xl font-bold text-gray-900">
+              {status === 'success'
+                ? t('payment.success.title', 'Payment Successful')
+                : status === 'error' || status === 'failed'
+                ? t('payment.failed.title', 'Payment Failed')
+                : t('payment.processing.title', 'Payment Processing')}
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              {status === 'success'
+                ? t('payment.success.message', 'Your payment has been confirmed.')
+                : status === 'error' || status === 'failed'
+                ? error || t('payment.failed.message', 'There was an issue processing your payment.')
+                : t('payment.processing.message', 'Please wait while we verify your payment...')}
+            </p>
+            
+            {status === 'success' && !driverData && (
+              <div className="mt-4 p-4 border border-yellow-200 bg-yellow-50 rounded-md">
+                <p className="text-sm text-yellow-700">
+                  We're looking for available drivers. Please wait a moment...
+                </p>
+              </div>
+            )}
+            
+            {(status === 'error' || status === 'failed') && (
+              <div className="mt-4">
+                <Link
+                  to="/"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  {t('payment.failed.returnHome', 'Return to Home')}
+                </Link>
+              </div>
             )}
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            {status === 'success'
-              ? t('payment.success.title', 'Payment Successful')
-              : status === 'error' || status === 'failed'
-              ? t('payment.failed.title', 'Payment Failed')
-              : t('payment.processing.title', 'Payment Processing')}
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            {status === 'success'
-              ? t('payment.success.message', 'Your payment has been confirmed.')
-              : status === 'error' || status === 'failed'
-              ? error || t('payment.failed.message', 'There was an issue processing your payment.')
-              : t('payment.processing.message', 'Please wait while we verify your payment...')}
-          </p>
-          
-          {status === 'success' && !driverData && (
-            <div className="mt-4 p-4 border border-yellow-200 bg-yellow-50 rounded-md">
-              <p className="text-sm text-yellow-700">
-                We're looking for available drivers. Please wait a moment...
-              </p>
-            </div>
-          )}
-          
-          {(status === 'error' || status === 'failed') && (
-            <div className="mt-4">
-              <Link
-                to="/"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                {t('payment.failed.returnHome', 'Return to Home')}
-              </Link>
-            </div>
-          )}
         </div>
-      </div>
-      
-      {/* Show driver details and contact options only if payment successful */}
-      {status === 'success' && bookingData && customerData && (
-        <div className="mt-8 max-w-md w-full space-y-6">
-          {/* Show driver details if a driver is assigned */}
-          {driverData && (
-            <DriverDetails 
-              driver={driverData} 
+        
+        {/* Show driver details and contact options only if payment successful */}
+        {status === 'success' && bookingData && customerData && (
+          <div className="mt-8 max-w-md w-full space-y-6">
+            {/* Show driver details if a driver is assigned */}
+            {driverData && (
+              <DriverDetails 
+                driver={driverData} 
+                booking={bookingData}
+                customer={customerData}
+              />
+            )}
+            
+            {/* Show contact options regardless of driver assignment */}
+            <ContactOptions 
               booking={bookingData}
+              driver={driverData}
               customer={customerData}
             />
-          )}
-          
-          {/* Show contact options regardless of driver assignment */}
-          <ContactOptions 
-            booking={bookingData}
-            driver={driverData}
-            customer={customerData}
-          />
-          
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 mb-4">
-              You'll be redirected to manage bookings in a few seconds.
-            </p>
-            <Link
-              to="/manage-bookings"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              View All Bookings
-            </Link>
+            
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600 mb-4">
+                You'll be redirected to manage bookings in a few seconds.
+              </p>
+              <Link
+                to="/manage-bookings"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                View All Bookings
+              </Link>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }

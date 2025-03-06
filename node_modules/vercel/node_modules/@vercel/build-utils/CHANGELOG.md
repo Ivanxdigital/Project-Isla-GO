@@ -1,5 +1,33 @@
 # @vercel/build-utils
 
+## 10.3.2
+
+### Patch Changes
+
+- Add support for expire values in Next.js prerender manifest ([#13087](https://github.com/vercel/vercel/pull/13087))
+
+- Detect yarn version from lockfile version ([#13118](https://github.com/vercel/vercel/pull/13118))
+
+## 10.3.1
+
+### Patch Changes
+
+- Parse yarn.lock file version ([#13114](https://github.com/vercel/vercel/pull/13114))
+
+- [env-vars] expose VERCEL_DEPLOYMENT_ID as NEXT_PUBLIC_VERCEL_DEPLOYMENT_ID ([#13115](https://github.com/vercel/vercel/pull/13115))
+
+- Fix vitest-e2e glob to include integration.test.ts ([#13097](https://github.com/vercel/vercel/pull/13097))
+
+## 10.3.0
+
+### Minor Changes
+
+- Delay pnpm@10 preferred date ([#13100](https://github.com/vercel/vercel/pull/13100))
+
+### Patch Changes
+
+- Type-check tests ([#13096](https://github.com/vercel/vercel/pull/13096))
+
 ## 10.2.0
 
 ### Minor Changes
