@@ -33,6 +33,23 @@ export const testWhatsAppIntegration = async (phoneNumber) => {
 
     // Make the API call to send a test WhatsApp message
     try {
+      // First, check if the endpoint is accessible with a HEAD request
+      try {
+        const checkResponse = await fetch(apiUrl, {
+          method: 'HEAD',
+          mode: 'cors',
+          credentials: 'same-origin'
+        });
+        console.log('API endpoint check:', {
+          status: checkResponse.status,
+          statusText: checkResponse.statusText
+        });
+      } catch (checkError) {
+        console.warn('API endpoint check failed:', checkError);
+        // Continue anyway, as the actual POST might still work
+      }
+      
+      // Now make the actual POST request
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -42,7 +59,8 @@ export const testWhatsAppIntegration = async (phoneNumber) => {
         body: JSON.stringify({ 
           phoneNumber: formattedNumber
         }),
-        mode: 'cors'
+        mode: 'cors',
+        credentials: 'same-origin'
       });
 
       console.log('Fetch response received:', {
@@ -54,7 +72,13 @@ export const testWhatsAppIntegration = async (phoneNumber) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('API error response:', errorText);
-        throw new Error(`API error: ${response.status} - ${errorText}`);
+        
+        // If it's a 405 Method Not Allowed error, provide more specific guidance
+        if (response.status === 405) {
+          throw new Error(`API error: ${response.status} - Method Not Allowed. The API endpoint doesn't accept POST requests or might be misconfigured.`);
+        }
+        
+        throw new Error(`API error: ${response.status} - ${errorText || response.statusText}`);
       }
 
       let result;

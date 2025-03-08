@@ -25,19 +25,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log('WhatsApp test handler started');
     
-    // CORS headers
+    // Enhanced CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
     
     console.log('Method:', req.method);
     
-    if (req.method === 'OPTIONS') {
+    // Handle preflight requests
+    if (req.method === 'OPTIONS' || req.method === 'HEAD') {
+      console.log('Handling preflight request');
       return res.status(200).end();
     }
 
+    // Handle GET requests (for testing API availability)
+    if (req.method === 'GET') {
+      console.log('Handling GET request (API check)');
+      return res.status(200).json({ status: 'API is available' });
+    }
+
     if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
+      console.log(`Method ${req.method} not allowed`);
+      return res.status(405).json({ error: `Method ${req.method} not allowed. Only POST requests are accepted.` });
     }
 
     // Log environment variables (redacted)
@@ -47,6 +58,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       hasTwilioPhone: !!process.env.TWILIO_PHONE_NUMBER,
       hasTwilioWhatsApp: !!process.env.TWILIO_WHATSAPP_NUMBER
     });
+
+    // Check if Twilio credentials are available
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+      console.error('Missing Twilio credentials');
+      return res.status(500).json({ 
+        error: 'Server configuration error', 
+        details: 'Missing Twilio credentials' 
+      });
+    }
 
     console.log('Request body:', req.body);
     

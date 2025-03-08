@@ -26,6 +26,10 @@
       "destination": "/api/send-driver-sms.ts"
     },
     {
+      "source": "/api/test-whatsapp",
+      "destination": "/api/test-whatsapp.ts"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     },
