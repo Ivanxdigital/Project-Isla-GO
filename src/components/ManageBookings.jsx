@@ -99,10 +99,29 @@ export default function ManageBookings() {
         // Continue without payments data
       }
 
-      // Combine bookings with their payments
+      // Fetch driver information for bookings with assigned drivers
+      const bookingsWithDrivers = bookingsData.filter(booking => booking.assigned_driver_id);
+      const driverIds = bookingsWithDrivers.map(booking => booking.assigned_driver_id);
+      
+      let driversData = [];
+      if (driverIds.length > 0) {
+        const { data: fetchedDriversData, error: driversError } = await supabase
+          .from('drivers')
+          .select('id, name, contact_number, photo_url')
+          .in('id', driverIds);
+          
+        if (driversError) {
+          console.warn('Error fetching drivers:', driversError);
+        } else {
+          driversData = fetchedDriversData || [];
+        }
+      }
+
+      // Combine bookings with their payments and driver information
       const bookingsWithPayments = bookingsData.map(booking => ({
         ...booking,
-        payment: paymentsData?.find(payment => payment.booking_id === booking.id) || null
+        payment: paymentsData?.find(payment => payment.booking_id === booking.id) || null,
+        driver: booking.assigned_driver_id ? driversData.find(driver => driver.id === booking.assigned_driver_id) || null : null
       }));
 
       const now = new Date();
@@ -347,6 +366,37 @@ export default function ManageBookings() {
                   </div>
 
                   {hotelPickupDisplay}
+                  
+                  {/* Display driver information if a driver is assigned */}
+                  {booking.status === 'driver_assigned' && booking.driver && (
+                    <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-100">
+                      <h4 className="font-medium text-green-800 mb-2">Driver Assigned</h4>
+                      <div className="flex items-center">
+                        {booking.driver.photo_url ? (
+                          <img 
+                            src={booking.driver.photo_url} 
+                            alt={booking.driver.name} 
+                            className="w-12 h-12 rounded-full object-cover mr-3"
+                            onError={(e) => {
+                              e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(booking.driver.name);
+                            }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                            <span className="text-gray-500 text-lg">{booking.driver.name.charAt(0)}</span>
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium">{booking.driver.name}</p>
+                          {booking.driver.contact_number && (
+                            <p className="text-sm text-gray-600">
+                              Contact: {booking.driver.contact_number}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-2 mt-4 sm:flex sm:space-y-0 sm:space-x-2">
                     <button 
