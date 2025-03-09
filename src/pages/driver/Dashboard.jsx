@@ -8,12 +8,12 @@ import { useDriverSidebar } from '../../contexts/DriverSidebarContext.jsx';
 import { toast } from 'react-hot-toast';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
-// Update notification status enum to match database enum values (uppercase)
+// Update notification status enum to match database enum values (lowercase)
 const NOTIFICATION_STATUS = {
-  PENDING: 'PENDING',
-  ACCEPTED: 'ACCEPTED',
-  REJECTED: 'REJECTED',
-  EXPIRED: 'EXPIRED'
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'declined',
+  EXPIRED: 'expired'
 };
 
 const BOOKING_STATUS = {

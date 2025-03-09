@@ -15,10 +15,10 @@ console.log('Twilio Config:', {
 
 // Add notification status enum to match database
 const NOTIFICATION_STATUS = {
-  PENDING: 'PENDING',
-  ACCEPTED: 'ACCEPTED',
-  REJECTED: 'REJECTED',
-  EXPIRED: 'EXPIRED'
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'declined',
+  EXPIRED: 'expired'
 };
 
 // Function to send SMS notifications to drivers
