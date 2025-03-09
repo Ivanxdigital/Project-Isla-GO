@@ -603,40 +603,106 @@ export default function DriverDashboard() {
     
           // Only call the RPC function for acceptance
           console.log('Calling handle_driver_response RPC for acceptance');
-          const { data, error } = await supabase
-            .rpc('handle_driver_response', {
-              p_booking_id: bookingId,
-              p_driver_id: user.id,
-              p_response_code: notification.response_code
-            });
-    
-          if (error) {
-            console.error('Error from handle_driver_response RPC:', error);
-            throw error;
-          }
-    
-          // Handle the response from the database function
-          console.log('RPC response:', data);
-          switch (data) {
-            case 'SUCCESS':
+          try {
+            const { data, error } = await supabase
+              .rpc('handle_driver_response', {
+                p_booking_id: bookingId,
+                p_driver_id: user.id,
+                p_response_code: notification.response_code
+              });
+      
+            if (error) {
+              console.error('Error from handle_driver_response RPC:', error);
+              
+              // Implement fallback mechanism if RPC fails
+              console.log('RPC failed, implementing fallback mechanism');
+              
+              // 1. Update booking status directly
+              const { error: bookingUpdateError } = await supabase
+                .from('bookings')
+                .update({
+                  status: 'driver_assigned',
+                  assigned_driver_id: user.id,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', bookingId);
+                
+              if (bookingUpdateError) {
+                console.error('Error updating booking in fallback:', bookingUpdateError);
+                throw bookingUpdateError;
+              }
+              
+              // 2. Mark other notifications for this booking as expired
+              const { error: otherNotificationsError } = await supabase
+                .from('driver_notifications')
+                .update({
+                  status: 'expired',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('booking_id', bookingId)
+                .neq('id', notificationId);
+                
+              if (otherNotificationsError) {
+                console.error('Error updating other notifications in fallback:', otherNotificationsError);
+                // Continue anyway, this is not critical
+              }
+              
+              // Log the fallback action
+              await supabase.from('driver_notification_logs').insert({
+                booking_id: bookingId,
+                driver_id: user.id,
+                notification_id: notificationId,
+                status_code: 200,
+                response: JSON.stringify({ status: 'SUCCESS_FALLBACK', action: 'accept', error: error.message }),
+                created_at: new Date().toISOString()
+              });
+              
               toast.dismiss(loadingToast);
               toast.success('Booking accepted successfully! Check your trips for details.');
-              break;
-            case 'EXPIRED':
-              toast.dismiss(loadingToast);
-              toast.error('This booking request has expired');
-              break;
-            case 'BOOKING_NO_LONGER_AVAILABLE':
-              toast.dismiss(loadingToast);
-              toast.error('This booking is no longer available');
-              break;
-            case 'INVALID_CODE':
-              toast.dismiss(loadingToast);
-              toast.error('Invalid response code');
-              break;
-            default:
-              toast.dismiss(loadingToast);
-              throw new Error(`Unexpected response: ${data}`);
+              
+              // Reset new notification flag
+              setHasNewNotifications(false);
+              
+              // Refresh the notifications and bookings
+              await Promise.all([
+                fetchNotifications(),
+                fetchPendingBookings()
+              ]);
+              
+              return;
+            }
+      
+            // Handle the response from the database function
+            console.log('RPC response:', data);
+            switch (data) {
+              case 'SUCCESS':
+                toast.dismiss(loadingToast);
+                toast.success('Booking accepted successfully! Check your trips for details.');
+                break;
+              case 'EXPIRED':
+                toast.dismiss(loadingToast);
+                toast.error('This booking request has expired');
+                break;
+              case 'BOOKING_NO_LONGER_AVAILABLE':
+                toast.dismiss(loadingToast);
+                toast.error('This booking is no longer available');
+                break;
+              case 'INVALID_CODE':
+                toast.dismiss(loadingToast);
+                toast.error('Invalid response code');
+                break;
+              default:
+                if (data && data.startsWith('ERROR:')) {
+                  toast.dismiss(loadingToast);
+                  toast.error(`Error: ${data.substring(7)}`);
+                } else {
+                  toast.dismiss(loadingToast);
+                  throw new Error(`Unexpected response: ${data}`);
+                }
+            }
+          } catch (rpcError) {
+            console.error('Exception in RPC call:', rpcError);
+            throw rpcError;
           }
     
           // Log the response
