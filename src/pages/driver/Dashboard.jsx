@@ -357,6 +357,25 @@ export default function DriverDashboard() {
     };
   }, [user?.id]);
 
+  // Add polling for pending bookings
+  useEffect(() => {
+    if (!user) return;
+    
+    let mounted = true;
+
+    // Set up polling for pending bookings
+    const pollPendingBookingsInterval = setInterval(fetchPendingBookings, POLLING_INTERVAL);
+
+    // Initial fetch of pending bookings
+    fetchPendingBookings();
+
+    // Cleanup
+    return () => {
+      mounted = false;
+      clearInterval(pollPendingBookingsInterval);
+    };
+  }, [user?.id]);
+
   useEffect(() => {
     console.log('Driver Dashboard State:', {
       isDriver,
