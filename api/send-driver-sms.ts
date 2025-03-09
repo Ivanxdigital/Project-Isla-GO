@@ -4,10 +4,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Add notification status enum to match database
 const NOTIFICATION_STATUS = {
-  PENDING: 'pending',
-  ACCEPTED: 'accepted',
-  REJECTED: 'declined',
-  EXPIRED: 'expired'
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  EXPIRED: 'EXPIRED'
 };
 
 // Define interfaces for type safety

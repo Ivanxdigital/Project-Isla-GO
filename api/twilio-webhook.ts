@@ -16,10 +16,10 @@ const twilioClient = new twilio.Twilio(
 
 // Add notification status enum to match database
 const NOTIFICATION_STATUS = {
-  PENDING: 'pending',
-  ACCEPTED: 'accepted',
-  REJECTED: 'declined',
-  EXPIRED: 'expired'
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  REJECTED: 'REJECTED',
+  EXPIRED: 'EXPIRED'
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
