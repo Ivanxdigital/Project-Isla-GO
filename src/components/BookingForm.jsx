@@ -936,7 +936,12 @@ export default function BookingForm() {
   return (
     <div className="bg-gray-50 pb-0">
       <div className="max-w-3xl mx-auto py-12 px-4 pb-0 booking-form-container">
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">
+            <span className="inline-block animate-gradient bg-gradient-to-r from-teal-300 via-purple-400 to-orange-300 text-transparent bg-clip-text bg-size-200 bg-pos-0">
+              IslaGo
+            </span>
+          </h1>
           <LanguageSelector />
         </div>
         <div className="text-center mb-8">
