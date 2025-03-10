@@ -72,14 +72,16 @@ export default function HomePage() {
         className="flex flex-col w-full overflow-hidden"
         style={containerStyle}
       >
+        {/* Hero Section - Full height on desktop */}
         <motion.div 
           variants={sectionVariants}
-          className="-mt-16 w-full"
+          className="w-full h-screen"
           style={containerStyle}
         >
           <HeroSection />
         </motion.div>
         
+        {/* Booking Form - Positioned below hero section */}
         <motion.div 
           variants={sectionVariants}
           id="booking" 
@@ -90,7 +92,7 @@ export default function HomePage() {
         
         <motion.div
           variants={sectionVariants}
-          className="-mt-8 sm:-mt-12"
+          className="mt-0"
         >
           <WhyIslaGO />
         </motion.div>
