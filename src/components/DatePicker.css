@@ -1,0 +1,115 @@
+/* Custom styles for the DatePicker component */
+.islago-date-picker {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.islago-date-picker .rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: #2563eb;
+  --rdp-background-color: #e0e7ff;
+  margin: 0;
+}
+
+.islago-date-picker .rdp-months {
+  justify-content: center;
+}
+
+.islago-date-picker .rdp-month {
+  background-color: white;
+  border-radius: 8px;
+}
+
+.islago-date-picker .rdp-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.5em;
+  text-transform: capitalize;
+  margin-bottom: 0.5em;
+}
+
+.islago-date-picker .rdp-caption_label {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1f2937;
+}
+
+.islago-date-picker .rdp-nav {
+  display: flex;
+  align-items: center;
+}
+
+.islago-date-picker .rdp-nav_button {
+  width: 30px;
+  height: 30px;
+  padding: 0.2em;
+  border-radius: 50%;
+  color: #4b5563;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.islago-date-picker .rdp-nav_button:hover {
+  background-color: #f3f4f6;
+}
+
+.islago-date-picker .rdp-head_cell {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  padding-bottom: 0.5em;
+}
+
+.islago-date-picker .rdp-day {
+  width: var(--rdp-cell-size);
+  height: var(--rdp-cell-size);
+  border-radius: 8px;
+  margin: 0;
+  font-size: 0.875rem;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.islago-date-picker .rdp-day:hover:not(.rdp-day_selected) {
+  background-color: #f3f4f6;
+}
+
+.islago-date-picker .rdp-day_selected {
+  background-color: var(--rdp-accent-color);
+  color: white;
+  font-weight: 500;
+}
+
+.islago-date-picker .rdp-day_today {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+
+.islago-date-picker .rdp-day_outside {
+  opacity: 0.5;
+}
+
+.islago-date-picker .rdp-day_disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* Animation for the date picker */
+.islago-date-picker {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+} 

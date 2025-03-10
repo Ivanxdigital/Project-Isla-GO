@@ -23,6 +23,7 @@ import HotelAutocomplete from './HotelAutocomplete.jsx';
 import { format, addMinutes } from 'date-fns';
 import toast from 'react-hot-toast';
 import { ArrowRightIcon, ArrowLeftIcon } from '@heroicons/react/20/solid';
+import DatePicker from './DatePicker.jsx';
 
 const ProgressSteps = ({ currentStep }) => {
   const steps = [
@@ -1072,13 +1073,11 @@ export default function BookingForm() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         {t('form.departureDate')}
                       </label>
-                      <input
-                        type="date"
-                        min={minDate}
+                      <DatePicker
                         value={departureDate}
-                        onChange={(e) => setDepartureDate(e.target.value)}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        onChange={(date) => setDepartureDate(date)}
+                        minDate={minDate}
+                        placeholder={t('form.selectDate')}
                       />
                     </div>
 
@@ -1122,13 +1121,11 @@ export default function BookingForm() {
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             {t('form.returnDate')}
                           </label>
-                          <input
-                            type="date"
-                            min={departureDate || minDate}
+                          <DatePicker
                             value={returnDate}
-                            onChange={(e) => setReturnDate(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            onChange={(date) => setReturnDate(date)}
+                            minDate={departureDate || minDate}
+                            placeholder={t('form.selectDate')}
                           />
                         </div>
                         <div>
