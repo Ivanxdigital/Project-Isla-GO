@@ -50,11 +50,11 @@ const benefits = [
 
 export default function WhyIslaGO() {
   return (
-    <section className="pt-8 sm:pt-12 pb-16 bg-white" id="why-islago">
-      {/* Visual separator between sections */}
-      <div className="w-full h-12 sm:h-16 bg-gradient-to-b from-blue-50 to-white"></div>
+    <section className="pb-16 bg-white" id="why-islago" style={{ marginTop: '-1px' }}>
+      {/* Gradient overlay at the top of the section */}
+      <div className="h-16 w-full bg-gradient-to-b from-blue-50 to-white"></div>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
           <div className="inline-block mb-3">
