@@ -228,11 +228,11 @@ export default function ManageBookings() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
       {/* Debug panel removed */}
       
-      <div className="bg-white rounded-lg shadow-xl p-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Manage Your Bookings</h1>
+      <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-8">Manage Your Bookings</h1>
         
         {error && (
           <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-md">
@@ -241,17 +241,17 @@ export default function ManageBookings() {
         )}
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="-mb-px flex space-x-8">
+        <div className="border-b border-gray-200 mb-6 overflow-x-auto">
+          <nav className="-mb-px flex space-x-4 sm:space-x-8">
             <button
               onClick={() => setActiveTab('upcoming')}
               className={`${
                 activeTab === 'upcoming'
                   ? 'border-ai-500 text-ai-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap pb-4 px-1 border-b-2 font-medium`}
+              } whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm sm:text-base`}
             >
-              Upcoming Bookings ({bookings.upcoming.length})
+              Upcoming ({bookings.upcoming.length})
             </button>
             <button
               onClick={() => setActiveTab('past')}
@@ -259,9 +259,9 @@ export default function ManageBookings() {
                 activeTab === 'past'
                   ? 'border-ai-500 text-ai-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap pb-4 px-1 border-b-2 font-medium`}
+              } whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm sm:text-base`}
             >
-              Past Bookings ({bookings.past.length})
+              Past ({bookings.past.length})
             </button>
           </nav>
         </div>
@@ -287,7 +287,7 @@ export default function ManageBookings() {
 
         {/* Bookings Grid */}
         {bookings[activeTab].length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {bookings[activeTab].map((booking) => {
               // For hotel pickups, compute the pickup time (default offset: 60 minutes) 
               // and a "ready by" time (10 minutes earlier)
@@ -302,17 +302,19 @@ export default function ManageBookings() {
                   <div className="mt-4 space-y-3">
                     {/* Hotel Info Section */}
                     <div className="text-sm text-gray-600">
-                      <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between">
+                      <div className="flex flex-col space-y-2">
                         <div>
                           <p><strong>Hotel:</strong> {booking.hotel_details.name}</p>
-                          <p className="text-xs text-gray-500 mt-1 sm:mt-0">{booking.hotel_details.address}</p>
+                          <p className="text-xs text-gray-500 mt-1 break-words">{booking.hotel_details.address}</p>
                         </div>
-                        <p className="mt-2 sm:mt-0 sm:ml-4 text-sm whitespace-nowrap">
-                          <strong>Pickup:</strong> {hotelPickupTime}
-                          <span className="text-xs text-gray-500 block sm:inline sm:ml-1">
+                        <div className="flex items-center">
+                          <p className="text-sm">
+                            <strong>Pickup:</strong> {hotelPickupTime}
+                          </p>
+                          <span className="text-xs text-gray-500 ml-2">
                             (be ready by {readyByTime})
                           </span>
-                        </p>
+                        </div>
                       </div>
                     </div>
 
@@ -337,11 +339,11 @@ export default function ManageBookings() {
               return (
                 <div
                   key={booking.id}
-                  className="bg-gray-50 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow duration-200"
+                  className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
                 >
-                  <div className="flex flex-col sm:flex-row justify-between items-start mb-4">
-                    <div className="w-full sm:w-auto mb-2 sm:mb-0">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                  <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-between sm:items-start mb-4">
+                    <div className="w-full">
+                      <h3 className="text-lg font-semibold text-gray-900 break-words">
                         {booking.from_location} → {booking.to_location}
                       </h3>
                       <p className="text-sm text-gray-500">
@@ -351,7 +353,7 @@ export default function ManageBookings() {
                         Service: {booking.service_type}
                       </p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(booking.status)} mt-2 sm:mt-0`}>
                       {booking.status}
                     </span>
                   </div>
@@ -376,20 +378,20 @@ export default function ManageBookings() {
                           <img 
                             src={booking.driver.photo_url} 
                             alt={booking.driver.name} 
-                            className="w-12 h-12 rounded-full object-cover mr-3"
+                            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover mr-3"
                             onError={(e) => {
                               e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(booking.driver.name);
                             }}
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-200 flex items-center justify-center mr-3">
                             <span className="text-gray-500 text-lg">{booking.driver.name.charAt(0)}</span>
                           </div>
                         )}
-                        <div>
-                          <p className="font-medium">{booking.driver.name}</p>
+                        <div className="overflow-hidden">
+                          <p className="font-medium truncate">{booking.driver.name}</p>
                           {booking.driver.contact_number && (
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-600 truncate">
                               Contact: {booking.driver.contact_number}
                             </p>
                           )}
@@ -398,7 +400,7 @@ export default function ManageBookings() {
                     </div>
                   )}
 
-                  <div className="space-y-2 mt-4 sm:flex sm:space-y-0 sm:space-x-2">
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-4">
                     <button 
                       className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-ai-600 bg-ai-50 rounded-md hover:bg-ai-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ai-500 transition-colors duration-200"
                     >
