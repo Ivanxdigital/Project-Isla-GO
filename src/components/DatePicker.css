@@ -1,115 +1,193 @@
 /* Custom styles for the DatePicker component */
 .islago-date-picker {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.islago-date-picker .rdp {
-  --rdp-cell-size: 40px;
-  --rdp-accent-color: #2563eb;
-  --rdp-background-color: #e0e7ff;
-  margin: 0;
-}
-
-.islago-date-picker .rdp-months {
-  justify-content: center;
-}
-
-.islago-date-picker .rdp-month {
+  width: 100%;
+  max-width: 340px;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
   background-color: white;
-  border-radius: 8px;
-}
-
-.islago-date-picker .rdp-caption {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 0.5em;
-  text-transform: capitalize;
-  margin-bottom: 0.5em;
-}
-
-.islago-date-picker .rdp-caption_label {
-  font-weight: 600;
-  font-size: 1rem;
-  color: #1f2937;
-}
-
-.islago-date-picker .rdp-nav {
-  display: flex;
-  align-items: center;
-}
-
-.islago-date-picker .rdp-nav_button {
-  width: 30px;
-  height: 30px;
-  padding: 0.2em;
-  border-radius: 50%;
-  color: #4b5563;
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-}
-
-.islago-date-picker .rdp-nav_button:hover {
-  background-color: #f3f4f6;
-}
-
-.islago-date-picker .rdp-head_cell {
-  font-weight: 500;
-  font-size: 0.875rem;
-  color: #6b7280;
-  text-transform: uppercase;
-  padding-bottom: 0.5em;
-}
-
-.islago-date-picker .rdp-day {
-  width: var(--rdp-cell-size);
-  height: var(--rdp-cell-size);
-  border-radius: 8px;
-  margin: 0;
-  font-size: 0.875rem;
-  color: #4b5563;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.islago-date-picker .rdp-day:hover:not(.rdp-day_selected) {
-  background-color: #f3f4f6;
-}
-
-.islago-date-picker .rdp-day_selected {
-  background-color: var(--rdp-accent-color);
-  color: white;
-  font-weight: 500;
-}
-
-.islago-date-picker .rdp-day_today {
-  background-color: #f3f4f6;
-  font-weight: 600;
-}
-
-.islago-date-picker .rdp-day_outside {
-  opacity: 0.5;
-}
-
-.islago-date-picker .rdp-day_disabled {
-  opacity: 0.25;
-  cursor: not-allowed;
-}
-
-/* Animation for the date picker */
-.islago-date-picker {
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  max-height: 90vh;
+  overflow-y: auto;
   animation: fadeIn 0.2s ease-in-out;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translate(-50%, -45%);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Calendar container */
+.calendar-container {
+  width: 100%;
+}
+
+/* Calendar header with month navigation */
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.month-nav:hover {
+  background-color: #f3f4f6;
+}
+
+.current-month {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1f2937;
+}
+
+/* Days of week header */
+.calendar-days-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 8px;
+}
+
+.weekday-header {
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: #6b7280;
+  padding: 4px 0;
+}
+
+/* Calendar grid */
+.calendar-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  width: 100%;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #4b5563;
+  cursor: pointer;
+  margin: 2px 0;
+}
+
+.calendar-day:hover:not(.disabled):not(.outside-month) {
+  background-color: #f3f4f6;
+}
+
+.calendar-day.outside-month {
+  color: #9ca3af;
+  opacity: 0.5;
+}
+
+.calendar-day.selected {
+  background-color: #2563eb;
+  color: white;
+  font-weight: 500;
+}
+
+.calendar-day.today {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+
+.calendar-day.disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* Responsive styles for different screen sizes */
+/* Small mobile devices */
+@media (max-width: 360px) {
+  .islago-date-picker {
+    max-width: 280px;
+    max-height: 80vh;
+  }
+  
+  .calendar-day {
+    height: 32px;
+    font-size: 0.75rem;
+  }
+  
+  .weekday-header {
+    font-size: 0.7rem;
+  }
+  
+  .current-month {
+    font-size: 0.9rem;
+  }
+}
+
+/* Medium mobile devices */
+@media (min-width: 361px) and (max-width: 480px) {
+  .islago-date-picker {
+    max-width: 300px;
+    max-height: 85vh;
+  }
+}
+
+/* Larger mobile and small tablets */
+@media (min-width: 481px) and (max-width: 768px) {
+  .islago-date-picker {
+    position: absolute;
+    top: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    max-height: none;
+  }
+  
+  .calendar-day {
+    height: 40px;
+    font-size: 0.875rem;
+  }
+}
+
+/* Tablets and larger screens */
+@media (min-width: 769px) {
+  .islago-date-picker {
+    position: absolute;
+    top: auto;
+    left: 0;
+    transform: none;
+    padding: 16px;
+    border-radius: 8px;
+    max-height: none;
+  }
+  
+  .calendar-day {
+    height: 40px;
   }
 } 
