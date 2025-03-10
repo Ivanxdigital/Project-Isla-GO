@@ -193,6 +193,9 @@ export default function BookingForm() {
   const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
   const [isRegisterSubmitting, setIsRegisterSubmitting] = useState(false);
   const [_error, setError] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsError, setTermsError] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   // New state for hotel pickup
   const [pickupOption, setPickupOption] = useState('airport'); // 'airport' or 'hotel'
@@ -527,6 +530,13 @@ export default function BookingForm() {
     if (e) {
       e.preventDefault();
     }
+    
+    // Validate terms acceptance
+    if (!termsAccepted) {
+      setTermsError(true);
+      return;
+    }
+    setTermsError(false);
     
     console.log('Submit handler started');
     console.log('Current payment method:', paymentMethod);
