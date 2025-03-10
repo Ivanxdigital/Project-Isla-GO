@@ -33,6 +33,7 @@
     "@supabase/supabase-js": "^2.48.1",
     "@vercel/node": "^2.0.0",
     "autoprefixer": "^10.4.16",
+    "axios": "^1.8.2",
     "date-fns": "^4.1.0",
     "esbuild": "^0.25.0",
     "framer-motion": "^10.18.0",
@@ -54,7 +55,7 @@
     "resend": "^4.1.2",
     "swiper": "^10.3.1",
     "tailwindcss": "^3.3.3",
-    "twilio": "^4.0.0",
+    "twilio": "^5.4.5",
     "undici": "^7.3.0",
     "uuid": "^11.0.5"
   },
