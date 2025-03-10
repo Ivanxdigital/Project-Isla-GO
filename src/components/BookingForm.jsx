@@ -935,7 +935,7 @@ export default function BookingForm() {
 
   return (
     <div className="bg-gray-50 pb-0">
-      <div className="max-w-3xl mx-auto py-12 px-4 pb-0 booking-form-container">
+      <div className="max-w-3xl mx-auto py-8 sm:py-12 px-4 sm:px-6 pb-0 booking-form-container">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">
             <span className="inline-block animate-gradient bg-gradient-to-r from-teal-300 via-purple-400 to-orange-300 text-transparent bg-clip-text bg-size-200 bg-pos-0">
@@ -945,15 +945,15 @@ export default function BookingForm() {
           <LanguageSelector />
         </div>
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
             <span className="inline-block animate-gradient bg-gradient-to-r from-teal-300 via-purple-400 to-orange-300 text-transparent bg-clip-text bg-size-200 bg-pos-0">
               IslaGo
             </span>
           </h1>
-          <p className="text-lg text-gray-600">{t('subtitle')}</p>
+          <p className="text-base sm:text-lg text-gray-600">{t('subtitle')}</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-8">
           <ProgressSteps currentStep={currentStep} />
           
           <AnimatePresence mode="wait" initial={false}>
@@ -967,15 +967,14 @@ export default function BookingForm() {
             >
               {currentStep === 1 ? (
                 <form onSubmit={handleInitialSubmit} className="space-y-6">
-                  {/* From/To Selection */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         {t('form.from')}
                       </label>
                       <Listbox value={fromLocation} onChange={handleFromLocationChange}>
                         <div className="relative mt-1">
-                          <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-3 pl-4 pr-10 text-left border focus:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-300">
+                          <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-3 pl-4 pr-10 text-left border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all">
                             <span className="block truncate">{fromLocation}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                               <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
@@ -1024,7 +1023,7 @@ export default function BookingForm() {
                       </label>
                       <Listbox value={toLocation} onChange={handleToLocationChange}>
                         <div className="relative mt-1">
-                          <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-3 pl-4 pr-10 text-left border focus:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-300">
+                          <Listbox.Button className="relative w-full cursor-pointer rounded-lg bg-white py-3 pl-4 pr-10 text-left border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all">
                             <span className="block truncate">{toLocation || 'Select destination'}</span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                               <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
@@ -1068,8 +1067,7 @@ export default function BookingForm() {
                     </div>
                   </div>
 
-                  {/* Departure Date and Time */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         {t('form.departureDate')}
@@ -1080,7 +1078,7 @@ export default function BookingForm() {
                         value={departureDate}
                         onChange={(e) => setDepartureDate(e.target.value)}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
 
@@ -1092,7 +1090,7 @@ export default function BookingForm() {
                         value={departureTime}
                         onChange={(e) => setDepartureTime(e.target.value)}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">{t('form.selectTime')}</option>
                         {timeSlots.map(({ time, label }) => (
@@ -1104,101 +1102,22 @@ export default function BookingForm() {
                     </div>
                   </div>
 
-                  {/* Information box for private van time flexibility */}
-                  {(serviceType === 'private15' || serviceType === 'private10') && (
-                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-start">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                        </svg>
-                        <div>
-                          <h4 className="text-sm font-medium text-blue-800">Private Van Time Flexibility</h4>
-                          <p className="text-sm text-blue-700 mt-1">
-                            With private van hire, you have more flexibility in choosing your departure time. 
-                            Select any available time between 6:00 AM and 7:00 PM.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Pickup Option Selection */}
-                  <div className="mb-8">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pickup Option
-                    </label>
-                    <div className="flex space-x-4">
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="pickupOption"
-                          value="airport"
-                          checked={pickupOption === 'airport'}
-                          onChange={(e) => setPickupOption(e.target.value)}
-                          className="form-radio"
-                        />
-                        <span className="ml-2">Airport Pickup</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="pickupOption"
-                          value="hotel"
-                          checked={pickupOption === 'hotel'}
-                          onChange={(e) => setPickupOption(e.target.value)}
-                          className="form-radio"
-                        />
-                        <span className="ml-2">Hotel Pickup</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {pickupOption === 'hotel' && (
-                    <div className="mb-8">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Select Your Hotel
-                      </label>
-                      <HotelAutocomplete
-                        onSelect={(hotel) => {
-                          setSelectedHotel(hotel);
-                        }}
-                        defaultValue={selectedHotel?.name}
-                      />
-                      {selectedHotel && (
-                        <div className="mt-2">
-                          <p className="text-sm text-gray-600">
-                            {selectedHotel.address}
-                          </p>
-                          {departureTime && (
-                            <p className="mt-2 text-sm text-gray-600">
-                              Your pickup will be scheduled at approximately {getHotelPickupTime(departureTime, 60)}.
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Return Trip Selection */}
-                  <div className="space-y-4">
-                    <label className="flex items-center">
+                  <div className="mt-4">
+                    <div className="flex items-center">
                       <input
+                        id="return-trip"
                         type="checkbox"
                         checked={isReturn}
-                        onChange={(e) => {
-                          setIsReturn(e.target.checked);
-                          if (!e.target.checked) {
-                            setReturnDate('');
-                            setReturnTime('');
-                          }
-                        }}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        onChange={(e) => setIsReturn(e.target.checked)}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <span className="ml-2 text-sm font-medium text-gray-700">{t('form.returnTrip')}</span>
-                    </label>
+                      <label htmlFor="return-trip" className="ml-2 block text-sm font-medium text-gray-700">
+                        {t('form.returnTrip')}
+                      </label>
+                    </div>
 
                     {isReturn && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             {t('form.returnDate')}
@@ -1209,7 +1128,7 @@ export default function BookingForm() {
                             value={returnDate}
                             onChange={(e) => setReturnDate(e.target.value)}
                             required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                         </div>
                         <div>
@@ -1220,7 +1139,7 @@ export default function BookingForm() {
                             value={returnTime}
                             onChange={(e) => setReturnTime(e.target.value)}
                             required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           >
                             <option value="">{t('form.selectTime')}</option>
                             {timeSlots.map(({ time, label }) => (
@@ -1234,14 +1153,12 @@ export default function BookingForm() {
                     )}
                   </div>
 
-                  {/* Service Type Selection */}
-                  <div className="mb-8">
+                  <div className="mt-8">
                     <h3 className="text-lg font-semibold mb-4">Select Your Service Type</h3>
                     
-                    {/* Information about service types and time flexibility */}
-                    <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                       <div className="flex items-start">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                         </svg>
                         <p className="text-sm text-gray-700">
@@ -1253,10 +1170,10 @@ export default function BookingForm() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className={`p-5 sm:p-4 rounded-lg border-2 cursor-pointer ${
+                        className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
                           serviceType === 'shared'
                             ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-blue-200'
+                            : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
                         }`}
                         onClick={() => {
                           setServiceType('shared');
@@ -1265,10 +1182,10 @@ export default function BookingForm() {
                         }}
                       >
                         <h4 className="font-semibold text-lg mb-2">Shared Van</h4>
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="text-sm text-gray-600 mb-3">
                           Book individual seats in a shared van. Perfect for solo travelers or small groups.
                         </p>
-                        <ul className="text-sm text-gray-600 list-disc list-inside">
+                        <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
                           <li>Pay per person</li>
                           <li>Most economical option</li>
                           <li>Meet fellow travelers</li>
@@ -1277,10 +1194,10 @@ export default function BookingForm() {
 
                       <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className={`p-5 sm:p-4 rounded-lg border-2 cursor-pointer ${
+                        className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
                           serviceType === 'private15'
                             ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-blue-200'
+                            : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
                         }`}
                         onClick={() => {
                           setServiceType('private15');
@@ -1292,7 +1209,7 @@ export default function BookingForm() {
                         <p className="text-sm text-gray-600 mb-2">
                           Book an entire 15-seater van for your group. Maximum comfort and flexibility.
                         </p>
-                        <ul className="text-sm text-gray-600 list-disc list-inside">
+                        <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
                           <li>Up to 15 passengers</li>
                           <li>Full privacy</li>
                           <li>Flexible schedule</li>
@@ -1301,10 +1218,10 @@ export default function BookingForm() {
 
                       <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className={`p-5 sm:p-4 rounded-lg border-2 cursor-pointer ${
+                        className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
                           serviceType === 'private10'
                             ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-blue-200'
+                            : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
                         }`}
                         onClick={() => {
                           setServiceType('private10');
@@ -1316,7 +1233,7 @@ export default function BookingForm() {
                         <p className="text-sm text-gray-600 mb-2">
                           Book a compact 10-seater van. Perfect for smaller groups at a better price.
                         </p>
-                        <ul className="text-sm text-gray-600 list-disc list-inside">
+                        <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
                           <li>Up to 10 passengers</li>
                           <li>More economical private option</li>
                           <li>Ideal for families</li>
@@ -1325,83 +1242,67 @@ export default function BookingForm() {
                     </div>
                   </div>
 
-                  {/* Group Size Selection */}
-                  <div className="mb-8 flex flex-col items-center">
-                    <h3 className="text-lg font-semibold mb-4 text-center">
-                      {serviceType === 'shared' ? 'Number of Passengers' : 'Group Size (Optional)'}
-                    </h3>
-                    <div className="flex items-center justify-center space-x-6">
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {t('form.groupSize')}
+                    </label>
+                    <div className="flex items-center">
                       <button
                         type="button"
                         onClick={() => setGroupSize(Math.max(1, groupSize - 1))}
-                        className="p-2 rounded-full border border-gray-300 hover:bg-gray-100"
-                        disabled={groupSize <= 1}
+                        className="px-3 py-2 border border-gray-300 rounded-l-lg bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                         </svg>
                       </button>
-                      <span className="text-2xl font-semibold w-12 text-center">{groupSize}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={serviceType === 'private15' ? 15 : 10}
+                        value={groupSize}
+                        onChange={(e) => setGroupSize(parseInt(e.target.value) || 1)}
+                        className="w-16 text-center py-2 border-t border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-gray-300"
+                      />
                       <button
                         type="button"
-                        onClick={() => {
-                          const maxSize = serviceType === 'private10' ? 10 : serviceType === 'private15' ? 15 : 15;
-                          setGroupSize(Math.min(maxSize, groupSize + 1));
-                        }}
-                        className="p-2 rounded-full border border-gray-300 hover:bg-gray-100"
-                        disabled={
-                          (serviceType === 'private10' && groupSize >= 10) ||
-                          (serviceType === 'private15' && groupSize >= 15) ||
-                          (serviceType === 'shared' && groupSize >= 15)
-                        }
+                        onClick={() => setGroupSize(Math.min(serviceType === 'private15' ? 15 : 10, groupSize + 1))}
+                        className="px-3 py-2 border border-gray-300 rounded-r-lg bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
                       </button>
                     </div>
-                    {serviceType !== 'shared' && (
-                      <p className="text-sm text-gray-600 mt-2 text-center">
-                        Optional: Let us know your group size to better accommodate your needs
-                      </p>
-                    )}
                   </div>
 
-                  {/* Summary Block */}
-                  {toLocation && departureTime && (
-                    <div className="bg-blue-50 p-4 rounded-md">
-                      <div className="flex">
-                        <div className="flex-shrink-0">
-                          <CheckCircleIcon className="h-5 w-5 text-blue-400" aria-hidden="true" />
-                        </div>
-                        <div className="ml-3">
-                          <h3 className="text-sm font-medium text-blue-800">
-                            {t('booking.summary')}
-                          </h3>
-                          <div className="mt-2 text-sm text-blue-700">
-                            <p>{t('form.from')}: {fromLocation}</p>
-                            <p>{t('form.to')}: {toLocation}</p>
+                  {fromLocation && toLocation && departureDate && departureTime && (
+                    <div className="mt-8">
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h3 className="text-lg font-semibold mb-3">{t('booking.summary')}</h3>
+                        <div className="space-y-2">
+                          <p>{t('form.from')}: {fromLocation}</p>
+                          <p>{t('form.to')}: {toLocation}</p>
+                          <p>
+                            {t('form.departureDate')}: {departureDate} {departureTime} ({isPeakHour(departureTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
+                          </p>
+                          {isReturn && (
                             <p>
-                              {t('form.departureDate')}: {departureDate} {departureTime} ({isPeakHour(departureTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
+                              {t('form.returnDate')}: {returnDate} {returnTime} ({isPeakHour(returnTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
                             </p>
-                            {isReturn && (
-                              <p>
-                                {t('form.returnDate')}: {returnDate} {returnTime} ({isPeakHour(returnTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
-                              </p>
-                            )}
-                            <p>
-                              {serviceType === 'shared'
-                                ? `${t('form.groupSize')}: ${groupSize}`
-                                : `${t('form.serviceType')}: ${serviceType === 'private15' ? 'Private 15-Seater' : 'Private 10-Seater'}`
-                              }
-                            </p>
-                            <p>
-                              <strong>Pickup Option:</strong> {pickupOption === 'hotel' ? `Hotel Pickup${selectedHotel ? ' from ' + selectedHotel.name : ''}` : 'Airport Pickup'}
-                            </p>
-                            <p className="font-bold">
-                              {t('booking.total')}: ₱{calculatePrice()}
-                            </p>
-                          </div>
+                          )}
+                          <p>
+                            {serviceType === 'shared'
+                              ? `${t('form.groupSize')}: ${groupSize}`
+                              : `${t('form.serviceType')}: ${serviceType === 'private15' ? 'Private 15-Seater' : 'Private 10-Seater'}`
+                            }
+                          </p>
+                          <p>
+                            <strong>Pickup Option:</strong> {pickupOption === 'hotel' ? `Hotel Pickup${selectedHotel ? ' from ' + selectedHotel.name : ''}` : 'Airport Pickup'}
+                          </p>
+                          <p className="font-bold">
+                            {t('booking.total')}: ₱{calculatePrice()}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -1409,14 +1310,14 @@ export default function BookingForm() {
 
                   <button
                     type="submit"
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md transition-colors mt-6"
                   >
                     {t('form.continue')}
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         {t('form.firstName')}
@@ -1426,7 +1327,7 @@ export default function BookingForm() {
                         required
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        className="w-full px-4 py-3 sm:py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                     <div>
@@ -1438,7 +1339,7 @@ export default function BookingForm() {
                         required
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        className="w-full px-4 py-3 sm:py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                   </div>
@@ -1451,7 +1352,7 @@ export default function BookingForm() {
                       <select
                         value={selectedCountryCode}
                         onChange={(e) => setSelectedCountryCode(e.target.value)}
-                        className="w-full sm:w-48 px-4 py-3 sm:py-2 border border-gray-300 rounded-md sm:rounded-l-md sm:rounded-r-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full sm:w-48 px-4 py-3 border border-gray-300 rounded-lg sm:rounded-r-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                       >
                         {countryCodes.map((country) => (
                           <option key={country.code + country.country} value={country.code}>
@@ -1464,7 +1365,7 @@ export default function BookingForm() {
                         required
                         value={mobileNumber}
                         onChange={handlePhoneNumberChange}
-                        className="w-full px-4 py-3 sm:py-2 border border-gray-300 rounded-md sm:rounded-l-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg sm:rounded-l-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                         placeholder="9123456789"
                       />
                     </div>
@@ -1474,11 +1375,11 @@ export default function BookingForm() {
                     <label className="block text-sm font-medium text-gray-700">
                       {t('form.messenger')}
                     </label>
-                    <div className="flex gap-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <select
                         value={messengerType}
                         onChange={(e) => setMessengerType(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                        className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                       >
                         <option value="whatsapp">WhatsApp</option>
                         <option value="telegram">Telegram</option>
@@ -1489,11 +1390,11 @@ export default function BookingForm() {
                           value={messenger}
                           onChange={handleMessengerChange}
                           placeholder={t('form.messengerPlaceholder', { type: messengerType })}
-                          className={`w-full px-4 py-2 border ${
+                          className={`w-full px-4 py-3 border ${
                             validationErrors.messenger ? 'border-red-500' : 'border-gray-300'
-                          } rounded-md focus:ring-2 ${
+                          } rounded-lg shadow-sm focus:ring-2 ${
                             validationErrors.messenger ? 'focus:ring-red-500' : 'focus:ring-blue-500'
-                          }`}
+                          } focus:border-${validationErrors.messenger ? 'red' : 'blue'}-500`}
                         />
                         {validationErrors.messenger && (
                           <p className="mt-1 text-sm text-red-600">{validationErrors.messenger}</p>
@@ -1502,115 +1403,53 @@ export default function BookingForm() {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">
-                      {t('payment.method')}
-                    </label>
-                    <PaymentOptions paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} />
-                  </div>
-
-                  {/* Final Summary Section */}
                   <div className="mt-6">
-                    <div className="flex items-center space-x-3">
-                      <input
-                        id="terms"
-                        name="terms"
-                        type="checkbox"
-                        required
-                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="terms" className="text-sm text-gray-700">
-                        {t('form.termsAndConditions.checkbox')}{' '}
-                        <a href="#" className="text-blue-600 hover:text-blue-800 font-medium">
-                          {t('form.termsAndConditions.link')}
-                        </a>
-                      </label>
+                    <div className="flex items-start">
+                      <div className="flex items-center h-5">
+                        <input
+                          id="terms"
+                          type="checkbox"
+                          checked={termsAccepted}
+                          onChange={(e) => setTermsAccepted(e.target.checked)}
+                          className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </div>
+                      <div className="ml-3 text-sm">
+                        <label htmlFor="terms" className="font-medium text-gray-700">
+                          {t('form.termsAndConditions.checkbox')}
+                        </label>
+                        <p className="text-gray-500 mt-1">
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setShowTerms(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 underline"
+                          >
+                            {t('form.termsAndConditions.link')}
+                          </a>
+                        </p>
+                        {!termsAccepted && termsError && (
+                          <p className="mt-1 text-sm text-red-600">{t('form.termsAndConditions.required')}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Payment Breakdown Section */}
-                  <div className="mt-6 bg-gray-50 rounded-lg p-4 sm:p-6">
-                    <h4 className="text-lg font-semibold mb-3">Payment Breakdown</h4>
-                    <div className="space-y-3 sm:space-y-2">
-                      {getPriceBreakdown() && (
-                        <>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">
-                              {serviceType === 'shared' 
-                                ? `Base Price (${groupSize} passenger${groupSize > 1 ? 's' : ''})`
-                                : `Base Price (${serviceType === 'private15' ? '15-seater' : '10-seater'})`
-                              }
-                            </span>
-                            <span>₱{getPriceBreakdown().basePrice}</span>
-                          </div>
-
-                          {getPriceBreakdown().peakSurcharge > 0 && (
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-600">Peak Hour Surcharge</span>
-                              <span>₱{getPriceBreakdown().peakSurcharge}</span>
-                            </div>
-                          )}
-
-                          {isReturn && (
-                            <>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Return Trip Base Price</span>
-                                <span>₱{getPriceBreakdown().returnPrice}</span>
-                              </div>
-
-                              {getPriceBreakdown().returnPeakSurcharge > 0 && (
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-gray-600">Return Peak Hour Surcharge</span>
-                                  <span>₱{getPriceBreakdown().returnPeakSurcharge}</span>
-                                </div>
-                              )}
-                            </>
-                          )}
-
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <div className="flex justify-between font-semibold">
-                              <span>Total Amount</span>
-                              <span>₱{getPriceBreakdown().total}</span>
-                            </div>
-                          </div>
-
-                          <div className="mt-2 text-xs text-gray-500">
-                            {serviceType === 'shared' ? (
-                              <p>Price is calculated per passenger with applicable peak hour surcharges.</p>
-                            ) : (
-                              <p>Price is for the entire van regardless of the number of passengers.</p>
-                            )}
-                            {(getPriceBreakdown().peakSurcharge > 0 || getPriceBreakdown().returnPeakSurcharge > 0) && (
-                              <p className="mt-1">Peak hour surcharge applies during high-demand periods (6:00-10:00 and 15:00-19:00).</p>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Final Summary Display */}
-                  <div className="flex gap-4">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
                     <button
                       type="button"
                       onClick={handleBackStep}
-                      className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                      className="w-full sm:w-1/3 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 shadow-sm transition-colors"
                     >
                       {t('form.back')}
                     </button>
                     <button
                       type="submit"
-                      disabled={isSubmitting}
-                      className="flex-1 bg-blue-600 text-white py-3 px-4 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      className="w-full sm:w-2/3 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md transition-colors"
                     >
-                      {isSubmitting ? (
-                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                      ) : (
-                        t('form.complete')
-                      )}
+                      {t('form.complete')}
                     </button>
                   </div>
                 </form>
@@ -1618,72 +1457,7 @@ export default function BookingForm() {
             </motion.div>
           </AnimatePresence>
         </div>
-
-        <ReviewsSection />
       </div>
-
-      {/* Final Booking Summary Display */}
-      {toLocation && departureTime && (!isReturn || (isReturn && returnTime)) && (
-        <div className="bg-blue-50 p-4 rounded-md">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <CheckCircleIcon className="h-5 w-5 text-blue-400" aria-hidden="true" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">
-                {t('booking.summary')}
-              </h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p>{t('form.from')}: {fromLocation}</p>
-                <p>{t('form.to')}: {toLocation}</p>
-                <p>
-                  {t('form.departureDate')}: {departureDate} {departureTime} ({isPeakHour(departureTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
-                </p>
-                {isReturn && (
-                  <p>
-                    {t('form.returnDate')}: {returnDate} {returnTime} ({isPeakHour(returnTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
-                  </p>
-                )}
-                <p>
-                  {serviceType === 'shared'
-                    ? `${t('form.groupSize')}: ${groupSize}`
-                    : `${t('form.serviceType')}: ${serviceType === 'private15' ? 'Private 15-Seater' : 'Private 10-Seater'}`
-                  }
-                </p>
-                <p>
-                  <strong>Pickup Option:</strong> {pickupOption === 'hotel' ? `Hotel Pickup${selectedHotel ? ' from ' + selectedHotel.name : ''}` : 'Airport Pickup'}
-                </p>
-                {getPriceBreakdown() && (
-                  <div className="mt-2 border-t border-blue-200 pt-2">
-                    <p>Base Fare: ₱{getPriceBreakdown().basePrice}</p>
-                    {getPriceBreakdown().peakSurcharge > 0 && (
-                      <p>Peak Hour Surcharge: ₱{getPriceBreakdown().peakSurcharge}</p>
-                    )}
-                    {isReturn && (
-                      <>
-                        <p>Return Base Fare: ₱{getPriceBreakdown().returnPrice}</p>
-                        {getPriceBreakdown().returnPeakSurcharge > 0 && (
-                          <p>Return Peak Hour Surcharge: ₱{getPriceBreakdown().returnPeakSurcharge}</p>
-                        )}
-                      </>
-                    )}
-                    <p className="font-bold mt-1">
-                      {t('booking.total')}: ₱{getPriceBreakdown().total}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Debug info */}
-      <div className="hidden">
-        Debug: {showAuthModal ? 'Modal should show' : 'Modal hidden'}
-      </div>
-
-      {showAuthModal ? renderAuthModal() : null}
     </div>
   );
 }
