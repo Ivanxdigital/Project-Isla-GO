@@ -570,24 +570,29 @@ export default function DriverDashboard() {
           // Skip the RPC call for rejection - it's not needed since we already updated the notification
           if (!accept) {
             console.log('Skipping RPC call for rejection since notification is already updated');
-            toast.dismiss(loadingToast);
-            toast.success('Booking rejected successfully');
             
             // Log the response for rejection
-            await supabase.from('driver_notification_logs').insert({
-              booking_id: bookingId,
-              driver_id: user.id,
-              notification_id: notificationId,
-              status_code: 200,
-              response: JSON.stringify({ status: 'SUCCESS', action: 'reject' }),
-              created_at: new Date().toISOString()
-            });
+            try {
+              await supabase.from('driver_notification_logs').insert({
+                booking_id: bookingId,
+                driver_id: user.id,
+                notification_id: notificationId,
+                status_code: 200,
+                response: JSON.stringify({ status: 'SUCCESS', action: 'reject' }),
+                created_at: new Date().toISOString()
+              });
+            } catch (logError) {
+              console.error('Error logging rejection:', logError);
+              // Don't return here, continue with the flow
+            }
+            
+            toast.dismiss(loadingToast);
+            toast.success('Booking rejected successfully');
             
             // Reset new notification flag
             setHasNewNotifications(false);
             
             // Immediately remove this notification from the pendingBookings state
-            // This ensures the UI updates immediately without waiting for the next fetch
             setPendingBookings(prevBookings => 
               prevBookings.filter(booking => booking.id !== notificationId)
             );
@@ -603,78 +608,25 @@ export default function DriverDashboard() {
     
           // Only call the RPC function for acceptance
           console.log('Calling handle_driver_response RPC for acceptance');
+          let rpcResponse;
           try {
-            const { data, error } = await supabase
+            const { data: rpcData, error: rpcError } = await supabase
               .rpc('handle_driver_response', {
                 p_booking_id: bookingId,
                 p_driver_id: user.id,
                 p_response_code: notification.response_code
               });
       
-            if (error) {
-              console.error('Error from handle_driver_response RPC:', error);
-              
-              // Implement fallback mechanism if RPC fails
-              console.log('RPC failed, implementing fallback mechanism');
-              
-              // 1. Update booking status directly
-              const { error: bookingUpdateError } = await supabase
-                .from('bookings')
-                .update({
-                  status: 'driver_assigned',
-                  assigned_driver_id: user.id,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', bookingId);
-                
-              if (bookingUpdateError) {
-                console.error('Error updating booking in fallback:', bookingUpdateError);
-                throw bookingUpdateError;
-              }
-              
-              // 2. Mark other notifications for this booking as expired
-              const { error: otherNotificationsError } = await supabase
-                .from('driver_notifications')
-                .update({
-                  status: 'expired',
-                  updated_at: new Date().toISOString()
-                })
-                .eq('booking_id', bookingId)
-                .neq('id', notificationId);
-                
-              if (otherNotificationsError) {
-                console.error('Error updating other notifications in fallback:', otherNotificationsError);
-                // Continue anyway, this is not critical
-              }
-              
-              // Log the fallback action
-              await supabase.from('driver_notification_logs').insert({
-                booking_id: bookingId,
-                driver_id: user.id,
-                notification_id: notificationId,
-                status_code: 200,
-                response: JSON.stringify({ status: 'SUCCESS_FALLBACK', action: 'accept', error: error.message }),
-                created_at: new Date().toISOString()
-              });
-              
-              toast.dismiss(loadingToast);
-              toast.success('Booking accepted successfully! Check your trips for details.');
-              
-              // Reset new notification flag
-              setHasNewNotifications(false);
-              
-              // Refresh the notifications and bookings
-              await Promise.all([
-                fetchNotifications(),
-                fetchPendingBookings()
-              ]);
-              
-              return;
+            if (rpcError) {
+              console.error('Error from handle_driver_response RPC:', rpcError);
+              throw rpcError;
             }
+            
+            rpcResponse = rpcData;
+            console.log('RPC response:', rpcResponse);
       
             // Handle the response from the database function
-            console.log('RPC response:', data);
-            switch (data) {
+            switch (rpcResponse) {
               case 'SUCCESS':
                 toast.dismiss(loadingToast);
                 toast.success('Booking accepted successfully! Check your trips for details.');
@@ -692,28 +644,68 @@ export default function DriverDashboard() {
                 toast.error('Invalid response code');
                 break;
               default:
-                if (data && data.startsWith('ERROR:')) {
+                if (rpcResponse && rpcResponse.startsWith('ERROR:')) {
                   toast.dismiss(loadingToast);
-                  toast.error(`Error: ${data.substring(7)}`);
+                  toast.error(`Error: ${rpcResponse.substring(7)}`);
                 } else {
                   toast.dismiss(loadingToast);
-                  throw new Error(`Unexpected response: ${data}`);
+                  throw new Error(`Unexpected response: ${rpcResponse}`);
                 }
             }
           } catch (rpcError) {
             console.error('Exception in RPC call:', rpcError);
-            throw rpcError;
+            
+            // Implement fallback mechanism if RPC fails
+            console.log('RPC failed, implementing fallback mechanism');
+            
+            // 1. Update booking status directly
+            const { error: bookingUpdateError } = await supabase
+              .from('bookings')
+              .update({
+                status: 'driver_assigned',
+                assigned_driver_id: user.id,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', bookingId);
+              
+            if (bookingUpdateError) {
+              console.error('Error updating booking in fallback:', bookingUpdateError);
+              throw bookingUpdateError;
+            }
+            
+            // 2. Mark other notifications for this booking as expired
+            const { error: otherNotificationsError } = await supabase
+              .from('driver_notifications')
+              .update({
+                status: 'expired',
+                updated_at: new Date().toISOString()
+              })
+              .eq('booking_id', bookingId)
+              .neq('id', notificationId);
+              
+            if (otherNotificationsError) {
+              console.error('Error updating other notifications in fallback:', otherNotificationsError);
+              // Continue anyway, this is not critical
+            }
+            
+            toast.dismiss(loadingToast);
+            toast.success('Booking accepted successfully! Check your trips for details.');
           }
     
           // Log the response
-          await supabase.from('driver_notification_logs').insert({
-            booking_id: bookingId,
-            driver_id: user.id,
-            notification_id: notificationId,
-            status_code: data === 'SUCCESS' ? 200 : 400,
-            response: JSON.stringify({ status: data, action: 'accept' }),
-            created_at: new Date().toISOString()
-          });
+          try {
+            await supabase.from('driver_notification_logs').insert({
+              booking_id: bookingId,
+              driver_id: user.id,
+              notification_id: notificationId,
+              status_code: rpcResponse === 'SUCCESS' ? 200 : 400,
+              response: JSON.stringify({ status: rpcResponse || 'FALLBACK_SUCCESS', action: 'accept' }),
+              created_at: new Date().toISOString()
+            });
+          } catch (logError) {
+            console.error('Error logging response:', logError);
+            // Don't return here, continue with the flow
+          }
     
           // Reset new notification flag
           setHasNewNotifications(false);
@@ -737,14 +729,18 @@ export default function DriverDashboard() {
           });
           
           // Log the error
-          await supabase.from('driver_notification_logs').insert({
-            booking_id: bookingId,
-            driver_id: user.id,
-            notification_id: notificationId,
-            status_code: 500,
-            response: JSON.stringify({ error: error.message }),
-            created_at: new Date().toISOString()
-          });
+          try {
+            await supabase.from('driver_notification_logs').insert({
+              booking_id: bookingId,
+              driver_id: user.id,
+              notification_id: notificationId,
+              status_code: 500,
+              response: JSON.stringify({ error: error.message }),
+              created_at: new Date().toISOString()
+            });
+          } catch (logError) {
+            console.error('Error logging error response:', logError);
+          }
           
           // Still refresh the UI to show current state
           await Promise.all([
