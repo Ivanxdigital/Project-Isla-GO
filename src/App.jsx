@@ -53,6 +53,7 @@ import { DriverSidebarProvider, useDriverSidebar } from './contexts/DriverSideba
 import DriverSidebar from './components/DriverSidebar.jsx';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import WhatsAppTest from './components/WhatsAppTest.jsx';
+import EmailTest from './components/EmailTest.jsx';
 
 function RootLayout() {
   const location = useLocation();
@@ -242,6 +243,7 @@ function App() {
                     <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
                     <Route path="/auth/callback" element={<AuthCallback />} />
                     <Route path="/whatsapp-test" element={<WhatsAppTest />} />
+                    <Route path="/email-test" element={<EmailTest />} />
                     <Route path="*" element={
                       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
                         <div className="max-w-md w-full space-y-8 text-center">
