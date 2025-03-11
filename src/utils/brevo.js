@@ -26,13 +26,13 @@ const formatCurrency = (amount) => {
 };
 
 /**
- * Send a payment confirmation email to the customer
- * @param {string} bookingId - The ID of the booking
+ * Send payment confirmation email to customer
+ * @param {string} bookingId - The booking ID
  * @returns {Promise<boolean>} - True if email was sent successfully
  */
 export const sendPaymentConfirmationEmail = async (bookingId) => {
   try {
-    console.log('Preparing to send payment confirmation email for booking:', bookingId);
+    console.log('Sending payment confirmation email for booking:', bookingId);
     
     // Check if API key is available
     const apiKey = import.meta.env.VITE_BREVO_API_KEY;
@@ -41,173 +41,144 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       throw new Error('Brevo API key is missing');
     }
     
-    // First check if the payment exists
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('booking_id', bookingId)
-      .single();
-      
-    if (paymentError) {
-      console.error('Error fetching payment details:', paymentError);
-      // Continue anyway, as the booking might still exist
+    // Get authenticated user session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error('No authenticated session found');
+      throw new Error('No authenticated session found');
     }
     
-    // Get the booking details - using the same query structure as in twilio.js
+    // Fetch booking details
+    console.log('Fetching booking details for ID:', bookingId);
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select('*')
       .eq('id', bookingId)
       .single();
     
-    if (bookingError || !booking) {
-      console.error('Error fetching booking details:', bookingError || 'No booking found');
+    if (bookingError) {
+      console.error('Error fetching booking:', bookingError);
+      
+      // Log to email_failures table
+      await supabase.from('email_failures').insert({
+        booking_id: bookingId,
+        error_message: `Error fetching booking: ${bookingError.message}`,
+        error_details: JSON.stringify(bookingError),
+        resolved: false
+      });
+      
+      throw new Error(`Error fetching booking: ${bookingError.message}`);
+    }
+    
+    if (!booking) {
+      console.error('Booking not found:', bookingId);
+      
+      // Log to email_failures table
+      await supabase.from('email_failures').insert({
+        booking_id: bookingId,
+        error_message: 'Booking not found',
+        error_details: JSON.stringify({ bookingId }),
+        resolved: false
+      });
+      
       throw new Error('Booking not found');
     }
     
-    console.log('Booking details fetched successfully:', booking.id);
+    console.log('Booking found:', booking);
     
-    // Log the full booking object for debugging
-    console.log('Booking details:', JSON.stringify(booking, null, 2));
+    // Fetch customer details
+    console.log('Fetching customer details for ID:', booking.customer_id);
+    const { data: customer, error: customerError } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', booking.customer_id)
+      .single();
     
-    // Now get the customer details separately
+    if (customerError) {
+      console.error('Error fetching customer:', customerError);
+    }
+    
+    // Try to get email from different sources
     let recipientEmail = null;
     let recipientName = 'Valued Customer';
     
-    if (booking.customer_id) {
-      console.log('Fetching customer details for customer_id:', booking.customer_id);
-      const { data: customer, error: customerError } = await supabase
-        .from('customers')
-        .select('email, first_name, last_name')
-        .eq('id', booking.customer_id)
-        .single();
-      
-      if (customerError) {
-        console.error('Error fetching customer details:', customerError);
-      } else if (customer) {
-        console.log('Customer details found:', JSON.stringify(customer, null, 2));
-        recipientEmail = customer.email;
-        if (customer.first_name) {
-          recipientName = `${customer.first_name} ${customer.last_name}`;
-        }
-      } else {
-        console.log('No customer found with ID:', booking.customer_id);
+    // 1. Try from customer record
+    if (customer && customer.email) {
+      console.log('Found email in customer record:', customer.email);
+      recipientEmail = customer.email;
+      if (customer.first_name) {
+        recipientName = `${customer.first_name} ${customer.last_name || ''}`.trim();
       }
-    } else {
-      console.log('No customer_id found in booking');
-    }
-    
-    // If still no email, try to get it from the user's profile
-    if (!recipientEmail && booking.user_id) {
-      console.log('Fetching profile details for user_id:', booking.user_id);
+    } 
+    // 2. Try from profiles table
+    else {
+      console.log('Email not found in customer record, checking profiles table');
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('email, full_name')
-        .eq('id', booking.user_id)
+        .select('*')
+        .eq('id', session.user.id)
         .single();
       
-      if (profileError) {
-        console.error('Error fetching profile details:', profileError);
-      } else if (profile) {
-        console.log('Profile details found:', JSON.stringify(profile, null, 2));
-        if (profile.email) {
-          recipientEmail = profile.email;
-          if (profile.full_name) {
-            recipientName = profile.full_name;
-          }
-        } else {
-          console.log('No email found in profile');
+      if (!profileError && profile && profile.email) {
+        console.log('Found email in profile record:', profile.email);
+        recipientEmail = profile.email;
+        if (profile.first_name) {
+          recipientName = `${profile.first_name} ${profile.last_name || ''}`.trim();
         }
-      } else {
-        console.log('No profile found with ID:', booking.user_id);
-      }
-    } else if (!booking.user_id) {
-      console.log('No user_id found in booking');
-    }
-    
-    // If still no email, try to get it from auth.users table
-    if (!recipientEmail && booking.user_id) {
-      console.log('Trying to fetch user from auth.users for user_id:', booking.user_id);
-      try {
-        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(booking.user_id);
+      } 
+      // 3. Try from auth.users table
+      else {
+        console.log('Email not found in profile record, checking auth.users table');
+        const { data: user, error: userError } = await supabase
+          .from('users')
+          .select('email')
+          .eq('id', session.user.id)
+          .single();
         
-        if (authError) {
-          console.error('Error fetching user from auth.users:', authError);
-        } else if (authUser && authUser.user && authUser.user.email) {
-          console.log('Auth user details found:', JSON.stringify({
-            id: authUser.user.id,
-            email: authUser.user.email,
-            metadata: authUser.user.user_metadata
-          }, null, 2));
-          
-          recipientEmail = authUser.user.email;
-          console.log('Found email in auth.users table:', recipientEmail);
-          
-          // Try to get the user's name from user_metadata if available
-          if (authUser.user.user_metadata && authUser.user.user_metadata.full_name) {
-            recipientName = authUser.user.user_metadata.full_name;
-          }
-        } else {
-          console.log('No user found in auth.users or no email available');
-        }
-      } catch (authError) {
-        console.error('Exception fetching user from auth.users:', authError);
-        // Continue anyway, we'll try other methods
-      }
-    }
-    
-    // Last resort: try to get the email directly from auth
-    if (!recipientEmail && booking.user_id) {
-      console.log('Trying to get current user from auth session');
-      try {
-        const { data: { user }, error: getUserError } = await supabase.auth.getUser();
-        
-        if (getUserError) {
-          console.error('Error getting current user:', getUserError);
-        } else if (user && user.email) {
-          console.log('Current user details found:', JSON.stringify({
-            id: user.id,
-            email: user.email,
-            metadata: user.user_metadata
-          }, null, 2));
-          
+        if (!userError && user && user.email) {
+          console.log('Found email in auth.users record:', user.email);
           recipientEmail = user.email;
-          console.log('Found email from current auth session:', recipientEmail);
-          
-          if (user.user_metadata && user.user_metadata.full_name) {
-            recipientName = user.user_metadata.full_name;
-          }
         } else {
-          console.log('No current user found or no email available');
+          // 4. Last resort - use session email
+          console.log('Using email from session:', session.user.email);
+          recipientEmail = session.user.email;
         }
-      } catch (getUserError) {
-        console.error('Exception getting current user:', getUserError);
       }
     }
     
-    // Fallback to a hardcoded email for testing if no email is found
+    // Fallback to session email if still not found
+    if (!recipientEmail && session.user.email) {
+      console.log('Using fallback email from session:', session.user.email);
+      recipientEmail = session.user.email;
+    }
+    
+    // If still no email, log error and exit
     if (!recipientEmail) {
       console.error('No recipient email found for booking:', bookingId);
       
-      // For testing purposes, uncomment this to use a fallback email
-      recipientEmail = 'ivanxinfante@gmail.com';
-      console.log('Using fallback email for testing:', recipientEmail);
+      // Log to email_failures table
+      await supabase.from('email_failures').insert({
+        booking_id: bookingId,
+        error_message: 'No recipient email found',
+        error_details: JSON.stringify({ 
+          booking_id: bookingId,
+          customer_id: booking.customer_id,
+          session_user_id: session.user.id
+        }),
+        resolved: false
+      });
       
-      // throw new Error('No recipient email found');
+      throw new Error('No recipient email found');
     }
     
-    console.log('Using recipient email:', recipientEmail, 'and name:', recipientName);
-    
-    // Generate the HTML content using the detailed template
+    console.log('Generating HTML content for email');
     const htmlContent = getPaymentConfirmationHtml(booking);
-    
-    // Log a sample of the HTML content for debugging
-    console.log('HTML content sample (first 200 chars):', htmlContent.substring(0, 200));
+    console.log('HTML content generated successfully');
     
     // Prepare email content
     const emailData = {
       sender: {
-        name: 'IslaGO',
+        name: 'IslaGO Booking',
         email: 'noreply@islago.vercel.app'
       },
       to: [{
@@ -215,7 +186,20 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
         name: recipientName
       }],
       subject: 'IslaGO - Payment Confirmation',
-      htmlContent: htmlContent
+      htmlContent: htmlContent,
+      replyTo: {
+        email: 'support@islago.vercel.app',
+        name: 'IslaGO Support'
+      },
+      headers: {
+        'X-Mailin-custom': 'booking_id:' + bookingId,
+        'charset': 'utf-8'
+      },
+      tags: ['payment-confirmation', 'booking-' + bookingId],
+      tracking: {
+        open: true,
+        click: true
+      }
     };
     
     console.log('Sending email to:', recipientEmail);
@@ -223,100 +207,80 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       sender: emailData.sender,
       to: emailData.to,
       subject: emailData.subject,
-      htmlContentLength: emailData.htmlContent.length
+      replyTo: emailData.replyTo,
+      tags: emailData.tags
     }, null, 2));
     
     // Send the email using Brevo API with CORS mode
-    try {
-      console.log('Making API request to Brevo');
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        mode: 'cors',
-        headers: {
-          'accept': 'application/json',
-          'api-key': apiKey,
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify(emailData)
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(emailData)
+    });
+    
+    // Log the full response for debugging
+    console.log('Brevo API response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Brevo API error response:', errorText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { message: errorText };
+      }
+      
+      // Log to email_failures table
+      await supabase.from('email_failures').insert({
+        booking_id: bookingId,
+        error_message: `API Error: ${errorData.message || 'Unknown error'}`,
+        error_details: JSON.stringify(errorData),
+        resolved: false
       });
       
-      // Log the full response for debugging
-      console.log('Brevo API response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Brevo API error response text:', errorText);
-        
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-          console.error('Brevo API error parsed:', errorData);
-        } catch (e) {
-          errorData = { message: errorText };
-          console.error('Failed to parse error response:', e);
-        }
-        
-        throw new Error(`Failed to send email: ${errorData.message || 'Unknown error'}`);
-      }
-      
-      const responseData = await response.json();
-      console.log('Brevo API response data:', responseData);
-      
-      // Update booking to mark email as sent
-      const { error: updateError } = await supabase
-        .from('bookings')
-        .update({
-          payment_confirmation_email_sent: true,
-          payment_confirmation_email_sent_at: new Date().toISOString()
-        })
-        .eq('id', bookingId);
-        
-      if (updateError) {
-        console.error('Error updating booking email status:', updateError);
-      } else {
-        console.log('Booking updated to mark email as sent');
-      }
-      
-      console.log('Payment confirmation email sent successfully');
-      return true;
-    } catch (apiError) {
-      console.error('Error during Brevo API call:', apiError);
-      
-      // Update booking to mark email as failed
-      try {
-        const { error: updateError } = await supabase
-          .from('bookings')
-          .update({
-            payment_confirmation_email_sent: false,
-            payment_confirmation_email_sent_at: new Date().toISOString()
-          })
-          .eq('id', bookingId);
-          
-        if (updateError) {
-          console.error('Error updating booking email status:', updateError);
-        } else {
-          console.log('Booking updated to mark email as failed');
-        }
-      } catch (updateError) {
-        console.error('Exception updating booking email status:', updateError);
-      }
-      
-      throw apiError;
+      throw new Error(`Failed to send email: ${errorData.message || 'Unknown error'}`);
     }
+    
+    const responseData = await response.json();
+    console.log('Brevo API response data:', responseData);
+    
+    // Update booking to mark email as sent
+    const { error: updateError } = await supabase
+      .from('bookings')
+      .update({ email_sent: true })
+      .eq('id', bookingId);
+    
+    if (updateError) {
+      console.error('Error updating booking email_sent status:', updateError);
+    } else {
+      console.log('Booking email_sent status updated successfully');
+    }
+    
+    console.log('Payment confirmation email sent successfully');
+    return true;
   } catch (error) {
     console.error('Failed to send payment confirmation email:', error);
     
-    // Update booking to mark email as failed
+    // Try to log to email_failures table if not already logged
     try {
-      await supabase
-        .from('bookings')
-        .update({
-          payment_confirmation_email_sent: false,
-          payment_confirmation_email_sent_at: new Date().toISOString()
-        })
-        .eq('id', bookingId);
-    } catch (updateError) {
-      console.error('Failed to update booking email status:', updateError);
+      await supabase.from('email_failures').insert({
+        booking_id: bookingId,
+        error_message: error.message,
+        error_details: JSON.stringify({ 
+          stack: error.stack,
+          message: error.message
+        }),
+        resolved: false
+      });
+    } catch (logError) {
+      console.error('Failed to log email failure:', logError);
     }
     
     throw error;
@@ -416,54 +380,6 @@ const getPaymentConfirmationHtml = (booking) => {
       </body>
     </html>
   `;
-  
+   
   return htmlContent;
 };
-
-/**
- * Test the Brevo API connection
- * @returns {Promise<boolean>} - True if connection is successful
- */
-export const testBrevoConnection = async () => {
-  try {
-    const apiKey = import.meta.env.VITE_BREVO_API_KEY;
-    
-    if (!apiKey) {
-      console.error('Brevo API key is missing');
-      return false;
-    }
-    
-    console.log('Testing Brevo API connection with key:', apiKey.substring(0, 10) + '...');
-    
-    // Make a simple request to the Brevo API to check if the key is valid
-    const response = await fetch('https://api.brevo.com/v3/account', {
-      method: 'GET',
-      mode: 'cors',
-      headers: {
-        'accept': 'application/json',
-        'api-key': apiKey
-      }
-    });
-    
-    console.log('Brevo API test response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        errorData = { message: errorText };
-      }
-      console.error('Brevo API connection test failed:', errorData);
-      return false;
-    }
-    
-    const data = await response.json();
-    console.log('Brevo API connection successful:', data);
-    return true;
-  } catch (error) {
-    console.error('Brevo API connection test error:', error);
-    return false;
-  }
-}; 
