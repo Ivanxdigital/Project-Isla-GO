@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../utils/supabase.ts';
 import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo.js';
 import { sendDriverNotifications } from '../utils/twilio.js';
-import { sendPaymentConfirmationEmail, testBrevoConnection } from '../utils/brevo.js';
+import { sendPaymentConfirmationEmail } from '../utils/brevo.js';
 import toast from 'react-hot-toast';
 import DriverDetails from './DriverDetails.jsx';
 import ContactOptions from './ContactOptions.jsx';
@@ -119,15 +119,17 @@ export default function PaymentSuccess() {
 
     const checkBrevoConnection = async () => {
       try {
-        console.log('Testing Brevo API connection...');
-        const isConnected = await testBrevoConnection();
+        console.log('Checking Brevo API configuration...');
+        // Check if the Brevo API key is available
+        const apiKey = import.meta.env.VITE_BREVO_API_KEY;
+        const isConnected = !!apiKey;
         setBrevoConnected(isConnected);
         
         if (!isConnected) {
-          console.error('Brevo API connection failed. Email notifications may not work.');
-          toast.error('Email service connection failed. Our team will contact you manually.', { id: 'brevo-connection-toast' });
+          console.error('Brevo API key is missing. Email notifications may not work.');
+          toast.error('Email service configuration issue. Our team will contact you manually.', { id: 'brevo-connection-toast' });
         } else {
-          console.log('Brevo API connection successful');
+          console.log('Brevo API key is available');
         }
       } catch (error) {
         console.error('Error testing Brevo connection:', error);
