@@ -41,7 +41,19 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       throw new Error('Brevo API key is missing');
     }
     
-    // First, get the booking details with customer information
+    // First check if the payment exists
+    const { data: payment, error: paymentError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('booking_id', bookingId)
+      .single();
+      
+    if (paymentError) {
+      console.error('Error fetching payment details:', paymentError);
+      // Continue anyway, as the booking might still exist
+    }
+    
+    // Try to get the booking details with customer information
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -64,17 +76,23 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     
     // If no customer email found in the joined data, try to get it directly
     let recipientEmail = booking.customer?.email;
+    let recipientName = booking.customer?.first_name 
+      ? `${booking.customer.first_name} ${booking.customer.last_name}` 
+      : 'Valued Customer';
     
     if (!recipientEmail) {
       // Try to get customer email directly
       const { data: customer, error: customerError } = await supabase
         .from('customers')
-        .select('email')
+        .select('email, first_name, last_name')
         .eq('id', booking.customer_id)
         .single();
       
       if (!customerError && customer) {
         recipientEmail = customer.email;
+        if (customer.first_name) {
+          recipientName = `${customer.first_name} ${customer.last_name}`;
+        }
       }
     }
     
@@ -82,12 +100,32 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     if (!recipientEmail && booking.user_id) {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('email')
+        .select('email, full_name')
         .eq('id', booking.user_id)
         .single();
       
-      if (!profileError && profile) {
+      if (!profileError && profile && profile.email) {
         recipientEmail = profile.email;
+        if (profile.full_name) {
+          recipientName = profile.full_name;
+        }
+      }
+    }
+    
+    // If still no email, try to get it from auth.users table
+    if (!recipientEmail && booking.user_id) {
+      // We need to use the Supabase admin client to access auth.users
+      // This requires the service role key which should be available in the server environment
+      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(booking.user_id);
+      
+      if (!authError && authUser && authUser.user && authUser.user.email) {
+        recipientEmail = authUser.user.email;
+        console.log('Found email in auth.users table:', recipientEmail);
+        
+        // Try to get the user's name from user_metadata if available
+        if (authUser.user.user_metadata && authUser.user.user_metadata.full_name) {
+          recipientName = authUser.user.user_metadata.full_name;
+        }
       }
     }
     
@@ -95,6 +133,8 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       console.error('No recipient email found for booking:', bookingId);
       throw new Error('No recipient email found');
     }
+    
+    console.log('Using recipient email:', recipientEmail, 'and name:', recipientName);
     
     // Generate the HTML content using the detailed template
     const htmlContent = getPaymentConfirmationHtml(booking);
@@ -107,9 +147,7 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       },
       to: [{
         email: recipientEmail,
-        name: booking.customer?.first_name 
-          ? `${booking.customer.first_name} ${booking.customer.last_name}` 
-          : 'Valued Customer'
+        name: recipientName
       }],
       subject: 'IslaGO - Payment Confirmation',
       htmlContent: htmlContent

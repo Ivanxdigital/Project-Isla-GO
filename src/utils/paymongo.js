@@ -162,7 +162,7 @@ export const createPaymentSession = async (amount, description, bookingId) => {
           provider_session_id: sessionId,
           provider_payment_id: paymentIntentId,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -304,17 +304,16 @@ export const handlePayMongoWebhook = async (event) => {
       }
 
       // Update booking status
-      const { error: bookingError } = await supabase
+      const { error: updateBookingError } = await supabase
         .from('bookings')
-        .update({ 
+        .update({
           payment_status: VALID_PAYMENT_STATUSES.PAID,
-          status: 'confirmed',
           updated_at: new Date().toISOString()
         })
         .eq('id', payment.booking_id);
 
-      if (bookingError) {
-        console.error('Error updating booking:', bookingError);
+      if (updateBookingError) {
+        console.error('Error updating booking:', updateBookingError);
       }
     }
   } catch (error) {
@@ -353,9 +352,8 @@ export const updatePaymentStatus = async (bookingId, status) => {
       
       supabase
         .from('bookings')
-        .update({ 
+        .update({
           payment_status: status,
-          status: status === VALID_PAYMENT_STATUSES.PAID ? 'confirmed' : status,
           updated_at: new Date().toISOString()
         })
         .eq('id', bookingId)
