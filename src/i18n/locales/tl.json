@@ -1,0 +1,61 @@
+{
+  "title": "IslaGo",
+  "subtitle": "Mag-book ng iyong private van transfer sa Palawan",
+  "form": {
+    "from": "Mula sa",
+    "to": "Patungo sa",
+    "chooseDest": "Pumili ng destinasyon",
+    "selectTime": "Pumili ng oras",
+    "selectDate": "Pumili ng petsa",
+    "departureDate": "Petsa ng Pag-alis",
+    "departureTime": "Oras ng Pag-alis",
+    "returnTrip": "Pabalik na Biyahe",
+    "returnDate": "Petsa ng Pagbalik",
+    "returnTime": "Oras ng Pagbalik",
+    "serviceType": "Paano mo gustong bumiyahe?",
+    "privateVan": "Pribadong Van",
+    "sharedVan": "Shared Van",
+    "groupBooking": "Group Booking",
+    "groupSize": "Bilang ng mga Pasahero",
+    "passengers": "Bilang ng mga Pasahero (1-15)",
+    "continue": "Magpatuloy sa Detalye ng Booking",
+    "back": "Bumalik",
+    "complete": "Kumpletuhin ang Booking",
+    "firstName": "Pangalan",
+    "lastName": "Apelyido",
+    "mobileNumber": "Numero ng Cellphone",
+    "messenger": "Messenger Contact (Opsyonal)",
+    "messengerPlaceholder": "Ilagay ang iyong {{type}} username o numero",
+    "termsAndConditions": {
+      "checkbox": "Sumasang-ayon ako sa Mga Tuntunin at Kondisyon",
+      "required": "Kailangan mong tanggapin ang Mga Tuntunin at Kondisyon upang magpatuloy",
+      "link": "Basahin ang Mga Tuntunin at Kondisyon"
+    }
+  },
+  "booking": {
+    "summary": "Buod ng Booking",
+    "peakHours": "Peak hours",
+    "offPeakHours": "Off-peak hours",
+    "total": "Kabuuan"
+  },
+  "drivers": {
+    "title": "Kilalanin ang Aming mga Propesyonal na Driver",
+    "experience": "Karanasan",
+    "rating": "Rating",
+    "trips": "Nakumpletong Biyahe",
+    "vehicle": "Sasakyan"
+  },
+  "payment": {
+    "method": "Paraan ng Pagbabayad",
+    "depositRequired": "Kailangang Deposito",
+    "depositMessage": "Kailangan ng refundable na deposito na ₱500 upang masiguro ang iyong booking. Ito ay ire-refund sa araw ng iyong biyahe."
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "zh": "中文",
+    "ko": "한국어",
+    "pl": "Polski",
+    "tl": "Filipino"
+  }
+} 

@@ -2,11 +2,12 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
-import translationEN from './locales/en.json';
-import translationES from './locales/es.json';
-import translationZH from './locales/zh.json';
-import translationKO from './locales/ko.json';
-import translationPL from './locales/pl.json';
+import translationEN from './locales/en.json' with { type: 'json' };
+import translationES from './locales/es.json' with { type: 'json' };
+import translationZH from './locales/zh.json' with { type: 'json' };
+import translationKO from './locales/ko.json' with { type: 'json' };
+import translationPL from './locales/pl.json' with { type: 'json' };
+import translationTL from './locales/tl.json' with { type: 'json' };
 
 const resources = {
   en: {
@@ -23,6 +24,9 @@ const resources = {
   },
   pl: {
     translation: translationPL
+  },
+  tl: {
+    translation: translationTL
   }
 };
 
