@@ -383,3 +383,111 @@ const getPaymentConfirmationHtml = (booking) => {
    
   return htmlContent;
 };
+
+/**
+ * Send a test email to verify Brevo configuration
+ * @param {string} recipientEmail - The email address to send the test to
+ * @returns {Promise<boolean>} - True if email was sent successfully
+ */
+export const sendTestEmail = async (recipientEmail) => {
+  try {
+    console.log('Sending test email to:', recipientEmail);
+    
+    // Check if API key is available
+    const apiKey = import.meta.env.VITE_BREVO_API_KEY;
+    if (!apiKey) {
+      console.error('Brevo API key is missing');
+      throw new Error('Brevo API key is missing');
+    }
+    
+    // Create a simple HTML content
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>IslaGO - Test Email</title>
+        </head>
+        <body>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #1a73e8;">IslaGO Test Email</h1>
+            <p>This is a test email from IslaGO to verify that the email system is working correctly.</p>
+            <p>If you received this email, it means that the Brevo API is configured correctly.</p>
+            <p>Time sent: ${new Date().toISOString()}</p>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    // Prepare email content
+    const emailData = {
+      sender: {
+        name: 'IslaGO Test',
+        email: 'noreply@islago.vercel.app'
+      },
+      to: [{
+        email: recipientEmail,
+        name: 'IslaGO User'
+      }],
+      subject: 'IslaGO - Test Email',
+      htmlContent: htmlContent,
+      replyTo: {
+        email: 'support@islago.vercel.app',
+        name: 'IslaGO Support'
+      },
+      headers: {
+        'X-Mailin-custom': 'test_email:true',
+        'charset': 'utf-8'
+      },
+      tags: ['test-email'],
+      tracking: {
+        open: true,
+        click: true
+      }
+    };
+    
+    console.log('Sending test email with data:', JSON.stringify({
+      sender: emailData.sender,
+      to: emailData.to,
+      subject: emailData.subject
+    }, null, 2));
+    
+    // Send the email using Brevo API with CORS mode
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(emailData)
+    });
+    
+    // Log the full response for debugging
+    console.log('Brevo API test email response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Brevo API test email error response:', errorText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { message: errorText };
+      }
+      
+      throw new Error(`Failed to send test email: ${errorData.message || 'Unknown error'}`);
+    }
+    
+    const responseData = await response.json();
+    console.log('Brevo API test email response data:', responseData);
+    
+    console.log('Test email sent successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to send test email:', error);
+    throw error;
+  }
+};
