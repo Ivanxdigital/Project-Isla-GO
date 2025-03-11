@@ -34,6 +34,13 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
   try {
     console.log('Preparing to send payment confirmation email for booking:', bookingId);
     
+    // Check if API key is available
+    const apiKey = import.meta.env.VITE_BREVO_API_KEY;
+    if (!apiKey) {
+      console.error('Brevo API key is missing');
+      throw new Error('Brevo API key is missing');
+    }
+    
     // First, get the booking details with customer information
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -110,19 +117,29 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     
     console.log('Sending email to:', recipientEmail);
     
-    // Send the email using Brevo API
+    // Send the email using Brevo API with CORS mode
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
+      mode: 'cors',
       headers: {
         'accept': 'application/json',
-        'api-key': import.meta.env.VITE_BREVO_API_KEY,
+        'api-key': apiKey,
         'content-type': 'application/json'
       },
       body: JSON.stringify(emailData)
     });
     
+    // Log the full response for debugging
+    console.log('Brevo API response status:', response.status);
+    
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { message: errorText };
+      }
       console.error('Brevo API error:', errorData);
       throw new Error(`Failed to send email: ${errorData.message || 'Unknown error'}`);
     }
@@ -257,14 +274,23 @@ export const testBrevoConnection = async () => {
     // Make a simple request to the Brevo API to check if the key is valid
     const response = await fetch('https://api.brevo.com/v3/account', {
       method: 'GET',
+      mode: 'cors',
       headers: {
         'accept': 'application/json',
         'api-key': apiKey
       }
     });
     
+    console.log('Brevo API test response status:', response.status);
+    
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { message: errorText };
+      }
       console.error('Brevo API connection test failed:', errorData);
       return false;
     }

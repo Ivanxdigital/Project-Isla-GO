@@ -119,15 +119,20 @@ export default function PaymentSuccess() {
 
     const checkBrevoConnection = async () => {
       try {
+        console.log('Testing Brevo API connection...');
         const isConnected = await testBrevoConnection();
         setBrevoConnected(isConnected);
         
         if (!isConnected) {
           console.error('Brevo API connection failed. Email notifications may not work.');
+          toast.error('Email service connection failed. Our team will contact you manually.', { id: 'brevo-connection-toast' });
+        } else {
+          console.log('Brevo API connection successful');
         }
       } catch (error) {
         console.error('Error testing Brevo connection:', error);
         setBrevoConnected(false);
+        toast.error('Email service connection error. Our team will contact you manually.', { id: 'brevo-connection-toast' });
       }
     };
     
@@ -202,17 +207,56 @@ export default function PaymentSuccess() {
                 
                 // Mark as attempted even though it failed
                 setEmailSent(true);
+                
+                // Log this issue to the database for manual follow-up
+                try {
+                  await supabase
+                    .from('email_failures')
+                    .insert({
+                      booking_id: bookingId,
+                      reason: 'Brevo API connection unavailable',
+                      created_at: new Date().toISOString()
+                    });
+                  console.log('Email failure logged to database');
+                } catch (logError) {
+                  console.error('Failed to log email failure:', logError);
+                }
+                
                 return false;
               }
               
               // Show loading toast
               toast.loading('Sending confirmation email...', { id: 'email-sending-toast' });
               
-              await sendPaymentConfirmationEmail(bookingId);
-              
-              console.log('Payment confirmation email sent successfully');
-              toast.success('Payment confirmation email sent', { id: 'email-sending-toast' });
-              setEmailSent(true);
+              try {
+                await sendPaymentConfirmationEmail(bookingId);
+                console.log('Payment confirmation email sent successfully');
+                toast.success('Payment confirmation email sent', { id: 'email-sending-toast' });
+                setEmailSent(true);
+              } catch (specificEmailError) {
+                console.error('Failed to send payment confirmation email:', specificEmailError);
+                toast.error('There was an issue sending the confirmation email. Our team will contact you shortly.', { id: 'email-sending-toast' });
+                
+                // Log the specific error for debugging
+                console.error('Email error details:', specificEmailError.message);
+                
+                // Log this issue to the database for manual follow-up
+                try {
+                  await supabase
+                    .from('email_failures')
+                    .insert({
+                      booking_id: bookingId,
+                      reason: specificEmailError.message || 'Unknown error',
+                      created_at: new Date().toISOString()
+                    });
+                  console.log('Email failure logged to database');
+                } catch (logError) {
+                  console.error('Failed to log email failure:', logError);
+                }
+                
+                // Still mark as attempted
+                setEmailSent(true);
+              }
             } else {
               console.log('Email already sent for booking:', bookingId);
             }
@@ -334,17 +378,56 @@ export default function PaymentSuccess() {
               
               // Mark as attempted even though it failed
               setEmailSent(true);
+              
+              // Log this issue to the database for manual follow-up
+              try {
+                await supabase
+                  .from('email_failures')
+                  .insert({
+                    booking_id: bookingId,
+                    reason: 'Brevo API connection unavailable',
+                    created_at: new Date().toISOString()
+                  });
+                console.log('Email failure logged to database');
+              } catch (logError) {
+                console.error('Failed to log email failure:', logError);
+              }
+              
               return false;
             }
             
             // Show loading toast
             toast.loading('Sending confirmation email...', { id: 'email-sending-toast' });
             
-            await sendPaymentConfirmationEmail(bookingId);
-            
-            console.log('Payment confirmation email sent successfully');
-            toast.success('Payment confirmation email sent', { id: 'email-sending-toast' });
-            setEmailSent(true);
+            try {
+              await sendPaymentConfirmationEmail(bookingId);
+              console.log('Payment confirmation email sent successfully');
+              toast.success('Payment confirmation email sent', { id: 'email-sending-toast' });
+              setEmailSent(true);
+            } catch (specificEmailError) {
+              console.error('Failed to send payment confirmation email:', specificEmailError);
+              toast.error('There was an issue sending the confirmation email. Our team will contact you shortly.', { id: 'email-sending-toast' });
+              
+              // Log the specific error for debugging
+              console.error('Email error details:', specificEmailError.message);
+              
+              // Log this issue to the database for manual follow-up
+              try {
+                await supabase
+                  .from('email_failures')
+                  .insert({
+                    booking_id: bookingId,
+                    reason: specificEmailError.message || 'Unknown error',
+                    created_at: new Date().toISOString()
+                  });
+                console.log('Email failure logged to database');
+              } catch (logError) {
+                console.error('Failed to log email failure:', logError);
+              }
+              
+              // Still mark as attempted
+              setEmailSent(true);
+            }
           } else {
             console.log('Email already sent for booking:', bookingId);
           }
