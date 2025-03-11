@@ -53,19 +53,10 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       // Continue anyway, as the booking might still exist
     }
     
-    // Try to get the booking details with customer information
+    // Get the booking details - using the same query structure as in twilio.js
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select(`
-        *,
-        customer:customer_id (
-          id,
-          first_name,
-          last_name,
-          email,
-          phone
-        )
-      `)
+      .select('*')
       .eq('id', bookingId)
       .single();
     
@@ -74,14 +65,13 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       throw new Error('Booking not found');
     }
     
-    // If no customer email found in the joined data, try to get it directly
-    let recipientEmail = booking.customer?.email;
-    let recipientName = booking.customer?.first_name 
-      ? `${booking.customer.first_name} ${booking.customer.last_name}` 
-      : 'Valued Customer';
+    console.log('Booking details fetched successfully:', booking.id);
     
-    if (!recipientEmail) {
-      // Try to get customer email directly
+    // Now get the customer details separately
+    let recipientEmail = null;
+    let recipientName = 'Valued Customer';
+    
+    if (booking.customer_id) {
       const { data: customer, error: customerError } = await supabase
         .from('customers')
         .select('email, first_name, last_name')
@@ -114,18 +104,39 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     
     // If still no email, try to get it from auth.users table
     if (!recipientEmail && booking.user_id) {
-      // We need to use the Supabase admin client to access auth.users
-      // This requires the service role key which should be available in the server environment
-      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(booking.user_id);
-      
-      if (!authError && authUser && authUser.user && authUser.user.email) {
-        recipientEmail = authUser.user.email;
-        console.log('Found email in auth.users table:', recipientEmail);
+      try {
+        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(booking.user_id);
         
-        // Try to get the user's name from user_metadata if available
-        if (authUser.user.user_metadata && authUser.user.user_metadata.full_name) {
-          recipientName = authUser.user.user_metadata.full_name;
+        if (!authError && authUser && authUser.user && authUser.user.email) {
+          recipientEmail = authUser.user.email;
+          console.log('Found email in auth.users table:', recipientEmail);
+          
+          // Try to get the user's name from user_metadata if available
+          if (authUser.user.user_metadata && authUser.user.user_metadata.full_name) {
+            recipientName = authUser.user.user_metadata.full_name;
+          }
         }
+      } catch (authError) {
+        console.error('Error fetching user from auth.users:', authError);
+        // Continue anyway, we'll try other methods
+      }
+    }
+    
+    // Last resort: try to get the email directly from auth
+    if (!recipientEmail && booking.user_id) {
+      try {
+        const { data: { user }, error: getUserError } = await supabase.auth.getUser();
+        
+        if (!getUserError && user && user.email) {
+          recipientEmail = user.email;
+          console.log('Found email from current auth session:', recipientEmail);
+          
+          if (user.user_metadata && user.user_metadata.full_name) {
+            recipientName = user.user_metadata.full_name;
+          }
+        }
+      } catch (getUserError) {
+        console.error('Error getting current user:', getUserError);
       }
     }
     
