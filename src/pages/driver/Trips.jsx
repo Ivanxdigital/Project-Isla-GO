@@ -78,6 +78,10 @@ export default function DriverTrips() {
         }
 
         console.log('Driver vehicle:', vehicleData);
+        // Ensure we have the correct field for seating capacity
+        if (vehicleData && vehicleData.capacity && !vehicleData.seating_capacity) {
+          vehicleData.seating_capacity = vehicleData.capacity;
+        }
         setVehicleDetails(vehicleData);
       }
     } catch (error) {
@@ -120,7 +124,7 @@ export default function DriverTrips() {
             id,
             model,
             plate_number,
-            capacity,
+            seating_capacity,
             status
           )
         `)
@@ -199,13 +203,13 @@ export default function DriverTrips() {
 
   // Calculate remaining seats for a trip group
   const calculateRemainingSeats = (tripGroup) => {
-    if (!tripGroup.vehicle || !tripGroup.vehicle.capacity) {
-      return vehicleDetails?.capacity 
-        ? vehicleDetails.capacity - tripGroup.totalPassengers 
+    if (!tripGroup.vehicle || !tripGroup.vehicle.seating_capacity) {
+      return vehicleDetails?.seating_capacity 
+        ? vehicleDetails.seating_capacity - tripGroup.totalPassengers 
         : 'Unknown';
     }
     
-    return Math.max(0, tripGroup.vehicle.capacity - tripGroup.totalPassengers);
+    return Math.max(0, tripGroup.vehicle.seating_capacity - tripGroup.totalPassengers);
   };
 
   // Format date for display
@@ -338,7 +342,7 @@ export default function DriverTrips() {
                       <span className="mx-2">•</span>
                       <span>{group.vehicle.plate_number}</span>
                       <span className="mx-2">•</span>
-                      <span>{group.vehicle.capacity} seats total</span>
+                      <span>{group.vehicle.seating_capacity} seats total</span>
                     </div>
                   </div>
                 )}

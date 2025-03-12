@@ -48,7 +48,7 @@ export default function DriverDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [hasNewNotifications, setHasNewNotifications] = useState(false);
   const [lastNotificationTime, setLastNotificationTime] = useState(null);
-  const [notificationSound] = useState(new Audio('/notification-sound.mp3')); // Add a notification sound file to your public folder
+  const [notificationSound] = useState(new Audio('/notification-sound.mp3'));
   const [notifiedIds, setNotifiedIds] = useState([]);
 
   // Add a polling interval state
@@ -312,7 +312,7 @@ export default function DriverDashboard() {
         
         // Play notification sound
         try {
-          notificationSound.play();
+          playNotificationSound();
         } catch (soundError) {
           console.error('Error playing notification sound:', soundError);
         }
@@ -392,52 +392,76 @@ export default function DriverDashboard() {
 
     const fetchDriverData = async () => {
       try {
-        const { data: tripData, error: tripError } = await supabase
+        // Check if the driver has any trip assignments first
+        const { count, error: countError } = await supabase
           .from('trip_assignments')
-          .select(`
-            *,
-            bookings (
-              id,
-              from_location,
-              to_location,
-              departure_date,
-              departure_time,
-              service_type,
-              status
-            ),
-            vehicles (
-              id,
-              model,
-              plate_number,
-              capacity,
-              status
-            ),
-            drivers (
-              id,
-              name,
-              contact_number,
-              license_number,
-              status,
-              license_expiry
-            )
-          `)
-          .eq('driver_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(5);
+          .select('*', { count: 'exact', head: true })
+          .eq('driver_id', user.id);
+          
+        if (countError) {
+          console.error('Error checking trip assignments:', countError);
+          throw countError;
+        }
+        
+        // Only fetch trip assignments if there are any
+        if (count && count > 0) {
+          const { data: tripData, error: tripError } = await supabase
+            .from('trip_assignments')
+            .select(`
+              *,
+              bookings (
+                id,
+                from_location,
+                to_location,
+                departure_date,
+                departure_time,
+                service_type,
+                status
+              ),
+              vehicles (
+                id,
+                model,
+                plate_number,
+                seating_capacity,
+                status
+              ),
+              drivers (
+                id,
+                name,
+                contact_number,
+                license_number,
+                status,
+                license_expiry
+              )
+            `)
+            .eq('driver_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
 
-        if (tripError) throw tripError;
+          if (tripError) throw tripError;
 
-        if (mounted) {
-          // Calculate stats from the joined data
-          const completed = tripData.filter(t => t.bookings?.status === 'COMPLETED').length;
-          const pending = tripData.filter(t => t.bookings?.status === 'PENDING').length;
+          if (mounted) {
+            // Calculate stats from the joined data
+            const completed = tripData.filter(t => t.bookings?.status === 'COMPLETED').length;
+            const pending = tripData.filter(t => t.bookings?.status === 'PENDING').length;
 
-          setTrips(tripData);
-          setStats({
-            totalTrips: tripData.length,
-            completedTrips: completed,
-            pendingTrips: pending
-          });
+            setTrips(tripData);
+            setStats({
+              totalTrips: tripData.length,
+              completedTrips: completed,
+              pendingTrips: pending
+            });
+          }
+        } else {
+          // No trip assignments found, set empty data
+          if (mounted) {
+            setTrips([]);
+            setStats({
+              totalTrips: 0,
+              completedTrips: 0,
+              pendingTrips: 0
+            });
+          }
         }
       } catch (error) {
         console.error('Error fetching driver data:', error);
@@ -755,8 +779,8 @@ export default function DriverDashboard() {
   // Add notification sound function
   const playNotificationSound = () => {
     try {
-      // Check if the notification sound file exists in the public folder
-      const audio = new Audio('/notification.mp3');
+      // Use the correct file name that exists in the public folder
+      const audio = new Audio('/notification-sound.mp3');
       
       // Add an error handler
       audio.onerror = (error) => {
@@ -766,9 +790,11 @@ export default function DriverDashboard() {
       // Play the sound
       audio.play().catch(error => {
         console.error('Error playing notification sound:', error);
+        // Don't let sound errors break the notification functionality
       });
     } catch (error) {
       console.error('Error creating audio object:', error);
+      // Don't let sound errors break the notification functionality
     }
   };
 
@@ -828,13 +854,194 @@ export default function DriverDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-          <p className="text-gray-600 mb-4">{error.message}</p>
+          <p className="text-gray-600 mb-4">{typeof error === 'object' ? error.message || 'Unknown error' : error}</p>
           <button
             onClick={() => window.location.reload()}
             className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors"
           >
             Retry
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Add a fallback UI when there's no error but no trips data
+  if (!loading && trips.length === 0) {
+    return (
+      <div className="bg-gray-50 w-full">
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 mb-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 sm:mb-4">Driver Dashboard</h1>
+              
+              {/* Notification Bell */}
+              <div className="relative">
+                <button 
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  onClick={() => {
+                    // Clear new notification indicator when clicked
+                    setHasNewNotifications(false);
+                    // Scroll to notifications section
+                    document.getElementById('notifications-section')?.scrollIntoView({ 
+                      behavior: 'smooth' 
+                    });
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  
+                  {/* Notification Badge */}
+                  {hasNewNotifications && (
+                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-500 rounded-full">
+                      New
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+            
+            <div className="mb-3 p-2 bg-gray-100 rounded text-sm">
+              <p>Status: {driverStatus || 'Active'}</p>
+              <p>Active Driver: {isDriver ? 'Yes' : 'No'}</p>
+              <p className="truncate">ID: {user?.id}</p>
+            </div>
+            
+            {/* Stats Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6">
+              <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
+                <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">Total Trips</h3>
+                <p className="text-2xl sm:text-3xl font-bold text-blue-600">{stats.totalTrips}</p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
+                <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">Completed Trips</h3>
+                <p className="text-2xl sm:text-3xl font-bold text-green-600">{stats.completedTrips}</p>
+              </div>
+              <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6">
+                <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">Pending Trips</h3>
+                <p className="text-2xl sm:text-3xl font-bold text-yellow-600">{stats.pendingTrips}</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-4">
+              <h2 className="text-lg font-semibold mb-3">No Trips Yet</h2>
+              <p className="text-gray-600 mb-4">You don't have any trips assigned yet. New booking requests will appear below when available.</p>
+            </div>
+          </div>
+
+          {/* Notifications Section */}
+          <div id="notifications-section" className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 mt-6 sm:mt-8">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-semibold">New Booking Requests</h2>
+              
+              {hasNewNotifications && (
+                <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded-full animate-pulse">
+                  New Requests
+                </span>
+              )}
+            </div>
+            
+            <div className="space-y-3 sm:space-y-4">
+              {notifications.length > 0 ? (
+                <div className="space-y-3 sm:space-y-4">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`bg-white border rounded-lg p-3 sm:p-4 shadow-sm ${
+                        lastNotificationTime && new Date(notification.created_at) > new Date(lastNotificationTime) 
+                          ? 'border-blue-500 ring-2 ring-blue-200' 
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      <div>
+                        <h3 className="font-semibold text-sm sm:text-base">
+                          {notification.bookings?.from_location} → {notification.bookings?.to_location}
+                        </h3>
+                        <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
+                          <div>
+                            <p className="text-xs text-gray-500">Date:</p>
+                            <p className="text-xs sm:text-sm text-gray-600">
+                              {new Date(notification.bookings?.departure_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Time:</p>
+                            <p className="text-xs sm:text-sm text-gray-600">
+                              {notification.bookings?.departure_time}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Expires:</p>
+                            <p className="text-xs sm:text-sm text-gray-600">
+                              {new Date(notification.expires_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Amount:</p>
+                            <p className="text-xs sm:text-sm font-semibold text-green-600">
+                              ₱{notification.bookings?.total_amount}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Add time received */}
+                        <p className="text-xs text-gray-500 mt-2">
+                          Received: {new Date(notification.created_at).toLocaleString()}
+                        </p>
+                        
+                        {/* Countdown timer */}
+                        {new Date(notification.expires_at) > new Date() && (
+                          <div className="mt-2 pt-2 border-t border-gray-100">
+                            <p className="text-xs text-gray-500">
+                              Expires in: {Math.max(0, Math.floor((new Date(notification.expires_at) - new Date()) / 60000))} minutes
+                            </p>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                              <div 
+                                className="bg-blue-600 h-1.5 rounded-full" 
+                                style={{ 
+                                  width: `${Math.max(0, Math.min(100, (new Date(notification.expires_at) - new Date()) / (15 * 60 * 1000) * 100))}%` 
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Expired indicator */}
+                        {new Date(notification.expires_at) < new Date() && (
+                          <div className="mt-2 pt-2 border-t border-gray-100">
+                            <p className="text-xs text-red-500 font-medium">
+                              This booking request has expired
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Action buttons - Full width on mobile */}
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, true)}
+                          className="bg-green-500 text-white py-2 text-xs sm:text-sm rounded hover:bg-green-600 transition-colors"
+                          disabled={new Date(notification.expires_at) < new Date()}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleBookingResponse(notification.id, notification.bookings?.id, false)}
+                          className="bg-red-500 text-white py-2 text-xs sm:text-sm rounded hover:bg-red-600 transition-colors"
+                          disabled={new Date(notification.expires_at) < new Date()}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">No new booking requests</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
