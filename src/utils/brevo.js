@@ -185,7 +185,7 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
         email: recipientEmail,
         name: recipientName
       }],
-      subject: 'IslaGO - Payment Confirmation',
+      subject: 'IslaGO - Payment Confirmation for Booking #' + booking.id.substring(0, 8),
       htmlContent: htmlContent,
       replyTo: {
         email: 'support@islago.vercel.app',
@@ -193,13 +193,17 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
       },
       headers: {
         'X-Mailin-custom': 'booking_id:' + bookingId,
-        'charset': 'utf-8'
+        'charset': 'utf-8',
+        'X-Priority': '1',
+        'Importance': 'high'
       },
       tags: ['payment-confirmation', 'booking-' + bookingId],
       tracking: {
         open: true,
         click: true
-      }
+      },
+      // Add IP warmup parameter to improve deliverability
+      ipWarmupEnable: true
     };
     
     console.log('Sending email to:', recipientEmail);
@@ -252,15 +256,21 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     console.log('Brevo API response data:', responseData);
     
     // Update booking to mark email as sent
-    const { error: updateError } = await supabase
-      .from('bookings')
-      .update({ email_sent: true })
-      .eq('id', bookingId);
-    
-    if (updateError) {
-      console.error('Error updating booking email_sent status:', updateError);
-    } else {
-      console.log('Booking email_sent status updated successfully');
+    try {
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ email_sent: true })
+        .eq('id', bookingId);
+      
+      if (updateError) {
+        console.error('Error updating booking email_sent status:', updateError);
+        console.log('This error is non-critical and will be ignored');
+      } else {
+        console.log('Booking email_sent status updated successfully');
+      }
+    } catch (updateError) {
+      console.error('Exception updating booking email_sent status:', updateError);
+      console.log('This error is non-critical and will be ignored');
     }
     
     console.log('Payment confirmation email sent successfully');
@@ -406,30 +416,40 @@ export const sendTestEmail = async (recipientEmail) => {
       <html>
         <head>
           <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>IslaGO - Test Email</title>
         </head>
-        <body>
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #1a73e8;">IslaGO Test Email</h1>
-            <p>This is a test email from IslaGO to verify that the email system is working correctly.</p>
-            <p>If you received this email, it means that the Brevo API is configured correctly.</p>
-            <p>Time sent: ${new Date().toISOString()}</p>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #1a73e8; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">IslaGO Test Email</h1>
+            </div>
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 0 0 5px 5px; border: 1px solid #e9ecef; border-top: none;">
+              <p>This is a test email from IslaGO to verify that the email system is working correctly.</p>
+              <p>If you received this email, it means that the Brevo API is configured correctly.</p>
+              <p><strong>Time sent:</strong> ${new Date().toLocaleString()}</p>
+              <p><strong>Recipient:</strong> ${recipientEmail}</p>
+              <hr style="border: none; border-top: 1px solid #e9ecef; margin: 20px 0;">
+              <p style="font-size: 12px; color: #6c757d; text-align: center;">
+                This is an automated message. Please do not reply to this email.
+              </p>
+            </div>
           </div>
         </body>
       </html>
     `;
     
-    // Prepare email content
+    // Prepare email content with improved deliverability
     const emailData = {
       sender: {
-        name: 'IslaGO Test',
+        name: 'IslaGO Support',
         email: 'noreply@islago.vercel.app'
       },
       to: [{
         email: recipientEmail,
         name: 'IslaGO User'
       }],
-      subject: 'IslaGO - Test Email',
+      subject: 'IslaGO - Test Email [' + new Date().toLocaleTimeString() + ']',
       htmlContent: htmlContent,
       replyTo: {
         email: 'support@islago.vercel.app',
@@ -437,19 +457,24 @@ export const sendTestEmail = async (recipientEmail) => {
       },
       headers: {
         'X-Mailin-custom': 'test_email:true',
-        'charset': 'utf-8'
+        'charset': 'utf-8',
+        'X-Priority': '1',
+        'Importance': 'high'
       },
-      tags: ['test-email'],
+      tags: ['test-email', 'diagnostic'],
       tracking: {
         open: true,
         click: true
-      }
+      },
+      // Add IP warmup parameter to improve deliverability
+      ipWarmupEnable: true
     };
     
     console.log('Sending test email with data:', JSON.stringify({
       sender: emailData.sender,
       to: emailData.to,
-      subject: emailData.subject
+      subject: emailData.subject,
+      headers: emailData.headers
     }, null, 2));
     
     // Send the email using Brevo API with CORS mode
@@ -484,7 +509,7 @@ export const sendTestEmail = async (recipientEmail) => {
     const responseData = await response.json();
     console.log('Brevo API test email response data:', responseData);
     
-    console.log('Test email sent successfully');
+    console.log('Test email sent successfully. Please check your inbox (and spam folder).');
     return true;
   } catch (error) {
     console.error('Failed to send test email:', error);
