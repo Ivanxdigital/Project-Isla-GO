@@ -179,7 +179,7 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     const emailData = {
       sender: {
         name: 'IslaGO Booking',
-        email: 'noreply@islago.vercel.app'
+        email: 'ivanxdigital@gmail.com'
       },
       to: [{
         email: recipientEmail,
@@ -443,7 +443,7 @@ export const sendTestEmail = async (recipientEmail) => {
     const emailData = {
       sender: {
         name: 'IslaGO Support',
-        email: 'noreply@islago.vercel.app'
+        email: 'ivanxdigital@gmail.com'
       },
       to: [{
         email: recipientEmail,
