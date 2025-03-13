@@ -38,6 +38,12 @@
       *, *:before, *:after {
         box-sizing: border-box;
       }
+      
+      /* Ensure Google Places Autocomplete dropdown shows on top of all other elements */
+      .pac-container {
+        z-index: 9999 !important;
+        position: absolute !important;
+      }
     </style>
   </head>
   <body class="circuit-bg h-full">

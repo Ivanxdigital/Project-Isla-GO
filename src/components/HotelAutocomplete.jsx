@@ -16,205 +16,47 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
   const autocompleteRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState('Initializing...');
 
   useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .pac-container {
-        border-radius: 0.5rem;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        margin-top: 8px;
-        background-color: white;
-        font-family: inherit;
-        max-height: 300px !important;
-        overflow-y: auto !important;
-        z-index: 1000;
-        width: auto !important;
-        min-width: 300px;
-      }
-      
-      .pac-container::-webkit-scrollbar {
-        width: 6px;
-      }
-      
-      .pac-container::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 6px;
-      }
-      
-      .pac-container::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 6px;
-      }
-      
-      .pac-container::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-      
-      .pac-item {
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        font-size: 0.875rem;
-        line-height: 1.25rem;
-        border-top: 1px solid #f3f4f6;
-        transition: all 0.2s ease;
-        min-height: 48px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      
-      .pac-item:first-child {
-        border-top: none;
-      }
-      
-      .pac-item:hover,
-      .pac-item:active,
-      .pac-item:focus {
-        background-color: #f8fafc;
-      }
-      
-      .pac-item-selected {
-        background-color: #f0f9ff;
-      }
-      
-      .pac-icon,
-      .pac-icon-marker {
-        display: none !important;
-      }
-      
-      .pac-item-query {
-        font-size: 0.9rem;
-        color: #1e293b;
-        font-weight: 500;
-        padding-left: 0;
-        margin-bottom: 2px;
-      }
-      
-      .pac-matched {
-        font-weight: 600;
-        color: #3b82f6;
-      }
-      
-      .pac-item span:not(.pac-item-query) {
-        font-size: 0.75rem;
-        color: #64748b;
-        margin-left: 0;
-      }
-
-      /* Desktop specific styles */
-      @media (min-width: 641px) {
-        .pac-container {
-          position: absolute !important;
-          max-width: 600px;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        
-        .pac-item {
-          padding: 0.75rem 1rem;
-        }
-      }
-
-      /* Mobile specific styles */
-      @media (max-width: 640px) {
-        .pac-container {
-          position: fixed !important;
-          top: auto !important;
-          bottom: 0 !important;
-          left: 0 !important;
-          right: 0 !important;
-          width: 100% !important;
-          max-height: 60vh !important;
-          border-bottom: none;
-          border-radius: 1rem 1rem 0 0;
-          box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        
-        .pac-item {
-          padding: 1rem 1.25rem;
-        }
-        
-        .pac-item-query {
-          font-size: 1rem;
-          display: block;
-          margin-bottom: 0.25rem;
-        }
-        
-        .pac-item span:not(.pac-item-query) {
-          font-size: 0.875rem;
-          display: block;
-          white-space: normal;
-          line-height: 1.25;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Manual check for Google Maps
-    const checkGoogleMapsLoaded = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        console.log("Google Maps and Places API detected");
-        return true;
-      }
-      return false;
-    };
-
+    // SIMPLIFIED APPROACH: Focus only on the core functionality
     const initializeAutocomplete = async () => {
       try {
-        console.log("Starting Google Maps initialization");
-
-        // First check if Google Maps is already loaded
-        if (checkGoogleMapsLoaded()) {
-          setIsLoading(false);
-          setupAutocomplete();
-          return;
-        }
-
-        // If not already loaded, wait for it
+        setDebugInfo('Waiting for Google Maps to load...');
+        // Wait for Google Maps to load
         await waitForGoogleMaps();
         
-        // Double-check after waiting
-        if (checkGoogleMapsLoaded()) {
-          console.log("Google Maps loaded successfully");
+        // Check if Google Maps loaded properly
+        if (!window.google?.maps?.places) {
+          console.error('Google Maps Places API not available');
+          setDebugInfo('Error: Google Maps Places API not available');
+          setError('Google Maps Places API could not be loaded');
           setIsLoading(false);
-          setupAutocomplete();
-        } else {
-          console.error("Google Maps API failed to load properly");
-          setError("Google Maps could not be loaded. Please refresh the page.");
-          setIsLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error('Error initializing Google Maps:', error);
-        setError("Could not initialize hotel search. Please try again later.");
-        setIsLoading(false);
-      }
-    };
-
-    const setupAutocomplete = () => {
-      if (!inputRef.current || !window.google?.maps?.places) return;
-      
-      try {
-        console.log("Setting up autocomplete");
-        autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+        
+        setDebugInfo('Google Maps loaded, setting up autocomplete...');
+        console.log('Google Maps loaded, setting up autocomplete...');
+        
+        // Create the autocomplete instance directly
+        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
           types: ['lodging'],
-          componentRestrictions: { country: 'PH' },
-          fields: ['name', 'formatted_address', 'geometry'],
-          bounds: new window.google.maps.LatLngBounds(
-            // Southwest corner
-            { lat: PALAWAN_BOUNDS.south, lng: PALAWAN_BOUNDS.west },
-            // Northeast corner
-            { lat: PALAWAN_BOUNDS.north, lng: PALAWAN_BOUNDS.east }
-          ),
-          strictBounds: true // This forces results to be within Palawan
+          componentRestrictions: { country: 'PH' }
         });
-
-        autocompleteRef.current.addListener('place_changed', () => {
-          const place = autocompleteRef.current.getPlace();
-          if (place.name) {
+        
+        // Simplify by not setting bounds initially
+        autocompleteRef.current = autocomplete;
+        
+        // Add the place_changed listener
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          console.log('Selected place:', place);
+          setDebugInfo(`Selected: ${place.name}`);
+          
+          if (place && place.name) {
             onSelect({
               name: place.name,
-              address: place.formatted_address,
+              address: place.formatted_address || '',
               location: place.geometry ? {
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng()
@@ -223,38 +65,70 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
           }
         });
         
-        console.log("Autocomplete setup complete");
+        setDebugInfo('Autocomplete setup complete');
+        setIsLoading(false);
       } catch (error) {
-        console.error('Error setting up autocomplete:', error);
-        setError("Failed to set up hotel search. Please try again.");
+        console.error('Error initializing autocomplete:', error);
+        setDebugInfo(`Error: ${error.message}`);
+        setError(`Error: ${error.message}`);
+        setIsLoading(false);
       }
     };
 
-    // Trigger manual load check on input focus
-    const handleInputFocus = () => {
-      if (!autocompleteRef.current && window.google?.maps?.places) {
-        console.log("Input focused - initializing autocomplete");
-        setupAutocomplete();
-      }
-    };
-
-    if (inputRef.current) {
-      inputRef.current.addEventListener('focus', handleInputFocus);
-    }
-
-    // Start initialization
     initializeAutocomplete();
 
     return () => {
       if (autocompleteRef.current && window.google?.maps?.event) {
         window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
-      document.head.removeChild(style);
-      if (inputRef.current) {
-        inputRef.current.removeEventListener('focus', handleInputFocus);
-      }
     };
   }, [onSelect]);
+
+  // Manual trigger function for debugging
+  const manuallyInitialize = () => {
+    if (!window.google?.maps?.places) {
+      setDebugInfo('Google Maps not available yet');
+      return;
+    }
+    
+    try {
+      setDebugInfo('Manually initializing autocomplete...');
+      
+      // Remove any existing autocomplete
+      if (autocompleteRef.current && window.google?.maps?.event) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+      
+      // Create new autocomplete
+      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+        types: ['lodging'],
+        componentRestrictions: { country: 'PH' }
+      });
+      
+      autocompleteRef.current = autocomplete;
+      
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        setDebugInfo(`Selected: ${place.name}`);
+        
+        if (place && place.name) {
+          onSelect({
+            name: place.name,
+            address: place.formatted_address || '',
+            location: place.geometry ? {
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng()
+            } : null
+          });
+        }
+      });
+      
+      setDebugInfo('Manual initialization complete');
+    } catch (error) {
+      console.error('Manual initialization error:', error);
+      setDebugInfo(`Manual init error: ${error.message}`);
+    }
+  };
 
   return (
     <div className="relative">
@@ -279,13 +153,19 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
         </div>
       )}
       {error && (
-        <p className="mt-1.5 text-xs text-red-500">{error}</p>
+        <div className="mt-1.5 text-xs text-red-500">{error}</div>
       )}
-      {!error && (
-        <p className="mt-1.5 text-xs text-gray-500">
-          Start typing to search hotels in Palawan
-        </p>
-      )}
+      <div className="mt-1.5 text-xs text-gray-600">
+        {!error && <div>Start typing to search hotels in Palawan</div>}
+        <div className="mt-1 text-xs text-gray-400">{debugInfo}</div>
+        <button 
+          onClick={manuallyInitialize}
+          type="button" 
+          className="mt-1 text-xs text-blue-500 underline"
+        >
+          Reinitialize autocomplete
+        </button>
+      </div>
     </div>
   );
 } 
