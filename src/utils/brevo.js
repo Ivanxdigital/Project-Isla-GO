@@ -59,11 +59,11 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     if (bookingError) {
       console.error('Error fetching booking:', bookingError);
       
-      // Log to email_failures table
+      // Log to email_failures table with correct field names
       await supabase.from('email_failures').insert({
         booking_id: bookingId,
-        error_message: `Error fetching booking: ${bookingError.message}`,
-        error_details: JSON.stringify(bookingError),
+        reason: `Error fetching booking: ${bookingError.message}`,
+        notes: JSON.stringify(bookingError),
         resolved: false
       });
       
@@ -73,11 +73,11 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     if (!booking) {
       console.error('Booking not found:', bookingId);
       
-      // Log to email_failures table
+      // Log to email_failures table with correct field names
       await supabase.from('email_failures').insert({
         booking_id: bookingId,
-        error_message: 'Booking not found',
-        error_details: JSON.stringify({ bookingId }),
+        reason: 'Booking not found',
+        notes: JSON.stringify({ bookingId }),
         resolved: false
       });
       
@@ -156,11 +156,11 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
     if (!recipientEmail) {
       console.error('No recipient email found for booking:', bookingId);
       
-      // Log to email_failures table
+      // Log to email_failures table with correct field names
       await supabase.from('email_failures').insert({
         booking_id: bookingId,
-        error_message: 'No recipient email found',
-        error_details: JSON.stringify({ 
+        reason: 'No recipient email found',
+        notes: JSON.stringify({ 
           booking_id: bookingId,
           customer_id: booking.customer_id,
           session_user_id: session.user.id
@@ -241,11 +241,11 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
         errorData = { message: errorText };
       }
       
-      // Log to email_failures table
+      // Log to email_failures table with correct field names
       await supabase.from('email_failures').insert({
         booking_id: bookingId,
-        error_message: `API Error: ${errorData.message || 'Unknown error'}`,
-        error_details: JSON.stringify(errorData),
+        reason: `API Error: ${errorData.message || 'Unknown error'}`,
+        notes: JSON.stringify(errorData),
         resolved: false
       });
       
@@ -278,12 +278,12 @@ export const sendPaymentConfirmationEmail = async (bookingId) => {
   } catch (error) {
     console.error('Failed to send payment confirmation email:', error);
     
-    // Try to log to email_failures table if not already logged
+    // Try to log to email_failures table with correct field names
     try {
       await supabase.from('email_failures').insert({
         booking_id: bookingId,
-        error_message: error.message,
-        error_details: JSON.stringify({ 
+        reason: error.message,
+        notes: JSON.stringify({ 
           stack: error.stack,
           message: error.message
         }),
@@ -449,10 +449,16 @@ export const sendDriverBookingEmail = async (bookingId) => {
     // This query can be customized based on your specific criteria for driver availability
     const { data: availableDrivers, error: driversError } = await supabase
       .from('drivers')
-      .select('*')
-      .eq('is_active', true)
-      .eq('status', 'available')
-      .not('email', 'is', null);
+      .select(`
+        *,
+        user:user_id (
+          id,
+          email
+        )
+      `)
+      .eq('status', 'active')
+      .eq('is_available', true)
+      .not('user.email', 'is', null);
     
     if (driversError) {
       console.error('Error fetching available drivers:', driversError);
@@ -462,10 +468,10 @@ export const sendDriverBookingEmail = async (bookingId) => {
     if (!availableDrivers || availableDrivers.length === 0) {
       console.warn('No available drivers found for booking:', bookingId);
       
-      // Log this issue to the database
+      // Log this issue to the database - with error handling for missing table
       try {
         await supabase
-          .from('notification_failures')
+          .from('email_failures')
           .insert({
             booking_id: bookingId,
             reason: 'No available drivers found',
@@ -487,10 +493,12 @@ export const sendDriverBookingEmail = async (bookingId) => {
     
     for (const driver of availableDrivers) {
       try {
-        if (!driver.email) {
+        if (!driver.user || !driver.user.email) {
           console.log(`Driver ${driver.id} has no email, skipping`);
           continue;
         }
+        
+        const driverEmail = driver.user.email;
         
         // Generate HTML content for this driver
         const htmlContent = getDriverBookingNotificationHtml(booking, driver, dashboardUrl.toString());
@@ -502,8 +510,8 @@ export const sendDriverBookingEmail = async (bookingId) => {
             email: 'ivanxdigital@gmail.com'
           },
           to: [{
-            email: driver.email,
-            name: `${driver.first_name} ${driver.last_name}`
+            email: driverEmail,
+            name: `${driver.name || 'Driver'}`
           }],
           subject: `New Booking Available: ${booking.from_location} to ${booking.to_location}`,
           htmlContent: htmlContent,
@@ -526,7 +534,7 @@ export const sendDriverBookingEmail = async (bookingId) => {
           ipWarmupEnable: true
         };
         
-        console.log(`Sending email to driver ${driver.id}:`, driver.email);
+        console.log(`Sending email to driver ${driver.id}:`, driverEmail);
         
         // Send the email using Brevo API with CORS mode
         const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -593,12 +601,12 @@ export const sendDriverBookingEmail = async (bookingId) => {
   } catch (error) {
     console.error('Failed to send driver notification emails:', error);
     
-    // Try to log to notification_failures table
+    // Try to log to email_failures table with the correct field names
     try {
-      await supabase.from('notification_failures').insert({
+      await supabase.from('email_failures').insert({
         booking_id: bookingId,
         reason: error.message,
-        details: JSON.stringify({ 
+        notes: JSON.stringify({ 
           stack: error.stack,
           message: error.message
         }),
