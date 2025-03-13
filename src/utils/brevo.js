@@ -395,6 +395,478 @@ const getPaymentConfirmationHtml = (booking) => {
 };
 
 /**
+ * Send booking notification emails to available drivers
+ * @param {string} bookingId - The booking ID
+ * @returns {Promise<{success: boolean, count: number}>} - Success status and count of emails sent
+ */
+export const sendDriverBookingEmail = async (bookingId) => {
+  try {
+    console.log('Sending driver notification emails for booking:', bookingId);
+    
+    // Check if API key is available
+    const apiKey = import.meta.env.VITE_BREVO_API_KEY;
+    if (!apiKey) {
+      console.error('Brevo API key is missing');
+      throw new Error('Brevo API key is missing');
+    }
+    
+    // Fetch booking details
+    console.log('Fetching booking details for ID:', bookingId);
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        customers (
+          id, 
+          first_name, 
+          last_name, 
+          email, 
+          mobile_number
+        )
+      `)
+      .eq('id', bookingId)
+      .single();
+    
+    if (bookingError) {
+      console.error('Error fetching booking:', bookingError);
+      throw new Error(`Error fetching booking: ${bookingError.message}`);
+    }
+    
+    if (!booking) {
+      console.error('Booking not found:', bookingId);
+      throw new Error('Booking not found');
+    }
+    
+    console.log('Booking found:', booking);
+    
+    // Check if booking is already assigned to a driver
+    if (booking.assigned_driver_id) {
+      console.log('Booking already assigned to driver:', booking.assigned_driver_id);
+      return { success: false, count: 0, reason: 'Booking already assigned' };
+    }
+    
+    // Get available drivers based on the booking location
+    // This query can be customized based on your specific criteria for driver availability
+    const { data: availableDrivers, error: driversError } = await supabase
+      .from('drivers')
+      .select('*')
+      .eq('is_active', true)
+      .eq('status', 'available')
+      .not('email', 'is', null);
+    
+    if (driversError) {
+      console.error('Error fetching available drivers:', driversError);
+      throw new Error(`Error fetching available drivers: ${driversError.message}`);
+    }
+    
+    if (!availableDrivers || availableDrivers.length === 0) {
+      console.warn('No available drivers found for booking:', bookingId);
+      
+      // Log this issue to the database
+      try {
+        await supabase
+          .from('notification_failures')
+          .insert({
+            booking_id: bookingId,
+            reason: 'No available drivers found',
+            created_at: new Date().toISOString()
+          });
+      } catch (logError) {
+        console.error('Failed to log notification failure:', logError);
+      }
+      
+      return { success: false, count: 0, reason: 'No available drivers' };
+    }
+    
+    console.log(`Found ${availableDrivers.length} available drivers`);
+    
+    // For each driver, send a personalized email
+    let successCount = 0;
+    const baseUrl = new URL(window.location.origin);
+    const dashboardUrl = new URL('/driver/dashboard', baseUrl);
+    
+    for (const driver of availableDrivers) {
+      try {
+        if (!driver.email) {
+          console.log(`Driver ${driver.id} has no email, skipping`);
+          continue;
+        }
+        
+        // Generate HTML content for this driver
+        const htmlContent = getDriverBookingNotificationHtml(booking, driver, dashboardUrl.toString());
+        
+        // Prepare email content
+        const emailData = {
+          sender: {
+            name: 'IslaGO Driver Dispatch',
+            email: 'ivanxdigital@gmail.com'
+          },
+          to: [{
+            email: driver.email,
+            name: `${driver.first_name} ${driver.last_name}`
+          }],
+          subject: `New Booking Available: ${booking.from_location} to ${booking.to_location}`,
+          htmlContent: htmlContent,
+          replyTo: {
+            email: 'dispatch@islago.vercel.app',
+            name: 'IslaGO Dispatch'
+          },
+          headers: {
+            'X-Mailin-custom': `booking_id:${bookingId},driver_id:${driver.id}`,
+            'charset': 'utf-8',
+            'X-Priority': '1',
+            'Importance': 'high'
+          },
+          tags: ['driver-notification', `booking-${bookingId}`, `driver-${driver.id}`],
+          tracking: {
+            open: true,
+            click: true
+          },
+          // Add IP warmup parameter to improve deliverability
+          ipWarmupEnable: true
+        };
+        
+        console.log(`Sending email to driver ${driver.id}:`, driver.email);
+        
+        // Send the email using Brevo API with CORS mode
+        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'accept': 'application/json',
+            'api-key': apiKey,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify(emailData)
+        });
+        
+        // Log the response status for debugging
+        console.log(`Driver ${driver.id} email response status:`, response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Error sending email to driver ${driver.id}:`, errorText);
+          continue;
+        }
+        
+        // Record this notification in the database
+        try {
+          await supabase
+            .from('driver_notifications')
+            .insert({
+              driver_id: driver.id,
+              booking_id: bookingId,
+              notification_type: 'email',
+              status: 'sent',
+              created_at: new Date().toISOString()
+            });
+        } catch (recordError) {
+          console.error('Error recording driver notification:', recordError);
+        }
+        
+        successCount++;
+      } catch (driverEmailError) {
+        console.error(`Error sending email to driver ${driver.id}:`, driverEmailError);
+      }
+    }
+    
+    // Update booking to track that driver notifications were sent
+    try {
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ 
+          driver_notifications_sent: true,
+          driver_notifications_count: successCount,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+      
+      if (updateError) {
+        console.error('Error updating booking driver_notifications_sent status:', updateError);
+      }
+    } catch (updateError) {
+      console.error('Exception updating booking driver_notifications status:', updateError);
+    }
+    
+    console.log(`Successfully sent ${successCount} driver notification emails for booking ${bookingId}`);
+    return { success: true, count: successCount };
+  } catch (error) {
+    console.error('Failed to send driver notification emails:', error);
+    
+    // Try to log to notification_failures table
+    try {
+      await supabase.from('notification_failures').insert({
+        booking_id: bookingId,
+        reason: error.message,
+        details: JSON.stringify({ 
+          stack: error.stack,
+          message: error.message
+        }),
+        created_at: new Date().toISOString()
+      });
+    } catch (logError) {
+      console.error('Failed to log notification failure:', logError);
+    }
+    
+    throw error;
+  }
+};
+
+/**
+ * Generate HTML content for driver booking notification email
+ * @param {Object} booking - The booking object with all details
+ * @param {Object} driver - The driver receiving this email
+ * @param {string} dashboardUrl - URL to the driver dashboard
+ * @returns {string} - HTML content for the email
+ */
+const getDriverBookingNotificationHtml = (booking, driver, dashboardUrl) => {
+  console.log('Generating driver email HTML for booking:', booking.id);
+  
+  // Handle potential missing data gracefully
+  const driverName = driver.first_name || 'Driver';
+  const bookingId = booking.id || 'Unknown';
+  const fromLocation = booking.from_location || 'Not specified';
+  const toLocation = booking.to_location || 'Not specified';
+  const departureDate = booking.departure_date ? formatDate(booking.departure_date) : 'Not specified';
+  const departureTime = booking.departure_time ? formatTime(booking.departure_time) : 'Not specified';
+  const serviceType = booking.service_type || 'Standard';
+  const totalAmount = booking.total_amount ? formatCurrency(booking.total_amount) : 'Not specified';
+  
+  // Get customer information
+  const customer = booking.customers || {};
+  const customerName = customer.first_name && customer.last_name ? 
+    `${customer.first_name} ${customer.last_name}` : 
+    'Customer';
+  const customerPhone = customer.mobile_number || 'Not provided';
+  
+  // Add commission calculation (you may adjust this based on your business rules)
+  const driverCommission = booking.total_amount ? formatCurrency(booking.total_amount * 0.8) : 'Not specified';
+  
+  // Create a cleaner, more appealing driver-focused HTML template
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>IslaGO - New Trip Request</title>
+        <style>
+          /* Base styles with better typography and spacing */
+          body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0;
+            background-color: #f7f9fc;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+          }
+          .header { 
+            background-color: #1a73e8; 
+            color: white; 
+            padding: 24px; 
+            text-align: center;
+          }
+          .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+          }
+          .header p {
+            margin: 6px 0 0;
+            opacity: 0.9;
+            font-size: 15px;
+          }
+          .content { 
+            padding: 30px; 
+            background-color: #fff;
+          }
+          .greeting {
+            font-size: 17px;
+            margin-bottom: 20px;
+          }
+          .booking-details { 
+            background-color: #f8f9fa; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin: 24px 0;
+            border-left: 4px solid #1a73e8;
+          }
+          .booking-details h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #1a73e8;
+          }
+          .customer-details { 
+            background-color: #e8f0fe; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin: 24px 0;
+            border-left: 4px solid #4285f4;
+          }
+          .customer-details h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #4285f4;
+          }
+          .footer { 
+            text-align: center; 
+            padding: 20px; 
+            font-size: 13px; 
+            color: #666; 
+            background-color: #f5f5f5;
+            border-top: 1px solid #eaeaea;
+          }
+          .button { 
+            background-color: #1a73e8; 
+            color: white; 
+            padding: 14px 28px; 
+            text-decoration: none; 
+            border-radius: 30px; 
+            display: inline-block; 
+            margin: 10px 5px; 
+            font-weight: 600; 
+            text-align: center;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+          }
+          .button:hover {
+            background-color: #1557b0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+          }
+          .primary-button { 
+            background-color: #0f9d58; 
+            font-size: 16px;
+          }
+          .primary-button:hover {
+            background-color: #0b8043;
+          }
+          .highlight { 
+            color: #1a73e8; 
+            font-weight: bold; 
+          }
+          .commission { 
+            font-size: 20px; 
+            color: #0f9d58; 
+            font-weight: bold;
+            display: inline-block;
+            padding: 4px 8px;
+            background-color: #e6f4ea;
+            border-radius: 4px;
+          }
+          .action-section { 
+            text-align: center; 
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+          }
+          .expires { 
+            font-size: 13px; 
+            color: #666; 
+            text-align: center; 
+            margin-top: 8px;
+          }
+          .info-row {
+            display: flex;
+            margin-bottom: 10px;
+            align-items: baseline;
+          }
+          .info-label {
+            font-weight: 600;
+            min-width: 120px;
+          }
+          .info-value {
+            flex: 1;
+          }
+          @media (max-width: 480px) {
+            .content { padding: 20px; }
+            .button { width: 100%; margin: 10px 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>New Trip Request</h1>
+            <p>Reference: #${bookingId.substring(0, 8)}</p>
+          </div>
+          
+          <div class="content">
+            <div class="greeting">
+              <p>Hello ${driverName},</p>
+              <p>A new trip request is available! Please review the details below.</p>
+            </div>
+            
+            <div class="booking-details">
+              <h2>Trip Details</h2>
+              <div class="info-row">
+                <div class="info-label">From:</div>
+                <div class="info-value">${fromLocation}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">To:</div>
+                <div class="info-value">${toLocation}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Date:</div>
+                <div class="info-value">${departureDate}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Time:</div>
+                <div class="info-value">${departureTime}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Service:</div>
+                <div class="info-value">${serviceType}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Your Earnings:</div>
+                <div class="info-value"><span class="commission">${driverCommission}</span></div>
+              </div>
+            </div>
+            
+            <div class="customer-details">
+              <h2>Customer Information</h2>
+              <div class="info-row">
+                <div class="info-label">Name:</div>
+                <div class="info-value">${customerName}</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">Phone:</div>
+                <div class="info-value">${customerPhone}</div>
+              </div>
+            </div>
+
+            <div class="action-section">
+              <p><strong>This trip needs a driver! Will you take it?</strong></p>
+              <a href="${dashboardUrl}" class="button primary-button">VIEW AND RESPOND</a>
+              <p class="expires">This request expires in 30 minutes</p>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p>IslaGo Transport Services</p>
+            <p>Need help? Contact dispatch at dispatch@islago.vercel.app</p>
+            <p>&copy; ${new Date().getFullYear()} IslaGo. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+   
+  return htmlContent;
+};
+
+/**
  * Send a test email to verify Brevo configuration
  * @param {string} recipientEmail - The email address to send the test to
  * @returns {Promise<boolean>} - True if email was sent successfully

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../utils/supabase.ts';
 import { verifyPaymentSession, mapPaymentStatus } from '../utils/paymongo.js';
 import { sendDriverNotifications } from '../utils/twilio.js';
-import { sendPaymentConfirmationEmail } from '../utils/brevo.js';
+import { sendPaymentConfirmationEmail, sendDriverBookingEmail } from '../utils/brevo.js';
 import toast from 'react-hot-toast';
 import DriverDetails from './DriverDetails.jsx';
 import ContactOptions from './ContactOptions.jsx';
@@ -235,6 +235,24 @@ export default function PaymentSuccess() {
                 console.log('Payment confirmation email sent successfully');
                 toast.success('Payment confirmation email sent', { id: 'email-sending-toast' });
                 setEmailSent(true);
+                
+                // After sending customer email, send emails to available drivers
+                console.log('Sending driver booking notification emails');
+                toast.loading('Notifying available drivers...', { id: 'driver-email-toast' });
+                
+                try {
+                  const driverEmailResult = await sendDriverBookingEmail(bookingId);
+                  console.log('Driver notification emails result:', driverEmailResult);
+                  
+                  if (driverEmailResult.success) {
+                    toast.success(`${driverEmailResult.count} drivers notified via email`, { id: 'driver-email-toast' });
+                  } else {
+                    toast.error(`Unable to notify drivers via email: ${driverEmailResult.reason}`, { id: 'driver-email-toast' });
+                  }
+                } catch (driverEmailError) {
+                  console.error('Failed to send driver notification emails:', driverEmailError);
+                  toast.error('There was an issue notifying drivers via email', { id: 'driver-email-toast' });
+                }
               } catch (specificEmailError) {
                 console.error('Failed to send payment confirmation email:', specificEmailError);
                 toast.error('There was an issue sending the confirmation email. Our team will contact you shortly.', { id: 'email-sending-toast' });
@@ -406,6 +424,24 @@ export default function PaymentSuccess() {
               console.log('Payment confirmation email sent successfully');
               toast.success('Payment confirmation email sent', { id: 'email-sending-toast' });
               setEmailSent(true);
+              
+              // After sending customer email, send emails to available drivers
+              console.log('Sending driver booking notification emails');
+              toast.loading('Notifying available drivers...', { id: 'driver-email-toast' });
+              
+              try {
+                const driverEmailResult = await sendDriverBookingEmail(bookingId);
+                console.log('Driver notification emails result:', driverEmailResult);
+                
+                if (driverEmailResult.success) {
+                  toast.success(`${driverEmailResult.count} drivers notified via email`, { id: 'driver-email-toast' });
+                } else {
+                  toast.error(`Unable to notify drivers via email: ${driverEmailResult.reason}`, { id: 'driver-email-toast' });
+                }
+              } catch (driverEmailError) {
+                console.error('Failed to send driver notification emails:', driverEmailError);
+                toast.error('There was an issue notifying drivers via email', { id: 'driver-email-toast' });
+              }
             } catch (specificEmailError) {
               console.error('Failed to send payment confirmation email:', specificEmailError);
               toast.error('There was an issue sending the confirmation email. Our team will contact you shortly.', { id: 'email-sending-toast' });
