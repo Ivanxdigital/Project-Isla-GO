@@ -976,6 +976,25 @@ export default function BookingForm() {
     console.log('Auth modal state changed:', showAuthModal);
   }, [showAuthModal]);
 
+  // Monitor from/to location changes to set appropriate pickup option
+  useEffect(() => {
+    // For San Vicente to Puerto Princesa, automatically set to hotel pickup
+    if (fromLocation === 'San Vicente' && toLocation === 'Puerto Princesa') {
+      setPickupOption('hotel');
+    }
+    // For El Nido to Puerto Princesa routes
+    else if (fromLocation === 'El Nido' && toLocation === 'Puerto Princesa') {
+      // Default to terminal pickup for El Nido to PP
+      if (pickupOption === 'airport') {
+        setPickupOption('terminal');
+      }
+    }
+    // For other routes, if option is terminal, reset to airport
+    else if (pickupOption === 'terminal') {
+      setPickupOption('airport');
+    }
+  }, [fromLocation, toLocation, pickupOption]);
+
   return (
     <div className="bg-gray-50 pb-0">
       {showAuthModal && renderAuthModal()}
@@ -1392,9 +1411,24 @@ export default function BookingForm() {
                       </div>
                     )}
                     
+                    {/* Special notice for San Vicente to Puerto Princesa route */}
+                    {fromLocation === 'San Vicente' && toLocation === 'Puerto Princesa' && (
+                      <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="text-sm text-gray-700">
+                            <span className="font-medium">San Vicente Pickup Information:</span>
+                            <p className="mt-1">For this route, we offer hotel pickup service only. Our driver will collect you directly from your accommodation in San Vicente.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className={`grid grid-cols-1 ${fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
-                      {/* Airport Pickup option - only show for routes not originating from El Nido */}
-                      {!(fromLocation === 'El Nido') && (
+                      {/* Airport Pickup option - only show for routes not originating from El Nido or San Vicente */}
+                      {!(fromLocation === 'El Nido' || (fromLocation === 'San Vicente' && toLocation === 'Puerto Princesa')) && (
                         <motion.div
                           whileHover={{ scale: 1.02 }}
                           className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
