@@ -15,6 +15,7 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -150,15 +151,51 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
     `;
     document.head.appendChild(style);
 
+    // Manual check for Google Maps
+    const checkGoogleMapsLoaded = () => {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        console.log("Google Maps and Places API detected");
+        return true;
+      }
+      return false;
+    };
+
     const initializeAutocomplete = async () => {
       try {
-        await waitForGoogleMaps();
-        if (!window.google?.maps) {
-          console.warn('Google Maps API not loaded. Please check if any content blockers are enabled.');
+        console.log("Starting Google Maps initialization");
+
+        // First check if Google Maps is already loaded
+        if (checkGoogleMapsLoaded()) {
+          setIsLoading(false);
+          setupAutocomplete();
           return;
         }
-        setIsLoading(false);
+
+        // If not already loaded, wait for it
+        await waitForGoogleMaps();
         
+        // Double-check after waiting
+        if (checkGoogleMapsLoaded()) {
+          console.log("Google Maps loaded successfully");
+          setIsLoading(false);
+          setupAutocomplete();
+        } else {
+          console.error("Google Maps API failed to load properly");
+          setError("Google Maps could not be loaded. Please refresh the page.");
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error initializing Google Maps:', error);
+        setError("Could not initialize hotel search. Please try again later.");
+        setIsLoading(false);
+      }
+    };
+
+    const setupAutocomplete = () => {
+      if (!inputRef.current || !window.google?.maps?.places) return;
+      
+      try {
+        console.log("Setting up autocomplete");
         autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
           types: ['lodging'],
           componentRestrictions: { country: 'PH' },
@@ -178,25 +215,44 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
             onSelect({
               name: place.name,
               address: place.formatted_address,
-              location: {
+              location: place.geometry ? {
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng()
-              }
+              } : null
             });
           }
         });
+        
+        console.log("Autocomplete setup complete");
       } catch (error) {
-        console.error('Error initializing Google Maps:', error);
+        console.error('Error setting up autocomplete:', error);
+        setError("Failed to set up hotel search. Please try again.");
       }
     };
 
+    // Trigger manual load check on input focus
+    const handleInputFocus = () => {
+      if (!autocompleteRef.current && window.google?.maps?.places) {
+        console.log("Input focused - initializing autocomplete");
+        setupAutocomplete();
+      }
+    };
+
+    if (inputRef.current) {
+      inputRef.current.addEventListener('focus', handleInputFocus);
+    }
+
+    // Start initialization
     initializeAutocomplete();
 
     return () => {
-      if (autocompleteRef.current) {
+      if (autocompleteRef.current && window.google?.maps?.event) {
         window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
       document.head.removeChild(style);
+      if (inputRef.current) {
+        inputRef.current.removeEventListener('focus', handleInputFocus);
+      }
     };
   }, [onSelect]);
 
@@ -222,9 +278,14 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
         </div>
       )}
-      <p className="mt-1.5 text-xs text-gray-500">
-        Start typing to search hotels in Puerto Princesa, Palawan
-      </p>
+      {error && (
+        <p className="mt-1.5 text-xs text-red-500">{error}</p>
+      )}
+      {!error && (
+        <p className="mt-1.5 text-xs text-gray-500">
+          Start typing to search hotels in Palawan
+        </p>
+      )}
     </div>
   );
 } 
