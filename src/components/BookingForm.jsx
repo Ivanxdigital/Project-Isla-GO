@@ -198,13 +198,44 @@ export default function BookingForm() {
   const [showTerms, setShowTerms] = useState(false);
 
   // New state for hotel pickup
-  const [pickupOption, setPickupOption] = useState('airport'); // 'airport' or 'hotel'
+  const [pickupOption, setPickupOption] = useState('airport'); // 'airport' or 'hotel' or 'terminal'
   const [selectedHotel, setSelectedHotel] = useState(null);
   const _hotelOptions = useMemo(() => [
     { id: 1, name: 'City Centre Hotel A', pickupTimeOffset: 60 },
     { id: 2, name: 'City Centre Hotel B', pickupTimeOffset: 60 },
     { id: 3, name: 'City Centre Hotel C', pickupTimeOffset: 60 }
   ], []);
+
+  // El Nido Town Proper hotels list
+  const elNidoTownProperHotels = useMemo(() => [
+    'Frangipani El Nido',
+    'Coco Resort',
+    'Sea Cocoon Hotel',
+    'Seda Lio',
+    'Doublegem Beach Resort',
+    'The Nest El Nido',
+    'Spin Designer Hostel',
+    'El Nido Garden Resort',
+    'Ipil Suites El Nido',
+    'Marina Garden Beach Resort',
+    'Swiftlets Inn',
+    'Buena\'s Haven',
+    'El Nido Viewdeck Inn',
+    'Bill Tourist Inn',
+    'Angel Nido',
+    'El Nido Sands Inn',
+    // Add more El Nido Town Proper hotels as needed
+  ], []);
+
+  // Check if a hotel is in El Nido Town Proper
+  const isHotelInElNidoTownProper = useCallback((hotelName) => {
+    if (!hotelName) return false;
+    
+    // Check if the hotel name includes any of the El Nido Town Proper hotels
+    return elNidoTownProperHotels.some(hotel => 
+      hotelName.toLowerCase().includes(hotel.toLowerCase())
+    );
+  }, [elNidoTownProperHotels]);
 
   // New state for validation errors
   const [validationErrors, setValidationErrors] = useState({
@@ -591,6 +622,7 @@ export default function BookingForm() {
         group_size: groupSize,
         pickup_option: pickupOption,
         hotel_pickup: pickupOption === 'hotel' ? selectedHotel?.name : null,
+        terminal_pickup: pickupOption === 'terminal' ? 'Corong Terminal' : null,
         hotel_details: pickupOption === 'hotel' ? {
           name: selectedHotel?.name,
           address: selectedHotel?.address,
@@ -1341,27 +1373,50 @@ export default function BookingForm() {
                   <div className="mt-8">
                     <h3 className="text-lg font-semibold mb-4">Select Pickup Option</h3>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
-                          pickupOption === 'airport'
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
-                        }`}
-                        onClick={() => setPickupOption('airport')}
-                      >
-                        <div className="flex items-center mb-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                    {/* Special notice for El Nido to Puerto Princesa route */}
+                    {fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && (
+                      <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                           </svg>
-                          <h4 className="font-semibold text-lg">Airport Pickup</h4>
+                          <div className="text-sm text-gray-700">
+                            <span className="font-medium">Important Pickup Information:</span>
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              <li>Hotel pickup is only available for hotels within El Nido Town Proper.</li>
+                              <li>If your accommodation is outside El Nido Town Proper, please select "Corong Terminal Pickup".</li>
+                              <li>The terminal is centrally located and has ample parking.</li>
+                            </ul>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600">
-                          We'll pick you up from the airport terminal.
-                        </p>
-                      </motion.div>
+                      </div>
+                    )}
+                    
+                    <div className={`grid grid-cols-1 ${fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
+                      {/* Airport Pickup option - only show for routes not originating from El Nido */}
+                      {!(fromLocation === 'El Nido') && (
+                        <motion.div
+                          whileHover={{ scale: 1.02 }}
+                          className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
+                            pickupOption === 'airport'
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                          }`}
+                          onClick={() => setPickupOption('airport')}
+                        >
+                          <div className="flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                            </svg>
+                            <h4 className="font-semibold text-lg">Airport Pickup</h4>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            We'll pick you up from the airport terminal.
+                          </p>
+                        </motion.div>
+                      )}
 
+                      {/* Hotel Pickup option */}
                       <motion.div
                         whileHover={{ scale: 1.02 }}
                         className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
@@ -1378,9 +1433,35 @@ export default function BookingForm() {
                           <h4 className="font-semibold text-lg">Hotel Pickup</h4>
                         </div>
                         <p className="text-sm text-gray-600">
-                          We'll pick you up from your hotel.
+                          {fromLocation === 'El Nido' && toLocation === 'Puerto Princesa'
+                            ? "We'll pick you up from your hotel in El Nido Town Proper."
+                            : "We'll pick you up from your hotel."}
                         </p>
                       </motion.div>
+
+                      {/* Corong Terminal Pickup option - only show for El Nido to Puerto Princesa route */}
+                      {fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && (
+                        <motion.div
+                          whileHover={{ scale: 1.02 }}
+                          className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
+                            pickupOption === 'terminal'
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                          }`}
+                          onClick={() => setPickupOption('terminal')}
+                        >
+                          <div className="flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                              <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
+                            </svg>
+                            <h4 className="font-semibold text-lg">Corong Terminal Pickup</h4>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Meet at Corong Terminal in El Nido for pickup.
+                          </p>
+                        </motion.div>
+                      )}
                     </div>
                     
                     {pickupOption === 'hotel' && (
@@ -1389,7 +1470,18 @@ export default function BookingForm() {
                           Select Your Hotel
                         </label>
                         <HotelAutocomplete
-                          onSelect={setSelectedHotel}
+                          onSelect={(hotel) => {
+                            setSelectedHotel(hotel);
+                            
+                            // Check if we're on El Nido to Puerto Princesa route and show warning if hotel is outside town proper
+                            if (fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && 
+                                hotel && !isHotelInElNidoTownProper(hotel.name)) {
+                              toast.error(
+                                "This hotel appears to be outside El Nido Town Proper. Please consider choosing 'Corong Terminal Pickup' instead.",
+                                { duration: 6000 }
+                              );
+                            }
+                          }}
                           defaultValue={selectedHotel?.name || ''}
                         />
                         {selectedHotel && (
@@ -1398,8 +1490,40 @@ export default function BookingForm() {
                             {selectedHotel.address && (
                               <p className="text-xs text-gray-600 mt-1">{selectedHotel.address}</p>
                             )}
+                            
+                            {/* Warning for hotels outside El Nido Town Proper */}
+                            {fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' &&
+                             selectedHotel && !isHotelInElNidoTownProper(selectedHotel.name) && (
+                              <div className="mt-3 p-2 bg-red-50 rounded border border-red-200">
+                                <p className="text-xs text-red-600 flex items-start">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 mr-1 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  <span>
+                                    This hotel appears to be outside El Nido Town Proper. We recommend selecting "Corong Terminal Pickup" instead.
+                                  </span>
+                                </p>
+                              </div>
+                            )}
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Show Corong Terminal details when terminal pickup is selected */}
+                    {pickupOption === 'terminal' && fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && (
+                      <div className="mt-4 p-5 border border-gray-200 rounded-lg bg-white">
+                        <h4 className="font-medium text-gray-800 mb-2">Corong Terminal Information</h4>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Please arrive at Corong Terminal at least 15 minutes before the scheduled departure time.
+                        </p>
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <p className="text-sm font-medium text-gray-800">Corong Terminal</p>
+                          <p className="text-xs text-gray-600 mt-1">Main Bus Terminal, El Nido Town Proper, Palawan</p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            <span className="font-medium">Landmarks:</span> Near El Nido Municipal Hall, across from the public market
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
