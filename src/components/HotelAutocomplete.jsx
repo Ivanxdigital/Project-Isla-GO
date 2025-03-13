@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { waitForGoogleMaps } from '../utils/googleMaps';
+import { waitForGoogleMaps } from '../utils/googleMaps.js';
 
 // Palawan bounds
 const PALAWAN_BOUNDS = {
@@ -22,68 +22,84 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
       .pac-container {
         border-radius: 0.5rem;
         border: 1px solid #e5e7eb;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        margin-top: 4px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        margin-top: 8px;
         background-color: white;
         font-family: inherit;
-        max-height: 400px !important; /* Desktop height */
+        max-height: 300px !important;
         overflow-y: auto !important;
         z-index: 1000;
-        width: auto !important; /* Reset width for desktop */
+        width: auto !important;
         min-width: 300px;
       }
+      
       .pac-container::-webkit-scrollbar {
-        width: 8px;
+        width: 6px;
       }
+      
       .pac-container::-webkit-scrollbar-track {
         background: #f1f1f1;
-        border-radius: 4px;
+        border-radius: 6px;
       }
+      
       .pac-container::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 4px;
+        background: #cbd5e1;
+        border-radius: 6px;
       }
+      
       .pac-container::-webkit-scrollbar-thumb:hover {
-        background: #a1a1a1;
+        background: #94a3b8;
       }
+      
       .pac-item {
         padding: 0.75rem 1rem;
         cursor: pointer;
         font-size: 0.875rem;
         line-height: 1.25rem;
         border-top: 1px solid #f3f4f6;
-        transition: background-color 0.15s ease;
+        transition: all 0.2s ease;
         min-height: 48px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
       }
+      
       .pac-item:first-child {
         border-top: none;
       }
+      
       .pac-item:hover,
       .pac-item:active,
       .pac-item:focus {
-        background-color: #f3f4f6;
+        background-color: #f8fafc;
       }
+      
       .pac-item-selected {
-        background-color: #f3f4f6;
+        background-color: #f0f9ff;
       }
+      
       .pac-icon,
       .pac-icon-marker {
         display: none !important;
       }
+      
       .pac-item-query {
-        font-size: 0.875rem;
-        color: #111827;
+        font-size: 0.9rem;
+        color: #1e293b;
         font-weight: 500;
         padding-left: 0;
+        margin-bottom: 2px;
       }
+      
       .pac-matched {
         font-weight: 600;
-        color: #2563eb;
+        color: #3b82f6;
       }
+      
       .pac-item span:not(.pac-item-query) {
         font-size: 0.75rem;
-        color: #6b7280;
-        margin-left: 0.5rem;
+        color: #64748b;
+        margin-left: 0;
       }
 
       /* Desktop specific styles */
@@ -91,22 +107,11 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
         .pac-container {
           position: absolute !important;
           max-width: 600px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
+        
         .pac-item {
-          display: flex;
-          align-items: center;
           padding: 0.75rem 1rem;
-        }
-        .pac-item-query {
-          display: inline;
-          margin-bottom: 0;
-        }
-        .pac-item span:not(.pac-item-query) {
-          display: inline;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
         }
       }
 
@@ -124,20 +129,22 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
           border-radius: 1rem 1rem 0 0;
           box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+        
         .pac-item {
           padding: 1rem 1.25rem;
         }
+        
         .pac-item-query {
           font-size: 1rem;
           display: block;
           margin-bottom: 0.25rem;
         }
+        
         .pac-item span:not(.pac-item-query) {
           font-size: 0.875rem;
           display: block;
           white-space: normal;
           line-height: 1.25;
-          margin-left: 0;
         }
       }
     `;
@@ -195,19 +202,29 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
 
   return (
     <div className="relative">
-      <input
-        ref={inputRef}
-        type="text"
-        defaultValue={defaultValue}
-        disabled={isLoading}
-        placeholder={isLoading ? 'Loading...' : t('form.hotelPlaceholder', 'Enter hotel name')}
-        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-base transition-colors duration-200"
-      />
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          defaultValue={defaultValue}
+          disabled={isLoading}
+          placeholder={isLoading ? 'Loading...' : t('form.hotelPlaceholder', 'Enter hotel name')}
+          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-base transition-colors duration-200"
+        />
+      </div>
       {isLoading && (
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
         </div>
       )}
+      <p className="mt-1.5 text-xs text-gray-500">
+        Start typing to search hotels in Puerto Princesa, Palawan
+      </p>
     </div>
   );
 } 

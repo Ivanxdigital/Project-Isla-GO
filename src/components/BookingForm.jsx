@@ -1338,6 +1338,125 @@ export default function BookingForm() {
                     </div>
                   )}
 
+                  <div className="mt-8">
+                    <h3 className="text-lg font-semibold mb-4">Select Pickup Option</h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
+                          pickupOption === 'airport'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setPickupOption('airport')}
+                      >
+                        <div className="flex items-center mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                          </svg>
+                          <h4 className="font-semibold text-lg">Airport Pickup</h4>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          We'll pick you up from the airport terminal.
+                        </p>
+                      </motion.div>
+
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
+                          pickupOption === 'hotel'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                        }`}
+                        onClick={() => setPickupOption('hotel')}
+                      >
+                        <div className="flex items-center mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                          </svg>
+                          <h4 className="font-semibold text-lg">Hotel Pickup</h4>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          We'll pick you up from your hotel.
+                        </p>
+                      </motion.div>
+                    </div>
+                    
+                    {pickupOption === 'hotel' && (
+                      <div className="mt-4 p-5 border border-gray-200 rounded-lg bg-white">
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          Select Your Hotel
+                        </label>
+                        <HotelAutocomplete
+                          onSelect={setSelectedHotel}
+                          defaultValue={selectedHotel?.name || ''}
+                        />
+                        {selectedHotel && (
+                          <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <p className="text-sm font-medium text-gray-800">{selectedHotel.name}</p>
+                            {selectedHotel.address && (
+                              <p className="text-xs text-gray-600 mt-1">{selectedHotel.address}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {t('form.groupSize')}
+                    </label>
+                    <div className="inline-flex items-center rounded-md shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setGroupSize(Math.max(1, groupSize - 1))}
+                        className="relative inline-flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-l-md bg-gray-50 hover:bg-gray-100 focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <div className="relative w-20">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          min="1"
+                          max={serviceType === 'private15' ? 15 : 10}
+                          value={groupSize}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (!isNaN(value)) {
+                              const max = serviceType === 'private15' ? 15 : 10;
+                              setGroupSize(Math.min(max, Math.max(1, value)));
+                            } else if (e.target.value === '') {
+                              setGroupSize(1);
+                            }
+                          }}
+                          className="block w-full text-center py-2.5 border-t border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-gray-300 text-lg font-medium"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setGroupSize(Math.min(serviceType === 'private15' ? 15 : 10, groupSize + 1))}
+                        className="relative inline-flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-r-md bg-gray-50 hover:bg-gray-100 focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {serviceType === 'private15' 
+                        ? 'Maximum 15 passengers' 
+                        : serviceType === 'private10' 
+                          ? 'Maximum 10 passengers' 
+                          : 'Select the number of passengers'}
+                    </p>
+                  </div>
+
                   <button
                     type="submit"
                     className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md transition-colors mt-6"
