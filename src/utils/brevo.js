@@ -445,20 +445,13 @@ export const sendDriverBookingEmail = async (bookingId) => {
       return { success: false, count: 0, reason: 'Booking already assigned' };
     }
     
-    // Get available drivers based on the booking location
-    // This query can be customized based on your specific criteria for driver availability
+    // First, get available drivers without trying to use relationship syntax
+    console.log('Fetching available drivers');
     const { data: availableDrivers, error: driversError } = await supabase
       .from('drivers')
-      .select(`
-        *,
-        user:user_id (
-          id,
-          email
-        )
-      `)
+      .select('*')
       .eq('status', 'active')
-      .eq('is_available', true)
-      .not('user.email', 'is', null);
+      .eq('is_available', true);
     
     if (driversError) {
       console.error('Error fetching available drivers:', driversError);
@@ -468,7 +461,7 @@ export const sendDriverBookingEmail = async (bookingId) => {
     if (!availableDrivers || availableDrivers.length === 0) {
       console.warn('No available drivers found for booking:', bookingId);
       
-      // Log this issue to the database - with error handling for missing table
+      // Log this issue to the database
       try {
         await supabase
           .from('email_failures')
@@ -486,19 +479,57 @@ export const sendDriverBookingEmail = async (bookingId) => {
     
     console.log(`Found ${availableDrivers.length} available drivers`);
     
-    // For each driver, send a personalized email
+    // Get the current authenticated user session for email access
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // For each driver, get their email from profiles and send an email
     let successCount = 0;
     const baseUrl = new URL(window.location.origin);
     const dashboardUrl = new URL('/driver/dashboard', baseUrl);
     
+    // Process each driver in sequence
     for (const driver of availableDrivers) {
       try {
-        if (!driver.user || !driver.user.email) {
-          console.log(`Driver ${driver.id} has no email, skipping`);
+        // Skip drivers without user_id
+        if (!driver.user_id) {
+          console.log(`Driver ${driver.id} has no user_id, skipping`);
           continue;
         }
         
-        const driverEmail = driver.user.email;
+        // Try to get email from profiles table
+        console.log(`Fetching email for driver ${driver.id} from profiles table`);
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('email, first_name, last_name')
+          .eq('id', driver.user_id)
+          .single();
+        
+        let driverEmail = null;
+        let driverName = driver.name || 'Driver';
+        
+        if (profileError || !profileData || !profileData.email) {
+          console.log(`No profile email found for driver ${driver.id}, checking if this is the current user`);
+          
+          // As a fallback, if this driver is the current logged-in user, use their email
+          if (session && session.user && session.user.id === driver.user_id) {
+            console.log(`Driver ${driver.id} is the current user, using session email`);
+            driverEmail = session.user.email;
+          } else {
+            console.log(`No email found for driver ${driver.id}, skipping`);
+            continue;
+          }
+        } else {
+          driverEmail = profileData.email;
+          // If profile has name details, use those
+          if (profileData.first_name) {
+            driverName = `${profileData.first_name} ${profileData.last_name || ''}`.trim();
+          }
+        }
+        
+        if (!driverEmail) {
+          console.log(`No email found for driver ${driver.id}, skipping`);
+          continue;
+        }
         
         // Generate HTML content for this driver
         const htmlContent = getDriverBookingNotificationHtml(booking, driver, dashboardUrl.toString());
@@ -511,7 +542,7 @@ export const sendDriverBookingEmail = async (bookingId) => {
           },
           to: [{
             email: driverEmail,
-            name: `${driver.name || 'Driver'}`
+            name: driverName
           }],
           subject: `New Booking Available: ${booking.from_location} to ${booking.to_location}`,
           htmlContent: htmlContent,
@@ -631,7 +662,7 @@ const getDriverBookingNotificationHtml = (booking, driver, dashboardUrl) => {
   console.log('Generating driver email HTML for booking:', booking.id);
   
   // Handle potential missing data gracefully
-  const driverName = driver.first_name || 'Driver';
+  const driverName = driver.name || 'Driver';
   const bookingId = booking.id || 'Unknown';
   const fromLocation = booking.from_location || 'Not specified';
   const toLocation = booking.to_location || 'Not specified';
