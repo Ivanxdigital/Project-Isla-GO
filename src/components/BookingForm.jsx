@@ -1404,59 +1404,6 @@ export default function BookingForm() {
                     )}
                   </div>
 
-                  <div className="mt-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('form.groupSize')}
-                    </label>
-                    <div className="inline-flex items-center rounded-md shadow-sm">
-                      <button
-                        type="button"
-                        onClick={() => setGroupSize(Math.max(1, groupSize - 1))}
-                        className="relative inline-flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-l-md bg-gray-50 hover:bg-gray-100 focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                      <div className="relative w-20">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          min="1"
-                          max={serviceType === 'private15' ? 15 : 10}
-                          value={groupSize}
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value);
-                            if (!isNaN(value)) {
-                              const max = serviceType === 'private15' ? 15 : 10;
-                              setGroupSize(Math.min(max, Math.max(1, value)));
-                            } else if (e.target.value === '') {
-                              setGroupSize(1);
-                            }
-                          }}
-                          className="block w-full text-center py-2.5 border-t border-b border-gray-300 focus:outline-none focus:ring-0 focus:border-gray-300 text-lg font-medium"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setGroupSize(Math.min(serviceType === 'private15' ? 15 : 10, groupSize + 1))}
-                        className="relative inline-flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-r-md bg-gray-50 hover:bg-gray-100 focus:z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {serviceType === 'private15' 
-                        ? 'Maximum 15 passengers' 
-                        : serviceType === 'private10' 
-                          ? 'Maximum 10 passengers' 
-                          : 'Select the number of passengers'}
-                    </p>
-                  </div>
-
                   <button
                     type="submit"
                     className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md transition-colors mt-6"
