@@ -227,6 +227,27 @@ export default function BookingForm() {
     // Add more El Nido Town Proper hotels as needed
   ], []);
 
+  // Port Barton Town Proper hotels list
+  const portBartonTownProperHotels = useMemo(() => [
+    'Port Barton Beach Resort',
+    'El Busero Inn',
+    'Deep Moon Resort',
+    'Ausan Beach Front Cottages',
+    'Elsa\'s Beach Resort',
+    'Greenviews Resort',
+    'Rubin Resort',
+    'Summer Homes Resort',
+    'Port Barton Homestay',
+    'Blue Lagoon Inn',
+    'Cassandra\'s Beach Cottages',
+    'Fish Tales',
+    'Sunset Colors',
+    'Jambalaya Homestay',
+    'Mary\'s Beach Cottages',
+    'White Beach Annex',
+    // Add more Port Barton Town Proper hotels as needed
+  ], []);
+
   // Check if a hotel is in El Nido Town Proper
   const isHotelInElNidoTownProper = useCallback((hotelName) => {
     if (!hotelName) return false;
@@ -236,6 +257,16 @@ export default function BookingForm() {
       hotelName.toLowerCase().includes(hotel.toLowerCase())
     );
   }, [elNidoTownProperHotels]);
+
+  // Check if a hotel is in Port Barton Town Proper
+  const isHotelInPortBartonTownProper = useCallback((hotelName) => {
+    if (!hotelName) return false;
+    
+    // Check if the hotel name includes any of the Port Barton Town Proper hotels
+    return portBartonTownProperHotels.some(hotel => 
+      hotelName.toLowerCase().includes(hotel.toLowerCase())
+    );
+  }, [portBartonTownProperHotels]);
 
   // New state for validation errors
   const [validationErrors, setValidationErrors] = useState({
@@ -989,6 +1020,13 @@ export default function BookingForm() {
         setPickupOption('terminal');
       }
     }
+    // For Port Barton to Puerto Princesa routes
+    else if (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa') {
+      // Default to terminal pickup for Port Barton to PP if airport was selected
+      if (pickupOption === 'airport') {
+        setPickupOption('terminal');
+      }
+    }
     // For other routes, if option is terminal, reset to airport
     else if (pickupOption === 'terminal') {
       setPickupOption('airport');
@@ -1426,9 +1464,35 @@ export default function BookingForm() {
                       </div>
                     )}
                     
-                    <div className={`grid grid-cols-1 ${fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
-                      {/* Airport Pickup option - only show for routes not originating from El Nido or San Vicente */}
-                      {!(fromLocation === 'El Nido' || (fromLocation === 'San Vicente' && toLocation === 'Puerto Princesa')) && (
+                    {/* Special notice for Port Barton to Puerto Princesa route */}
+                    {fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa' && (
+                      <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="text-sm text-gray-700">
+                            <span className="font-medium">Port Barton Pickup Information:</span>
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              {serviceType === 'shared' ? (
+                                <>
+                                  <li>For shared vans, hotel pickup is only available within Port Barton Town Proper.</li>
+                                  <li>If your accommodation is outside Port Barton Town Proper, please select "Terminal Pickup".</li>
+                                </>
+                              ) : (
+                                <li>For private vans, we can pick you up from any accommodation in Port Barton area.</li>
+                              )}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className={`grid grid-cols-1 ${(fromLocation === 'El Nido' || fromLocation === 'Port Barton') && toLocation === 'Puerto Princesa' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
+                      {/* Airport Pickup option - only show for routes not originating from El Nido, San Vicente, or Port Barton */}
+                      {!(fromLocation === 'El Nido' || 
+                         (fromLocation === 'San Vicente' && toLocation === 'Puerto Princesa') ||
+                         (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa')) && (
                         <motion.div
                           whileHover={{ scale: 1.02 }}
                           className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
@@ -1469,12 +1533,15 @@ export default function BookingForm() {
                         <p className="text-sm text-gray-600">
                           {fromLocation === 'El Nido' && toLocation === 'Puerto Princesa'
                             ? "We'll pick you up from your hotel in El Nido Town Proper."
+                            : fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa' && serviceType === 'shared'
+                            ? "We'll pick you up from your hotel in Port Barton Town Proper." 
                             : "We'll pick you up from your hotel."}
                         </p>
                       </motion.div>
 
-                      {/* Corong Terminal Pickup option - only show for El Nido to Puerto Princesa route */}
-                      {fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && (
+                      {/* Terminal Pickup option - for El Nido to PP and Port Barton to PP routes */}
+                      {((fromLocation === 'El Nido' && toLocation === 'Puerto Princesa') || 
+                        (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa')) && (
                         <motion.div
                           whileHover={{ scale: 1.02 }}
                           className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
@@ -1489,10 +1556,14 @@ export default function BookingForm() {
                               <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
                               <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
                             </svg>
-                            <h4 className="font-semibold text-lg">Corong Terminal Pickup</h4>
+                            <h4 className="font-semibold text-lg">
+                              {fromLocation === 'El Nido' ? 'Corong Terminal Pickup' : 'Terminal Pickup'}
+                            </h4>
                           </div>
                           <p className="text-sm text-gray-600">
-                            Meet at Corong Terminal in El Nido for pickup.
+                            {fromLocation === 'El Nido' 
+                              ? "Meet at Corong Terminal in El Nido for pickup."
+                              : "Meet at the main terminal in Port Barton for pickup."}
                           </p>
                         </motion.div>
                       )}
@@ -1512,6 +1583,16 @@ export default function BookingForm() {
                                 hotel && !isHotelInElNidoTownProper(hotel.name)) {
                               toast.error(
                                 "This hotel appears to be outside El Nido Town Proper. Please consider choosing 'Corong Terminal Pickup' instead.",
+                                { duration: 6000 }
+                              );
+                            }
+                            
+                            // Check if we're on Port Barton to Puerto Princesa route with shared van
+                            // and show warning if hotel is outside Port Barton Town Proper
+                            if (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa' && 
+                                serviceType === 'shared' && hotel && !isHotelInPortBartonTownProper(hotel.name)) {
+                              toast.error(
+                                "This hotel appears to be outside Port Barton Town Proper. For shared vans, please consider choosing 'Terminal Pickup' instead.",
                                 { duration: 6000 }
                               );
                             }
@@ -1539,24 +1620,53 @@ export default function BookingForm() {
                                 </p>
                               </div>
                             )}
+                            
+                            {/* Warning for hotels outside Port Barton Town Proper (only for shared vans) */}
+                            {fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa' && 
+                             serviceType === 'shared' && selectedHotel && !isHotelInPortBartonTownProper(selectedHotel.name) && (
+                              <div className="mt-3 p-2 bg-red-50 rounded border border-red-200">
+                                <p className="text-xs text-red-600 flex items-start">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 mr-1 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  <span>
+                                    For shared vans, this hotel appears to be outside Port Barton Town Proper. We recommend selecting "Terminal Pickup" instead. (Private vans can pick up from this location.)
+                                  </span>
+                                </p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* Show Corong Terminal details when terminal pickup is selected */}
-                    {pickupOption === 'terminal' && fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && (
+                    {/* Show Terminal details */}
+                    {pickupOption === 'terminal' && (
                       <div className="mt-4 p-5 border border-gray-200 rounded-lg bg-white">
-                        <h4 className="font-medium text-gray-800 mb-2">Corong Terminal Information</h4>
+                        <h4 className="font-medium text-gray-800 mb-2">
+                          {fromLocation === 'El Nido' ? 'Corong Terminal Information' : 'Port Barton Terminal Information'}
+                        </h4>
                         <p className="text-sm text-gray-600 mb-3">
-                          Please arrive at Corong Terminal at least 15 minutes before the scheduled departure time.
+                          Please arrive at the terminal at least 15 minutes before the scheduled departure time.
                         </p>
                         <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                          <p className="text-sm font-medium text-gray-800">Corong Terminal</p>
-                          <p className="text-xs text-gray-600 mt-1">Main Bus Terminal, El Nido Town Proper, Palawan</p>
-                          <p className="text-xs text-gray-600 mt-1">
-                            <span className="font-medium">Landmarks:</span> Near El Nido Municipal Hall, across from the public market
-                          </p>
+                          {fromLocation === 'El Nido' ? (
+                            <>
+                              <p className="text-sm font-medium text-gray-800">Corong Terminal</p>
+                              <p className="text-xs text-gray-600 mt-1">Main Bus Terminal, El Nido Town Proper, Palawan</p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                <span className="font-medium">Landmarks:</span> Near El Nido Municipal Hall, across from the public market
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm font-medium text-gray-800">Port Barton Terminal</p>
+                              <p className="text-xs text-gray-600 mt-1">Main van terminal, Port Barton Town Proper, Palawan</p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                <span className="font-medium">Landmarks:</span> Near the main beach, beside Port Barton Tourism Office
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
