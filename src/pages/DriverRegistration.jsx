@@ -62,10 +62,40 @@ export default function DriverRegistration() {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked, files } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : files ? files[0] : value
-    }));
+    
+    // Enhanced debugging
+    console.log(`Input changed: field=${name}, value="${value}", type=${type}`);
+    
+    // For document files
+    if (type === 'file') {
+      console.log(`File upload detected for field: ${name}`);
+      setFormData(prev => ({
+        ...prev,
+        [name]: files ? files[0] : null
+      }));
+      return;
+    }
+    
+    // For the LTFRB fields, add special handling
+    if (name === 'tnvsNumber' || name === 'cpcNumber') {
+      console.log(`LTFRB field ${name} changed to: "${value}"`);
+      
+      // Update state explicitly
+      setFormData(prevData => {
+        const newData = {
+          ...prevData,
+          [name]: value
+        };
+        console.log(`New formData.${name} = "${newData[name]}"`);
+        return newData;
+      });
+    } else {
+      // Handle other fields normally
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : files ? files[0] : value
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -73,6 +103,9 @@ export default function DriverRegistration() {
     setLoading(true);
 
     try {
+      // Log the form data before submission for debugging
+      console.log("Submitting form data:", formData);
+      
       // Upload all documents and get their URLs
       const documentUploads = await Promise.all([
         formData.driverLicenseFile && uploadDriverDocument(formData.driverLicenseFile, user.id, 'driver_license'),
@@ -107,8 +140,8 @@ export default function DriverRegistration() {
             insurance_provider: formData.insuranceProvider,
             policy_number: formData.policyNumber,
             policy_expiration: formData.policyExpiration,
-            tnvs_number: formData.tnvsNumber || null,
-            cpc_number: formData.cpcNumber || null,
+            tnvs_number: formData.tnvsNumber ?? '',
+            cpc_number: formData.cpcNumber ?? '',
             bank_name: formData.bankName,
             account_number: formData.accountNumber,
             account_holder: formData.accountHolder,
@@ -153,6 +186,8 @@ export default function DriverRegistration() {
   };
 
   const renderStep = () => {
+    console.log("Rendering step:", currentStep);
+    
     switch (currentStep) {
       case 1:
         return <PersonalInformationStep formData={formData} onChange={handleInputChange} />;
@@ -163,9 +198,17 @@ export default function DriverRegistration() {
       case 4:
         return <InsuranceDetailsStep formData={formData} onChange={handleInputChange} />;
       case 5:
-        return <LTFRBDetailsStep formData={formData} onChange={handleInputChange} />;
+        // Simplified LTFRB step handling
+        return <LTFRBDetailsStep 
+          formData={formData} 
+          onChange={handleInputChange} 
+        />;
       case 6:
-        return <DocumentsUploadStep formData={formData} onChange={handleInputChange} />;
+        console.log("Rendering DocumentsUploadStep with handleInputChange function:", typeof handleInputChange);
+        return <DocumentsUploadStep 
+          formData={formData} 
+          onChange={handleInputChange} 
+        />;
       case 7:
         return <BankingInformationStep formData={formData} onChange={handleInputChange} />;
       case 8:
@@ -196,7 +239,16 @@ export default function DriverRegistration() {
               {currentStep < 8 ? (
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(prev => prev + 1)}
+                  onClick={() => {
+                    if (currentStep === 4) {
+                      setFormData(prev => ({
+                        ...prev,
+                        tnvsNumber: prev.tnvsNumber || '',
+                        cpcNumber: prev.cpcNumber || ''
+                      }));
+                    }
+                    setCurrentStep(prev => prev + 1);
+                  }}
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
                 >
                   Next

@@ -1,196 +1,299 @@
-import React, { useState } from 'react';
-import { useFormContext } from 'react-hook-form';
+import React, { useState, useEffect } from 'react';
 
-export default function DocumentsUploadStep() {
-  const { register, formState: { errors }, setValue, watch } = useFormContext();
+export default function DocumentsUploadStep({ formData, onChange }) {
   const [previews, setPreviews] = useState({});
-
-  const requiredDocuments = [
-    {
-      id: 'driverLicenseFront',
-      label: 'Professional Driver\'s License (Front)',
-      description: 'Clear photo of your valid Professional Driver\'s License (front side)',
-      accept: 'image/*'
-    },
-    {
-      id: 'driverLicenseBack',
-      label: 'Professional Driver\'s License (Back)',
-      description: 'Clear photo of your valid Professional Driver\'s License (back side)',
-      accept: 'image/*'
-    },
-    {
-      id: 'nbiClearance',
-      label: 'NBI Clearance',
-      description: 'Latest NBI Clearance (must be within 6 months)',
-      accept: 'image/*,.pdf'
-    },
-    {
-      id: 'vehicleRegistration',
-      label: 'Vehicle Registration (OR/CR)',
-      description: 'Clear photo of your vehicle\'s OR/CR',
-      accept: 'image/*'
-    },
-    {
-      id: 'insurancePolicy',
-      label: 'Insurance Policy',
-      description: 'Complete insurance policy document showing coverage details',
-      accept: 'image/*,.pdf'
-    },
-    {
-      id: 'vehicleFront',
-      label: 'Vehicle Photo (Front)',
-      description: 'Clear photo of your vehicle from the front',
-      accept: 'image/*'
-    },
-    {
-      id: 'vehicleSide',
-      label: 'Vehicle Photo (Side)',
-      description: 'Clear photo of your vehicle from the side',
-      accept: 'image/*'
-    },
-    {
-      id: 'vehicleInterior',
-      label: 'Vehicle Interior',
-      description: 'Clear photo of your vehicle\'s interior showing all seats',
-      accept: 'image/*'
+  
+  // Initialize previews from existing formData on component mount
+  useEffect(() => {
+    // Create initial previews for files that might already be in formData
+    const initialPreviews = {};
+    if (formData) {
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value && typeof value === 'object' && (key.includes('File') || key.includes('Photo'))) {
+          initialPreviews[key] = 'document'; // Just show document icon for existing files
+        }
+      });
     }
-  ];
+    if (Object.keys(initialPreviews).length > 0) {
+      setPreviews(initialPreviews);
+    }
+  }, []);
 
-  const handleFileChange = (event, documentId) => {
-    const file = event.target.files[0];
-    if (file) {
-      setValue(documentId, file);
+  const handleFileChange = (event) => {
+    const { name, files } = event.target;
+    if (files && files[0]) {
+      // Store the file locally for preview regardless of onChange availability
+      const file = files[0];
       
+      // Update local state first
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onloadend = () => {
           setPreviews(prev => ({
             ...prev,
-            [documentId]: reader.result
+            [name]: reader.result
           }));
         };
         reader.readAsDataURL(file);
       } else {
+        // For non-image files, show document icon
         setPreviews(prev => ({
           ...prev,
-          [documentId]: 'document'
+          [name]: 'document'
+        }));
+      }
+      
+      // Update parent's state if onChange is a function
+      if (typeof onChange === 'function') {
+        // Pass the file to parent component
+        onChange(event);
+        console.log(`File uploaded: ${name}`, file);
+      } else {
+        console.warn('onChange is not a function or not provided to DocumentsUploadStep');
+        // Handle file locally if onChange not available
+        // This ensures the component works even if onChange is missing
+        setLocalFiles(prev => ({
+          ...prev,
+          [name]: file
         }));
       }
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="bg-white px-4 py-5 shadow sm:rounded-lg sm:p-6">
-        <div className="md:grid md:grid-cols-3 md:gap-6">
-          <div className="md:col-span-1">
-            <h3 className="text-lg font-medium leading-6 text-gray-900">Required Documents</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Please upload clear, readable photos or scans of all required documents.
-              Make sure all text is visible and the entire document is in frame.
-            </p>
-            <div className="mt-4 rounded-md bg-yellow-50 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+  // State to store files locally if onChange is not available
+  const [localFiles, setLocalFiles] = useState({});
+
+  const removeFile = (documentId) => {
+    // Remove preview
+    setPreviews(prev => {
+      const newPreviews = { ...prev };
+      delete newPreviews[documentId];
+      return newPreviews;
+    });
+    
+    // Remove from local files if we're storing them
+    setLocalFiles(prev => {
+      const newFiles = { ...prev };
+      delete newFiles[documentId];
+      return newFiles;
+    });
+    
+    // Update parent's state if onChange is a function
+    if (typeof onChange === 'function') {
+      // Create a synthetic event to clear the file
+      const syntheticEvent = {
+        target: {
+          name: documentId,
+          value: null,
+          type: 'file',
+          files: null
+        }
+      };
+      onChange(syntheticEvent);
+    } else {
+      console.warn('onChange is not a function or not provided to DocumentsUploadStep');
+    }
+  };
+
+  // Group documents in a logical way for better organization
+  const documentGroups = [
+    {
+      title: "Personal Documents",
+      documents: [
+        {
+          id: 'driverLicenseFile',
+          label: 'Professional Driver\'s License',
+          description: 'Clear photo of your valid driver\'s license',
+          accept: 'image/*',
+          icon: 'id-card'
+        },
+        {
+          id: 'nbiClearance',
+          label: 'NBI Clearance',
+          description: 'Latest NBI Clearance (must be within 6 months)',
+          accept: 'image/*,.pdf',
+          icon: 'document'
+        },
+        {
+          id: 'medicalCertificate',
+          label: 'Medical Certificate',
+          description: 'Valid medical certificate from an accredited clinic',
+          accept: 'image/*,.pdf',
+          icon: 'medical'
+        }
+      ]
+    },
+    {
+      title: "Vehicle Documents",
+      documents: [
+        {
+          id: 'orCrFile',
+          label: 'Vehicle Registration (OR/CR)',
+          description: 'Clear photo of your vehicle\'s OR/CR',
+          accept: 'image/*',
+          icon: 'document'
+        },
+        {
+          id: 'insuranceFile',
+          label: 'Insurance Policy',
+          description: 'Complete insurance policy document showing coverage details',
+          accept: 'image/*,.pdf',
+          icon: 'shield'
+        }
+      ]
+    },
+    {
+      title: "Vehicle Photos",
+      documents: [
+        {
+          id: 'vehicleFrontPhoto',
+          label: 'Vehicle Photo (Front)',
+          description: 'Clear photo of your vehicle from the front',
+          accept: 'image/*',
+          icon: 'car'
+        },
+        {
+          id: 'vehicleSidePhoto',
+          label: 'Vehicle Photo (Side)',
+          description: 'Clear photo of your vehicle from the side',
+          accept: 'image/*',
+          icon: 'car'
+        },
+        {
+          id: 'vehicleRearPhoto',
+          label: 'Vehicle Photo (Rear)',
+          description: 'Clear photo of your vehicle from the rear',
+          accept: 'image/*',
+          icon: 'car'
+        }
+      ]
+    }
+  ];
+
+  // Document uploader component for consistent styling
+  const DocumentUploader = ({ document }) => {
+    // Check if we have a file either in formData or localFiles
+    const hasFile = previews[document.id] || 
+                   (formData && formData[document.id]) || 
+                   localFiles[document.id];
+    
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+        <div className="p-4 border-b border-gray-100">
+          <h4 className="font-medium text-gray-800 flex items-center">
+            {document.label}
+            <span className="text-red-500 ml-1">*</span>
+          </h4>
+          <p className="text-sm text-gray-500 mt-1">{document.description}</p>
+        </div>
+        
+        <div className="p-5">
+          {hasFile ? (
+            <div className="flex flex-col items-center">
+              {previews[document.id] === 'document' ? (
+                <div className="bg-blue-50 rounded-lg p-4 mb-3">
+                  <svg className="h-16 w-16 text-blue-500 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
+                  <p className="text-center text-sm text-blue-600 mt-2">Document uploaded</p>
                 </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-yellow-800">Important Notes</h3>
-                  <div className="mt-2 text-sm text-yellow-700">
-                    <ul className="list-disc space-y-1 pl-5">
-                      <li>All documents must be valid and not expired</li>
-                      <li>Photos must be clear and well-lit</li>
-                      <li>File size should not exceed 5MB per document</li>
-                      <li>Accepted formats: JPG, PNG, PDF</li>
-                    </ul>
-                  </div>
+              ) : previews[document.id] ? (
+                <img 
+                  src={previews[document.id]} 
+                  alt={`Preview of ${document.label}`} 
+                  className="h-48 object-contain rounded-lg mb-3 border border-gray-200"
+                />
+              ) : (
+                <div className="bg-gray-100 rounded-lg p-4 mb-3 w-full flex justify-center items-center" style={{ height: '12rem' }}>
+                  <p className="text-gray-500 text-sm">File uploaded (No preview available)</p>
                 </div>
-              </div>
+              )}
+              <button
+                type="button"
+                onClick={() => removeFile(document.id)}
+                className="mt-3 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition-colors text-sm font-medium flex items-center"
+              >
+                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Remove File
+              </button>
             </div>
-          </div>
-          <div className="mt-5 md:col-span-2 md:mt-0">
-            <div className="grid grid-cols-1 gap-6">
-              {requiredDocuments.map((doc) => (
-                <div key={doc.id} className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    {doc.label}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <div className="mt-1 flex items-center space-x-4">
-                    <div className="flex-grow">
-                      <input
-                        type="file"
-                        accept={doc.accept}
-                        className="hidden"
-                        id={doc.id}
-                        {...register(doc.id, {
-                          required: `${doc.label} is required`,
-                          validate: {
-                            fileSize: (value) => {
-                              if (value && value[0]) {
-                                return value[0].size <= 5 * 1024 * 1024 || 'File size must be less than 5MB';
-                              }
-                              return true;
-                            }
-                          }
-                        })}
-                        onChange={(e) => handleFileChange(e, doc.id)}
-                      />
-                      <label
-                        htmlFor={doc.id}
-                        className="flex cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-gray-300 px-6 pt-5 pb-6 hover:border-gray-400"
-                      >
-                        <div className="space-y-1 text-center">
-                          {previews[doc.id] ? (
-                            previews[doc.id] === 'document' ? (
-                              <svg className="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                              </svg>
-                            ) : (
-                              <img src={previews[doc.id]} alt="Preview" className="mx-auto h-32 w-auto object-cover" />
-                            )
-                          ) : (
-                            <>
-                              <svg className="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                              </svg>
-                              <div className="flex text-sm text-gray-600">
-                                <span>Upload {doc.label.toLowerCase()}</span>
-                              </div>
-                            </>
-                          )}
-                          <p className="text-xs text-gray-500">{doc.description}</p>
-                        </div>
-                      </label>
-                    </div>
-                    {previews[doc.id] && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setValue(doc.id, null);
-                          setPreviews(prev => {
-                            const newPreviews = { ...prev };
-                            delete newPreviews[doc.id];
-                            return newPreviews;
-                          });
-                        }}
-                        className="rounded-md bg-red-100 px-2.5 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-200"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                  {errors[doc.id] && (
-                    <p className="mt-1 text-sm text-red-600">{errors[doc.id].message}</p>
-                  )}
+          ) : (
+            <div className="flex flex-col items-center">
+              <label
+                htmlFor={document.id}
+                className="w-full cursor-pointer flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors py-6 px-4"
+              >
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <svg className="w-10 h-10 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="mb-2 text-sm text-gray-700 font-semibold">
+                    <span>Click to upload</span>
+                  </p>
+                  <p className="text-xs text-gray-500 text-center">
+                    PNG, JPG, or PDF (max. 5MB)
+                  </p>
                 </div>
-              ))}
+              </label>
+              <input
+                id={document.id}
+                type="file"
+                name={document.id}
+                accept={document.accept}
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">Required Documents</h3>
+        <p className="text-gray-600 mb-6">
+          Please upload clear, readable photos or scans of all required documents.
+        </p>
+        
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8 rounded-md">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2h.01a1 1 0 000-2H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">Tips for document uploads</h3>
+              <div className="mt-2 text-sm text-blue-700">
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>Make sure the entire document is visible in the frame</li>
+                  <li>Ensure text is clear and readable</li>
+                  <li>Photos should be well-lit with no glare</li>
+                  <li>File size limit is 5MB per document</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {documentGroups.map((group, index) => (
+        <div key={index} className="mb-8">
+          <h4 className="text-lg font-medium text-gray-800 mb-4 pb-2 border-b border-gray-200">
+            {group.title}
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {group.documents.map((document) => (
+              <DocumentUploader key={document.id} document={document} />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 } 

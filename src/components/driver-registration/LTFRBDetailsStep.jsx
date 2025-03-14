@@ -1,6 +1,55 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function LTFRBDetailsStep({ formData, onChange }) {
+  // Create local state for the form fields
+  const [localTnvsNumber, setLocalTnvsNumber] = useState('');
+  const [localCpcNumber, setLocalCpcNumber] = useState('');
+  
+  // Initialize local state from formData when component mounts
+  useEffect(() => {
+    if (formData) {
+      setLocalTnvsNumber(formData.tnvsNumber || '');
+      setLocalCpcNumber(formData.cpcNumber || '');
+    }
+  }, [formData]);
+  
+  // Handle local changes and propagate to parent
+  const handleTnvsChange = (e) => {
+    const value = e.target.value;
+    setLocalTnvsNumber(value);
+    
+    // Create a synthetic event to pass to the parent's onChange
+    const syntheticEvent = {
+      target: {
+        name: 'tnvsNumber',
+        value: value,
+        type: 'text'
+      }
+    };
+    
+    if (onChange) {
+      onChange(syntheticEvent);
+    }
+  };
+  
+  const handleCpcChange = (e) => {
+    const value = e.target.value;
+    setLocalCpcNumber(value);
+    
+    // Create a synthetic event to pass to the parent's onChange
+    const syntheticEvent = {
+      target: {
+        name: 'cpcNumber',
+        value: value,
+        type: 'text'
+      }
+    };
+    
+    if (onChange) {
+      onChange(syntheticEvent);
+    }
+  };
+  
   return (
     <div className="space-y-6">
       <div className="bg-white px-4 py-5 sm:p-6">
@@ -18,13 +67,15 @@ export default function LTFRBDetailsStep({ formData, onChange }) {
             </label>
             <input
               type="text"
-              name="tnvsNumber"
               id="tnvsNumber"
-              value={formData.tnvsNumber}
-              onChange={onChange}
+              value={localTnvsNumber}
+              onChange={handleTnvsChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               placeholder="TNVS-2023-XXXXX"
             />
+            <div className="mt-1 text-xs text-gray-500">
+              Current value: "{localTnvsNumber}"
+            </div>
             <p className="mt-1 text-sm text-gray-500">
               If you have an existing TNVS registration, enter the number here.
             </p>
@@ -36,13 +87,15 @@ export default function LTFRBDetailsStep({ formData, onChange }) {
             </label>
             <input
               type="text"
-              name="cpcNumber"
               id="cpcNumber"
-              value={formData.cpcNumber}
-              onChange={onChange}
+              value={localCpcNumber}
+              onChange={handleCpcChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               placeholder="CPC-2023-XXXXX"
             />
+            <div className="mt-1 text-xs text-gray-500">
+              Current value: "{localCpcNumber}"
+            </div>
             <p className="mt-1 text-sm text-gray-500">
               Enter your Certificate of Public Convenience or Provisional Authority number if available.
             </p>
