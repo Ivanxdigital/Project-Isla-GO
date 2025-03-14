@@ -7,25 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-      // Global flag to track if Google Maps is loaded
-      window.googleMapsLoaded = false;
-      
-      // This function will be called when the Maps API is loaded
-      window.initMap = function() {
-        console.log('Google Maps API loaded successfully via callback');
-        window.googleMapsLoaded = true;
-        
-        // Dispatch a custom event that our components can listen for
-        window.dispatchEvent(new Event('google-maps-loaded'));
-      };
-    </script>
-    
-    <!-- Load Google Maps without defer to ensure it's available immediately -->
-    <script 
-      src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places&callback=initMap"
-    ></script>
-    
     <style>
       /* Add this to remove any default margins */
       body, html {
