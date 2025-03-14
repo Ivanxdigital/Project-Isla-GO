@@ -5,6 +5,7 @@ import { supabase } from '../../utils/supabase.ts';
 import { useDriverAuth } from '../../contexts/DriverAuthContext.jsx';
 import { format, parseISO } from 'date-fns';
 import { UserGroupIcon, CalendarIcon, ClockIcon, MapPinIcon, TruckIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-hot-toast';
 
 export default function DriverTrips() {
   const { user } = useAuth();
@@ -94,6 +95,58 @@ export default function DriverTrips() {
 
     try {
       setLoading(true);
+      
+      console.log('Fetching trips with driver_id:', user.id);
+      
+      // First check if the database has the is_shared column to avoid errors
+      let hasIsSharedColumn = false;
+      try {
+        // Try a simple query first without the is_shared column
+        const testQuery = await supabase
+          .from('trip_assignments')
+          .select(`
+            id,
+            booking:bookings (id)
+          `)
+          .eq('driver_id', user.id)
+          .limit(1);
+          
+        if (!testQuery.error) {
+          console.log('Basic query successful');
+          // Now try to check if the is_shared column exists
+          const columnCheckQuery = await supabase
+            .from('bookings')
+            .select('is_shared')
+            .limit(1);
+            
+          hasIsSharedColumn = !columnCheckQuery.error;
+          console.log('Has is_shared column:', hasIsSharedColumn);
+        }
+      } catch (columnCheckError) {
+        console.error('Error checking for is_shared column:', columnCheckError);
+        // Continue without the column
+      }
+      
+      // Build the query based on whether the column exists
+      let bookingSelectQuery = `
+        id,
+        from_location,
+        to_location,
+        departure_date,
+        departure_time,
+        return_date,
+        return_time,
+        service_type,
+        group_size,
+        status,
+        total_amount
+      `;
+      
+      // Only include is_shared if it exists
+      if (hasIsSharedColumn) {
+        bookingSelectQuery += `, is_shared`;
+      }
+      
       let query = supabase
         .from('trip_assignments')
         .select(`
@@ -106,20 +159,7 @@ export default function DriverTrips() {
           notes,
           created_at,
           updated_at,
-          booking:bookings (
-            id,
-            from_location,
-            to_location,
-            departure_date,
-            departure_time,
-            return_date,
-            return_time,
-            service_type,
-            group_size,
-            status,
-            total_amount,
-            is_shared
-          ),
+          booking:bookings (${bookingSelectQuery}),
           vehicle:vehicles (
             id,
             model,
@@ -132,7 +172,7 @@ export default function DriverTrips() {
 
       // Apply filter if not 'all'
       if (filter !== 'all') {
-        query = query.eq('status', filter);
+        query = query.eq('status', filter.toUpperCase());
       }
 
       const { data, error } = await query.order('departure_time', { ascending: true });
@@ -144,12 +184,26 @@ export default function DriverTrips() {
 
       console.log('Fetched trips:', data);
       
+      if (!data || data.length === 0) {
+        console.log('No trips found for driver');
+        setTrips([]);
+        setGroupedTrips({});
+        return;
+      }
+      
       // Group trips by date, time, and route for shared rides
       const grouped = groupTripsByDateTime(data || []);
       setGroupedTrips(grouped);
       setTrips(data || []);
     } catch (error) {
       console.error('Error fetching trips:', error.message);
+      // Show error toast to user
+      toast.error(`Failed to load trips: ${error.message || 'Database error'}`, {
+        duration: 5000
+      });
+      // Set empty data
+      setTrips([]);
+      setGroupedTrips({});
     } finally {
       setLoading(false);
     }
@@ -162,8 +216,10 @@ export default function DriverTrips() {
     trips.forEach(trip => {
       if (!trip.booking) return;
       
-      // Only group shared rides
-      if (trip.booking.service_type !== 'shared') {
+      // Determine if this is a shared ride based on the service_type field
+      const isSharedRide = trip.booking.service_type === 'shared';
+      
+      if (!isSharedRide) {
         // For non-shared rides, use the trip ID as the key
         grouped[trip.id] = {
           date: trip.booking.departure_date,
@@ -173,7 +229,8 @@ export default function DriverTrips() {
           isShared: false,
           trips: [trip],
           totalPassengers: trip.booking.group_size || 0,
-          vehicle: trip.vehicle
+          vehicle: trip.vehicle,
+          serviceType: trip.booking.service_type || 'standard'
         };
         return;
       }
@@ -190,7 +247,8 @@ export default function DriverTrips() {
           isShared: true,
           trips: [],
           totalPassengers: 0,
-          vehicle: trip.vehicle
+          vehicle: trip.vehicle,
+          serviceType: 'shared'
         };
       }
       

@@ -61,22 +61,6 @@ export default function DriverDashboard() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmBookingId, setConfirmBookingId] = useState(null);
 
-  // Ensure sidebar is open on desktop but closed on mobile when component mounts
-  // Only run this effect once when the component mounts
-  /*
-  useEffect(() => {
-    // Initial setup - only run once
-    if (isMobile) {
-      console.log('Dashboard: Mobile detected, closing sidebar');
-      closeSidebar();
-    } else {
-      console.log('Dashboard: Desktop detected, opening sidebar');
-      openSidebar();
-    }
-    // Empty dependency array ensures this only runs once
-  }, []);
-  */
-
   // Move fetchNotifications to component scope so it can be used by handleBookingResponse
   const fetchNotifications = async () => {
     try {
@@ -513,29 +497,46 @@ export default function DriverDashboard() {
 
   // Replace the old confirmAction function with this modern UI version
   const showConfirmationModal = (message, callback) => {
+    console.log('Opening confirmation modal with message:', message);
     setConfirmMessage(message);
     setConfirmCallback(() => callback);
     setShowConfirmModal(true);
+    console.log('Modal state set to visible:', message);
   };
 
   const handleConfirm = () => {
-    if (confirmCallback) {
-      confirmCallback(true);
-    }
+    console.log('Confirm button clicked, executing callback');
+    const currentCallback = confirmCallback;
     setShowConfirmModal(false);
+    
+    // Execute callback after state update to avoid React state update conflicts
+    if (currentCallback) {
+      setTimeout(() => {
+        currentCallback(true);
+      }, 0);
+    }
   };
 
   const handleCancel = () => {
-    if (confirmCallback) {
-      confirmCallback(false);
-    }
+    console.log('Cancel button clicked');
+    const currentCallback = confirmCallback;
     setShowConfirmModal(false);
+    
+    // Execute callback after state update to avoid React state update conflicts
+    if (currentCallback) {
+      setTimeout(() => {
+        currentCallback(false);
+      }, 0);
+    }
   };
 
   // Update the handleBookingResponse function
   const handleBookingResponse = async (notificationId, bookingId, accept) => {
     // Create a reference to the loading toast that we can access in the catch block
     let loadingToast;
+    let successMessageShown = false;
+    
+    console.log(`Handling booking response for notification ${notificationId}, booking ${bookingId}, accept: ${accept}`);
     
     // Use the new confirmation modal instead of the browser's default
     showConfirmationModal(
@@ -543,7 +544,11 @@ export default function DriverDashboard() {
         ? 'Are you sure you want to accept this booking?' 
         : 'Are you sure you want to reject this booking?',
       async (confirmed) => {
-        if (!confirmed) return;
+        console.log('Confirmation result:', confirmed);
+        if (!confirmed) {
+          console.log('User cancelled the action');
+          return;
+        }
         
         try {
           // Store the toast ID so we can dismiss it in the catch block
@@ -584,7 +589,8 @@ export default function DriverDashboard() {
             
             // Use fallback mechanism immediately instead of showing error
             console.log('No response code, using fallback mechanism directly');
-            await useBookingUpdateFallback(bookingId, notificationId, user.id, accept, loadingToast);
+            const result = await useBookingUpdateFallback(bookingId, notificationId, user.id, accept, loadingToast);
+            successMessageShown = result; // Mark success message as shown if the fallback was successful
             return;
           }
           
@@ -626,6 +632,7 @@ export default function DriverDashboard() {
             
             toast.dismiss(loadingToast);
             toast.success('Booking rejected successfully');
+            successMessageShown = true;
             
             // Reset new notification flag
             setHasNewNotifications(false);
@@ -667,6 +674,7 @@ export default function DriverDashboard() {
             if (rpcResponse === 'SUCCESS') {
               toast.dismiss(loadingToast);
               toast.success('Booking accepted successfully! Check your trips for details.');
+              successMessageShown = true;
             } else if (rpcResponse === 'EXPIRED') {
               toast.dismiss(loadingToast);
               toast.error('This booking request has expired');
@@ -676,140 +684,31 @@ export default function DriverDashboard() {
             } else if (rpcResponse === 'INVALID_CODE') {
               console.log('Invalid response code received from RPC, implementing fallback');
               
-              try {
-                // 1. Update booking status directly
-                const { error: bookingUpdateError } = await supabase
-                  .from('bookings')
-                  .update({
-                    status: 'DRIVER_ASSIGNED',
-                    assigned_driver_id: user.id,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('id', bookingId);
-                  
-                if (bookingUpdateError) {
-                  console.error('Error updating booking in fallback:', bookingUpdateError);
-                  toast.error(`Error updating booking: ${bookingUpdateError.message}`);
-                  return;
-                }
-                  
-                // 2. Create a trip assignment
-                const { error: tripAssignmentError } = await supabase
-                  .from('trip_assignments')
-                  .insert({
-                    booking_id: bookingId,
-                    driver_id: user.id,
-                    status: 'ASSIGNED',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  });
-                  
-                if (tripAssignmentError) {
-                  console.error('Error creating trip assignment in fallback:', tripAssignmentError);
-                  // Not critical, continue with the process
-                }
-                  
-                // 3. Mark other notifications for this booking as expired
-                const { error: otherNotificationsError } = await supabase
-                  .from('driver_notifications')
-                  .update({
-                    status: NOTIFICATION_STATUS.EXPIRED,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('booking_id', bookingId)
-                  .neq('id', notificationId);
-                  
-                if (otherNotificationsError) {
-                  console.error('Error updating other notifications in fallback:', otherNotificationsError);
-                  // Not critical, continue with the process
-                }
-                  
-                toast.success('Booking accepted successfully! Check your trips for details.');
-                
-                // Reset new notification flag and refresh notifications
-                setHasNewNotifications(false);
-                await Promise.all([
-                  fetchNotifications(),
-                  fetchPendingBookings()
-                ]);
-              } catch (fallbackError) {
-                console.error('Error in fallback mechanism:', fallbackError);
-                toast.error(`Error in fallback: ${fallbackError.message}`);
-              }
+              // Fallback will handle its own toast messages
+              const result = await useBookingUpdateFallback(bookingId, notificationId, user.id, accept, loadingToast);
+              successMessageShown = result;
             } else {
               toast.dismiss(loadingToast);
               throw new Error(`Unexpected response: ${rpcResponse}`);
             }
           } catch (rpcError) {
             console.error('Exception in RPC call:', rpcError);
-            toast.dismiss(loadingToast);
+            
+            // Only dismiss the toast if we're going to show a new one
+            if (!successMessageShown) {
+              toast.dismiss(loadingToast);
+            }
             
             // Implement fallback mechanism directly here
             console.log('RPC call failed, implementing fallback mechanism');
             
-            try {
-              // 1. Update booking status directly
-              const { error: bookingUpdateError } = await supabase
-                .from('bookings')
-                .update({
-                  status: 'DRIVER_ASSIGNED',
-                  assigned_driver_id: user.id,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', bookingId);
-                
-              if (bookingUpdateError) {
-                console.error('Error updating booking in fallback:', bookingUpdateError);
-                toast.error(`Error updating booking: ${bookingUpdateError.message}`);
-                return;
-              }
-                
-              // 2. Create a trip assignment
-              const { error: tripAssignmentError } = await supabase
-                .from('trip_assignments')
-                .insert({
-                  booking_id: bookingId,
-                  driver_id: user.id,
-                  status: 'ASSIGNED',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                });
-                
-              if (tripAssignmentError) {
-                console.error('Error creating trip assignment in fallback:', tripAssignmentError);
-                // Not critical, continue with the process
-              }
-                
-              // 3. Mark other notifications for this booking as expired
-              const { error: otherNotificationsError } = await supabase
-                .from('driver_notifications')
-                .update({
-                  status: NOTIFICATION_STATUS.EXPIRED,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('booking_id', bookingId)
-                .neq('id', notificationId);
-                
-              if (otherNotificationsError) {
-                console.error('Error updating other notifications in fallback:', otherNotificationsError);
-                // Not critical, continue with the process
-              }
-                
-              toast.success('Booking accepted successfully! Check your trips for details.');
-              
-              // Reset new notification flag and refresh notifications
-              setHasNewNotifications(false);
-              await Promise.all([
-                fetchNotifications(),
-                fetchPendingBookings()
-              ]);
-            } catch (fallbackError) {
-              console.error('Error in fallback mechanism:', fallbackError);
-              toast.error(`Error in fallback: ${fallbackError.message}`);
+            if (!successMessageShown) {
+              const result = await useBookingUpdateFallback(bookingId, notificationId, user.id, accept, loadingToast);
+              successMessageShown = result;
             }
           }
     
-          // Log the response
+          // Log the response - only if not already logged by a fallback mechanism
           try {
             await supabase.from('driver_notification_logs').insert({
               booking_id: bookingId,
@@ -836,14 +735,16 @@ export default function DriverDashboard() {
         } catch (error) {
           console.error('Error handling booking response:', error);
           
-          // Make sure to dismiss the loading toast if there's an error
-          if (loadingToast) {
+          // Make sure to dismiss the loading toast if there's an error and no success message shown
+          if (loadingToast && !successMessageShown) {
             toast.dismiss(loadingToast);
           }
           
-          toast.error(`Failed to process response: ${error.message || 'Unknown error'}`, {
-            id: `error-${Date.now()}`  // Use a unique ID to prevent duplicate toasts
-          });
+          if (!successMessageShown) {
+            toast.error(`Failed to process response: ${error.message || 'Unknown error'}`, {
+              id: `error-${Date.now()}`  // Use a unique ID to prevent duplicate toasts
+            });
+          }
           
           // Log the error
           try {
@@ -893,20 +794,68 @@ export default function DriverDashboard() {
         return false;
       }
       
-      // 2. Create a trip assignment
+      // Get booking details to include departure time in trip assignment
+      const { data: bookingData, error: bookingFetchError } = await supabase
+        .from('bookings')
+        .select('departure_date, departure_time')
+        .eq('id', bookingId)
+        .single();
+        
+      if (bookingFetchError) {
+        console.error('Error fetching booking details:', bookingFetchError);
+        // Continue anyway - we can create the trip assignment without departure time
+      }
+      
+      // Get driver's vehicle details if assigned
+      const { data: driverData, error: driverError } = await supabase
+        .from('drivers')
+        .select('vehicle_id')
+        .eq('id', driverId)
+        .single();
+        
+      let vehicleId = null;
+      if (!driverError && driverData && driverData.vehicle_id) {
+        vehicleId = driverData.vehicle_id;
+      }
+      
+      // 2. Create a trip assignment with all required fields
+      const tripAssignmentData = {
+        booking_id: bookingId,
+        driver_id: driverId,
+        status: 'ASSIGNED',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // Add optional fields if available
+      if (vehicleId) {
+        tripAssignmentData.vehicle_id = vehicleId;
+      }
+      
+      if (bookingData && bookingData.departure_time) {
+        tripAssignmentData.departure_time = bookingData.departure_time;
+      }
+      
+      console.log('Creating trip assignment with data:', tripAssignmentData);
+      
       const { error: tripAssignmentError } = await supabase
         .from('trip_assignments')
-        .insert({
-          booking_id: bookingId,
-          driver_id: driverId,
-          status: 'ASSIGNED',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+        .insert(tripAssignmentData);
         
       if (tripAssignmentError) {
         console.error('Error creating trip assignment in fallback:', tripAssignmentError);
-        // Not critical, continue with the process
+        // Log specific error details
+        console.log('Trip assignment error details:', 
+          tripAssignmentError.code, 
+          tripAssignmentError.details, 
+          tripAssignmentError.hint
+        );
+        
+        // Don't stop the process due to this error
+        // Instead, show a warning to the user
+        toast.warning('Booking was accepted but trip details may not be complete. Please contact support if you don\'t see this trip in your list.', {
+          duration: 6000
+        });
       }
       
       // 3. Mark other notifications for this booking as expired
@@ -924,6 +873,7 @@ export default function DriverDashboard() {
         // Not critical, continue with the process
       }
       
+      // Dismiss the loading toast and show success
       toast.dismiss(loadingToast);
       toast.success('Booking accepted successfully! Check your trips for details.');
       
@@ -933,6 +883,7 @@ export default function DriverDashboard() {
         fetchNotifications(),
         fetchPendingBookings()
       ]);
+      
       return true;
     } catch (error) {
       console.error('Error in fallback mechanism:', error);
@@ -1215,6 +1166,32 @@ export default function DriverDashboard() {
 
   return (
     <div className="bg-gray-50 w-full">
+      {/* Confirmation Modal - Move inside the main component return */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Action</h3>
+              <p className="text-gray-600 mb-6">{confirmMessage}</p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
         <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 mb-6">
           <div className="flex justify-between items-center">
@@ -1507,29 +1484,3 @@ export default function DriverDashboard() {
     </div>
   );
 }
-
-{/* Confirmation Modal */}
-{showConfirmModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-      <div className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Action</h3>
-        <p className="text-gray-600 mb-6">{confirmMessage}</p>
-        <div className="flex justify-end space-x-3">
-          <button
-            onClick={handleCancel}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            Confirm
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
