@@ -141,14 +141,23 @@ const createBooking = async (bookingData) => {
 
   // Clean up the hotel_details object to ensure no undefined values
   if (bookingData.hotel_details) {
-    bookingData.hotel_details = {
-      name: bookingData.hotel_details.name || null,
-      address: bookingData.hotel_details.address || null,
-      location: bookingData.hotel_details.location ? {
-        lat: bookingData.hotel_details.location.lat || null,
-        lng: bookingData.hotel_details.location.lng || null
-      } : null
-    };
+    if (bookingData.pickup_option === 'hotel') {
+      bookingData.hotel_details = {
+        name: bookingData.hotel_details.name || null,
+        address: bookingData.hotel_details.address || null,
+        location: bookingData.hotel_details.location ? {
+          lat: bookingData.hotel_details.location.lat || null,
+          lng: bookingData.hotel_details.location.lng || null
+        } : null
+      };
+    } else if (bookingData.pickup_option === 'terminal') {
+      // Make sure terminal details are properly structured
+      bookingData.hotel_details = {
+        name: bookingData.hotel_details.name || null,
+        address: bookingData.hotel_details.address || null,
+        type: 'terminal'
+      };
+    }
   }
 
   const { data, error } = await supabase
@@ -653,11 +662,14 @@ export default function BookingForm() {
         group_size: groupSize,
         pickup_option: pickupOption,
         hotel_pickup: pickupOption === 'hotel' ? selectedHotel?.name : null,
-        terminal_pickup: pickupOption === 'terminal' ? 'Corong Terminal' : null,
         hotel_details: pickupOption === 'hotel' ? {
           name: selectedHotel?.name,
           address: selectedHotel?.address,
           location: selectedHotel?.location
+        } : pickupOption === 'terminal' ? {
+          name: fromLocation === 'El Nido' ? 'Corong Terminal' : 'Port Barton Terminal',
+          address: fromLocation === 'El Nido' ? 'El Nido Town Proper, Palawan' : 'Port Barton Town Proper, Palawan',
+          type: 'terminal'
         } : null,
         payment_method: 'online', // Always set to online
         total_amount: calculatePrice(),
@@ -1673,7 +1685,11 @@ export default function BookingForm() {
                             }
                           </p>
                           <p>
-                            <strong>Pickup Option:</strong> {pickupOption === 'hotel' ? `Hotel Pickup${selectedHotel ? ' from ' + selectedHotel.name : ''}` : 'Airport Pickup'}
+                            <strong>Pickup Option:</strong> {pickupOption === 'hotel' 
+                              ? `Hotel Pickup${selectedHotel ? ' from ' + selectedHotel.name : ''}` 
+                              : pickupOption === 'terminal'
+                              ? `Terminal Pickup (${fromLocation === 'El Nido' ? 'Corong Terminal' : 'Port Barton Terminal'})`
+                              : 'Airport Pickup'}
                           </p>
                           <p className="font-bold">
                             {t('booking.total')}: ₱{calculatePrice()}
