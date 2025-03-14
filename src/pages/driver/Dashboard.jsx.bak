@@ -664,17 +664,159 @@ export default function DriverDashboard() {
             console.log('RPC response:', rpcResponse);
       
             // Handle the response from the database function
-            if (rpcResponse === 'SUCCESS') {
+            switch (rpcResponse) {
+              case 'SUCCESS':
+                toast.dismiss(loadingToast);
+                toast.success('Booking accepted successfully! Check your trips for details.');
+                break;
+              case 'EXPIRED':
+                toast.dismiss(loadingToast);
+                toast.error('This booking request has expired');
+                break;
+              case 'BOOKING_NO_LONGER_AVAILABLE':
+                toast.dismiss(loadingToast);
+                toast.error('This booking is no longer available');
+                break;
+              case 'INVALID_CODE':
+                toast.dismiss(loadingToast);
+                console.log('Invalid response code received from RPC, implementing fallback');
+                
+                try {
+                  // 1. Update booking status directly
+                  const { error: bookingUpdateError } = await supabase
+                    .from('bookings')
+                    .update({
+                      status: 'DRIVER_ASSIGNED',
+                      assigned_driver_id: user.id,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', bookingId);
+                    
+                  if (bookingUpdateError) {
+                    console.error('Error updating booking in fallback:', bookingUpdateError);
+                    toast.error(`Error updating booking: ${bookingUpdateError.message}`);
+                    return;
+                  }
+                  
+                  // 2. Create a trip assignment
+                  const { error: tripAssignmentError } = await supabase
+                    .from('trip_assignments')
+                    .insert({
+                      booking_id: bookingId,
+                      driver_id: user.id,
+                      status: 'ASSIGNED',
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    });
+                    
+                  if (tripAssignmentError) {
+                    console.error('Error creating trip assignment in fallback:', tripAssignmentError);
+                    // Not critical, continue with the process
+                  }
+                  
+                  // 3. Mark other notifications for this booking as expired
+                  const { error: otherNotificationsError } = await supabase
+                    .from('driver_notifications')
+                    .update({
+                      status: NOTIFICATION_STATUS.EXPIRED,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('booking_id', bookingId)
+                    .neq('id', notificationId);
+                    
+                  if (otherNotificationsError) {
+                    console.error('Error updating other notifications in fallback:', otherNotificationsError);
+                    // Not critical, continue with the process
+                  }
+                  
+                  toast.success('Booking accepted successfully! Check your trips for details.');
+                  
+                  // Reset new notification flag and refresh notifications
+                  setHasNewNotifications(false);
+                  await Promise.all([
+                    fetchNotifications(),
+                    fetchPendingBookings()
+                  ]);
+                } catch (fallbackError) {
+                  console.error('Error in fallback mechanism:', fallbackError);
+                  toast.error(`Error in fallback: ${fallbackError.message}`);
+                }
+                break;
+              default:
+                if (rpcResponse && rpcResponse.startsWith('ERROR:')) {
+                  console.log('Error response from RPC, implementing fallback mechanism');
+                  toast.dismiss(loadingToast);
+                  
+                  try {
+                    // 1. Update booking status directly
+                    const { error: bookingUpdateError } = await supabase
+                      .from('bookings')
+                      .update({
+                        status: 'DRIVER_ASSIGNED',
+                        assigned_driver_id: user.id,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('id', bookingId);
+                      
+                    if (bookingUpdateError) {
+                      console.error('Error updating booking in fallback:', bookingUpdateError);
+                      toast.error(`Error updating booking: ${bookingUpdateError.message}`);
+                      return;
+                    }
+                      
+                    // 2. Create a trip assignment
+                    const { error: tripAssignmentError } = await supabase
+                      .from('trip_assignments')
+                      .insert({
+                        booking_id: bookingId,
+                        driver_id: user.id,
+                        status: 'ASSIGNED',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                      });
+                      
+                    if (tripAssignmentError) {
+                      console.error('Error creating trip assignment in fallback:', tripAssignmentError);
+                      // Not critical, continue with the process
+                    }
+                      
+                    // 3. Mark other notifications for this booking as expired
+                    const { error: otherNotificationsError } = await supabase
+                      .from('driver_notifications')
+                      .update({
+                        status: NOTIFICATION_STATUS.EXPIRED,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('booking_id', bookingId)
+                      .neq('id', notificationId);
+                      
+                    if (otherNotificationsError) {
+                      console.error('Error updating other notifications in fallback:', otherNotificationsError);
+                      // Not critical, continue with the process
+                    }
+                      
+                    toast.success('Booking accepted successfully! Check your trips for details.');
+                    
+                    // Reset new notification flag and refresh notifications
+                    setHasNewNotifications(false);
+                    await Promise.all([
+                      fetchNotifications(),
+                      fetchPendingBookings()
+                    ]);
+                  } catch (fallbackError) {
+                    console.error('Error in fallback mechanism:', fallbackError);
+                    toast.error(`Error in fallback: ${fallbackError.message}`);
+                  }
+                } else {
+                  toast.dismiss(loadingToast);
+                  throw new Error(`Unexpected response: ${rpcResponse}`);
+                }
+            } catch (rpcError) {
+              console.error('Exception in RPC call:', rpcError);
               toast.dismiss(loadingToast);
-              toast.success('Booking accepted successfully! Check your trips for details.');
-            } else if (rpcResponse === 'EXPIRED') {
-              toast.dismiss(loadingToast);
-              toast.error('This booking request has expired');
-            } else if (rpcResponse === 'BOOKING_NO_LONGER_AVAILABLE') {
-              toast.dismiss(loadingToast);
-              toast.error('This booking is no longer available');
-            } else if (rpcResponse === 'INVALID_CODE') {
-              console.log('Invalid response code received from RPC, implementing fallback');
+              
+              // Implement fallback mechanism directly here
+              console.log('RPC call failed, implementing fallback mechanism');
               
               try {
                 // 1. Update booking status directly
@@ -692,7 +834,7 @@ export default function DriverDashboard() {
                   toast.error(`Error updating booking: ${bookingUpdateError.message}`);
                   return;
                 }
-                  
+                
                 // 2. Create a trip assignment
                 const { error: tripAssignmentError } = await supabase
                   .from('trip_assignments')
@@ -708,7 +850,7 @@ export default function DriverDashboard() {
                   console.error('Error creating trip assignment in fallback:', tripAssignmentError);
                   // Not critical, continue with the process
                 }
-                  
+                
                 // 3. Mark other notifications for this booking as expired
                 const { error: otherNotificationsError } = await supabase
                   .from('driver_notifications')
@@ -723,7 +865,7 @@ export default function DriverDashboard() {
                   console.error('Error updating other notifications in fallback:', otherNotificationsError);
                   // Not critical, continue with the process
                 }
-                  
+                
                 toast.success('Booking accepted successfully! Check your trips for details.');
                 
                 // Reset new notification flag and refresh notifications
@@ -736,102 +878,64 @@ export default function DriverDashboard() {
                 console.error('Error in fallback mechanism:', fallbackError);
                 toast.error(`Error in fallback: ${fallbackError.message}`);
               }
-            } else {
-              toast.dismiss(loadingToast);
-              throw new Error(`Unexpected response: ${rpcResponse}`);
             }
-          } catch (rpcError) {
-            console.error('Exception in RPC call:', rpcError);
-            toast.dismiss(loadingToast);
-            
-            // Implement fallback mechanism directly here
-            console.log('RPC call failed, implementing fallback mechanism');
-            
+    
+            // Log the response
             try {
-              // 1. Update booking status directly
-              const { error: bookingUpdateError } = await supabase
-                .from('bookings')
-                .update({
-                  status: 'DRIVER_ASSIGNED',
-                  assigned_driver_id: user.id,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', bookingId);
-                
-              if (bookingUpdateError) {
-                console.error('Error updating booking in fallback:', bookingUpdateError);
-                toast.error(`Error updating booking: ${bookingUpdateError.message}`);
-                return;
-              }
-                
-              // 2. Create a trip assignment
-              const { error: tripAssignmentError } = await supabase
-                .from('trip_assignments')
-                .insert({
-                  booking_id: bookingId,
-                  driver_id: user.id,
-                  status: 'ASSIGNED',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                });
-                
-              if (tripAssignmentError) {
-                console.error('Error creating trip assignment in fallback:', tripAssignmentError);
-                // Not critical, continue with the process
-              }
-                
-              // 3. Mark other notifications for this booking as expired
-              const { error: otherNotificationsError } = await supabase
-                .from('driver_notifications')
-                .update({
-                  status: NOTIFICATION_STATUS.EXPIRED,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('booking_id', bookingId)
-                .neq('id', notificationId);
-                
-              if (otherNotificationsError) {
-                console.error('Error updating other notifications in fallback:', otherNotificationsError);
-                // Not critical, continue with the process
-              }
-                
-              toast.success('Booking accepted successfully! Check your trips for details.');
-              
-              // Reset new notification flag and refresh notifications
-              setHasNewNotifications(false);
-              await Promise.all([
-                fetchNotifications(),
-                fetchPendingBookings()
-              ]);
-            } catch (fallbackError) {
-              console.error('Error in fallback mechanism:', fallbackError);
-              toast.error(`Error in fallback: ${fallbackError.message}`);
+              await supabase.from('driver_notification_logs').insert({
+                booking_id: bookingId,
+                driver_id: user.id,
+                notification_id: notificationId,
+                status_code: rpcResponse === 'SUCCESS' ? 200 : 400,
+                response: JSON.stringify({ status: rpcResponse || 'FALLBACK_SUCCESS', action: 'accept' }),
+                created_at: new Date().toISOString()
+              });
+            } catch (logError) {
+              console.error('Error logging response:', logError);
+              // Don't return here, continue with the flow
             }
-          }
     
-          // Log the response
-          try {
-            await supabase.from('driver_notification_logs').insert({
-              booking_id: bookingId,
-              driver_id: user.id,
-              notification_id: notificationId,
-              status_code: rpcResponse === 'SUCCESS' ? 200 : 400,
-              response: JSON.stringify({ status: rpcResponse || 'FALLBACK_SUCCESS', action: 'accept' }),
-              created_at: new Date().toISOString()
+            // Reset new notification flag
+            setHasNewNotifications(false);
+    
+            // Refresh the notifications and bookings
+            await Promise.all([
+              fetchNotifications(),
+              fetchPendingBookings()
+            ]);
+    
+          } catch (error) {
+            console.error('Error handling booking response:', error);
+            
+            // Make sure to dismiss the loading toast if there's an error
+            if (loadingToast) {
+              toast.dismiss(loadingToast);
+            }
+            
+            toast.error(`Failed to process response: ${error.message || 'Unknown error'}`, {
+              id: `error-${Date.now()}`  // Use a unique ID to prevent duplicate toasts
             });
-          } catch (logError) {
-            console.error('Error logging response:', logError);
-            // Don't return here, continue with the flow
+            
+            // Log the error
+            try {
+              await supabase.from('driver_notification_logs').insert({
+                booking_id: bookingId,
+                driver_id: user.id,
+                notification_id: notificationId,
+                status_code: 500,
+                response: JSON.stringify({ error: error.message }),
+                created_at: new Date().toISOString()
+              });
+            } catch (logError) {
+              console.error('Error logging error response:', logError);
+            }
+            
+            // Still refresh the UI to show current state
+            await Promise.all([
+              fetchNotifications(),
+              fetchPendingBookings()
+            ]);
           }
-    
-          // Reset new notification flag
-          setHasNewNotifications(false);
-    
-          // Refresh the notifications and bookings
-          await Promise.all([
-            fetchNotifications(),
-            fetchPendingBookings()
-          ]);
     
         } catch (error) {
           console.error('Error handling booking response:', error);
