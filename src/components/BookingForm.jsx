@@ -1342,7 +1342,7 @@ export default function BookingForm() {
                     </div>
                   </div>
 
-                  <div className="mt-6">
+                  <div className="mt-6 flex flex-col items-center">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       {t('form.groupSize')}
                     </label>
@@ -1395,40 +1395,19 @@ export default function BookingForm() {
                     </p>
                   </div>
 
-                  {fromLocation && toLocation && departureDate && departureTime && (
-                    <div className="mt-8">
-                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <h3 className="text-lg font-semibold mb-3">{t('booking.summary')}</h3>
-                        <div className="space-y-2">
-                          <p>{t('form.from')}: {fromLocation}</p>
-                          <p>{t('form.to')}: {toLocation}</p>
-                          <p>
-                            {t('form.departureDate')}: {departureDate} {departureTime} ({isPeakHour(departureTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
-                          </p>
-                          {isReturn && (
-                            <p>
-                              {t('form.returnDate')}: {returnDate} {returnTime} ({isPeakHour(returnTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
-                            </p>
-                          )}
-                          <p>
-                            {serviceType === 'shared'
-                              ? `${t('form.groupSize')}: ${groupSize}`
-                              : `${t('form.serviceType')}: ${serviceType === 'private15' ? 'Private 15-Seater' : 'Private 10-Seater'}`
-                            }
-                          </p>
-                          <p>
-                            <strong>Pickup Option:</strong> {pickupOption === 'hotel' ? `Hotel Pickup${selectedHotel ? ' from ' + selectedHotel.name : ''}` : 'Airport Pickup'}
-                          </p>
-                          <p className="font-bold">
-                            {t('booking.total')}: ₱{calculatePrice()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   <div className="mt-8">
                     <h3 className="text-lg font-semibold mb-4">Select Pickup Option</h3>
+                    
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Pickup Information:</span> Your pickup option affects when our drivers will collect you. Hotel pickups are scheduled 30-60 minutes before departure time.
+                        </p>
+                      </div>
+                    </div>
                     
                     {/* Special notice for El Nido to Puerto Princesa route */}
                     {fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && (
@@ -1671,6 +1650,38 @@ export default function BookingForm() {
                       </div>
                     )}
                   </div>
+
+                  {fromLocation && toLocation && departureDate && departureTime && (
+                    <div className="mt-8">
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 sticky top-4 z-10 shadow-md">
+                        <h3 className="text-lg font-semibold mb-3">{t('booking.summary')}</h3>
+                        <div className="space-y-2">
+                          <p>{t('form.from')}: {fromLocation}</p>
+                          <p>{t('form.to')}: {toLocation}</p>
+                          <p>
+                            {t('form.departureDate')}: {departureDate} {departureTime} ({isPeakHour(departureTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
+                          </p>
+                          {isReturn && (
+                            <p>
+                              {t('form.returnDate')}: {returnDate} {returnTime} ({isPeakHour(returnTime) ? t('booking.peakHours') : t('booking.offPeakHours')})
+                            </p>
+                          )}
+                          <p>
+                            {serviceType === 'shared'
+                              ? `${t('form.groupSize')}: ${groupSize}`
+                              : `${t('form.serviceType')}: ${serviceType === 'private15' ? 'Private 15-Seater' : 'Private 10-Seater'}`
+                            }
+                          </p>
+                          <p>
+                            <strong>Pickup Option:</strong> {pickupOption === 'hotel' ? `Hotel Pickup${selectedHotel ? ' from ' + selectedHotel.name : ''}` : 'Airport Pickup'}
+                          </p>
+                          <p className="font-bold">
+                            {t('booking.total')}: ₱{calculatePrice()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     type="submit"
