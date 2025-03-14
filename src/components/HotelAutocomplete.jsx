@@ -1,108 +1,66 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-// This is a completely new implementation with direct integration
+// Simple manual hotel input component (no Google Maps dependency)
 export default function HotelAutocomplete({ onSelect, defaultValue }) {
   const { t } = useTranslation();
-  const inputRef = useRef(null);
-  const [searchValue, setSearchValue] = useState(defaultValue || '');
-  const [isLoading, setIsLoading] = useState(true);
-  const [status, setStatus] = useState('Starting...');
-  const [apiKey, setApiKey] = useState('');
+  const [hotelName, setHotelName] = useState(defaultValue || '');
+  const [hotelAddress, setHotelAddress] = useState('');
+  const [isAddressVisible, setIsAddressVisible] = useState(false);
   
-  // Effect to check the API key
-  useEffect(() => {
-    // Try to get the API key from environment
-    const envKey = import.meta.env?.VITE_GOOGLE_MAPS_API_KEY;
-    if (envKey) {
-      setApiKey(envKey);
-      setStatus(`API key found: ${envKey.substring(0, 5)}...`);
-    } else {
-      setStatus('No API key found in environment variables');
+  // Update the hotel information when the name changes
+  const handleHotelNameChange = (e) => {
+    const name = e.target.value;
+    setHotelName(name);
+    
+    // If we have both name and address, update the parent component
+    if (name && hotelAddress) {
+      onSelect({
+        name: name,
+        address: hotelAddress,
+        // Since we don't have coordinates, we'll set location to null
+        location: null
+      });
     }
-  }, []);
-  
-  // Manual initialization directly in the UI
-  const initializeMaps = () => {
-    // First, check if we already have Google Maps
-    if (window.google?.maps?.places) {
-      setStatus('Google Maps already loaded, initializing...');
-      initializeAutocomplete();
-      return;
+    // If we cleared the name, show a message
+    else if (!name && hotelAddress) {
+      setHotelAddress('');
     }
     
-    setStatus('Loading Google Maps script...');
-    
-    // Directly inject the script
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    
-    script.onload = () => {
-      setStatus('Script loaded successfully!');
-      // Wait a bit for the API to initialize
-      setTimeout(() => {
-        initializeAutocomplete();
-      }, 500);
-    };
-    
-    script.onerror = (error) => {
-      setStatus(`Script loading failed: ${error}`);
-      setIsLoading(false);
-    };
-    
-    document.head.appendChild(script);
+    // Show address field if hotel name has a value
+    setIsAddressVisible(!!name);
   };
   
-  // Direct autocomplete initialization function
-  const initializeAutocomplete = () => {
-    if (!window.google?.maps?.places) {
-      setStatus('Google Maps Places not available yet');
-      setIsLoading(false);
-      return;
-    }
+  // Update the hotel information when the address changes
+  const handleHotelAddressChange = (e) => {
+    const address = e.target.value;
+    setHotelAddress(address);
     
-    try {
-      setStatus('Setting up autocomplete...');
-      
-      // Create a new autocomplete instance directly
-      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-        types: ['establishment', 'lodging'],
-        componentRestrictions: { country: 'PH' }
+    // If we have both name and address, update the parent component
+    if (hotelName && address) {
+      onSelect({
+        name: hotelName,
+        address: address,
+        location: null
       });
-      
-      // Add the place selection listener
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        setStatus(`Selected: ${place.name || 'Unknown'}`);
-        
-        if (place) {
-          onSelect({
-            name: place.name || '',
-            address: place.formatted_address || '',
-            location: place.geometry?.location ? {
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng()
-            } : null
-          });
-        }
-      });
-      
-      setStatus('Autocomplete ready - type to search');
-      setIsLoading(false);
-    } catch (error) {
-      setStatus(`Error setting up autocomplete: ${error.message}`);
-      setIsLoading(false);
     }
   };
   
-  // For direct testing with any input value
-  const handleInputChange = (e) => {
-    setSearchValue(e.target.value);
+  // Handle the confirmation action
+  const handleConfirmHotel = () => {
+    // Provide default address if none entered
+    const finalAddress = hotelAddress || `${hotelName}, Palawan, Philippines`;
+    
+    onSelect({
+      name: hotelName,
+      address: finalAddress,
+      location: null
+    });
   };
 
   return (
-    <div className="relative">
+    <div className="space-y-3">
+      {/* Hotel Name Input */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
@@ -110,48 +68,50 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
           </svg>
         </div>
         <input
-          ref={inputRef}
           type="text"
-          value={searchValue}
-          onChange={handleInputChange}
+          value={hotelName}
+          onChange={handleHotelNameChange}
           placeholder={t('form.hotelPlaceholder', 'Enter hotel name')}
           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-base transition-colors duration-200"
         />
       </div>
       
-      <div className="mt-1.5 space-y-2">
-        <div className="text-xs text-gray-600">Start typing to search hotels in Palawan</div>
-        
-        <div className="flex flex-col bg-gray-50 p-2 rounded-md border border-gray-200">
-          <div className="text-xs font-medium">Status: <span className="text-gray-700">{status}</span></div>
-          
-          <div className="mt-2 flex space-x-2">
-            <button 
-              onClick={initializeMaps}
-              type="button" 
-              disabled={isLoading}
-              className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition"
-            >
-              {isLoading ? 'Loading...' : 'Initialize Maps'}
-            </button>
-            
-            <button 
-              onClick={initializeAutocomplete}
-              type="button" 
-              className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
-            >
-              Reinitialize Autocomplete
-            </button>
+      {/* Hotel Address Input (appears when hotel name is entered) */}
+      {isAddressVisible && (
+        <div className="transition-all duration-300 space-y-3">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              value={hotelAddress}
+              onChange={handleHotelAddressChange}
+              placeholder="Hotel address (optional)"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-sm transition-colors duration-200"
+            />
           </div>
+          
+          {/* Confirm Button */}
+          <button
+            type="button"
+            onClick={handleConfirmHotel}
+            className="w-full bg-blue-50 text-blue-600 border border-blue-200 py-2 px-4 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm font-medium"
+          >
+            Confirm Hotel Selection
+          </button>
         </div>
-      </div>
+      )}
       
-      {/* For testing dropdown positioning */}
-      <div id="dropdown-debug" className="hidden">
-        <div className="absolute z-50 bg-white border border-gray-300 rounded-md shadow-lg mt-1 p-2 w-full">
-          <div className="p-2 hover:bg-gray-100 cursor-pointer">Test Hotel 1</div>
-          <div className="p-2 hover:bg-gray-100 cursor-pointer">Test Hotel 2</div>
-        </div>
+      {/* Helper text */}
+      <div className="text-xs text-gray-500">
+        {!isAddressVisible ? (
+          "Enter your hotel name above"
+        ) : (
+          "Add the hotel address or leave blank if unknown"
+        )}
       </div>
     </div>
   );
