@@ -42,6 +42,48 @@ export default function NavigationMenu() {
   // Check if current page is an admin page
   const isAdminPage = location.pathname.startsWith('/admin');
 
+  // Helper function to scroll to the top of the page - enhanced with more forceful scrolling
+  const scrollToTop = () => {
+    // More aggressive scroll approach - try multiple methods
+    window.scrollTo(0, 0);
+    
+    // Also try the smooth version as backup
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'smooth'
+      });
+      
+      // For stubborn cases, try scrolling the document element and body
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 10);
+  };
+
+  // Function to handle navigation - close menus and scroll to top
+  const handleNavigation = (closeMenu = true) => {
+    if (closeMenu) {
+      setIsMenuOpen(false);
+      setIsProfileDropdownOpen(false);
+    }
+    
+    // Schedule the scroll for after the navigation has occurred
+    setTimeout(scrollToTop, 100);
+  };
+
+  // Use a more forceful approach to handle route changes
+  useEffect(() => {
+    // Scroll to top when location changes, with a slight delay to ensure rendering is complete
+    const timeoutId = setTimeout(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [location.pathname]);
+
   useEffect(() => {
     if (user) {
       console.log('User detected, fetching profile...'); // Debug log
@@ -182,6 +224,7 @@ export default function NavigationMenu() {
                 <Link
                   to="/profile"
                   className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
+                  onClick={() => handleNavigation()}
                 >
                   Your Profile
                 </Link>
@@ -189,6 +232,7 @@ export default function NavigationMenu() {
                 <Link
                   to="/manage-bookings"
                   className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
+                  onClick={() => handleNavigation()}
                 >
                   Manage Bookings
                 </Link>
@@ -197,15 +241,7 @@ export default function NavigationMenu() {
                   <Link
                     to="/admin/dashboard"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
-                    onClick={() => {
-                      setIsProfileDropdownOpen(false);
-                      // Scroll to top with smooth animation
-                      window.scrollTo({
-                        top: 0,
-                        left: 0,
-                        behavior: 'smooth'
-                      });
-                    }}
+                    onClick={() => handleNavigation()}
                   >
                     Admin Dashboard
                   </Link>
@@ -217,6 +253,7 @@ export default function NavigationMenu() {
                       <Link
                         to="/driver/pending"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
+                        onClick={() => handleNavigation()}
                       >
                         <span className="text-sm text-yellow-600 flex items-center">
                           <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -248,12 +285,14 @@ export default function NavigationMenu() {
                               // Fade back in after a short delay
                               setTimeout(() => {
                                 mainContent.style.opacity = '1';
+                                scrollToTop();
                               }, 100);
                             }, 300);
                           } else {
                             // Fallback if main content not found
                             toggleSidebar();
                             navigate('/driver/dashboard');
+                            scrollToTop();
                           }
                         }}
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-ai-50 transition-colors duration-150"
@@ -281,12 +320,14 @@ export default function NavigationMenu() {
         <Link
           to="/login"
           className="text-ai-800 hover:text-ai-900 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-ai-100"
+          onClick={() => handleNavigation(false)}
         >
           Sign In
         </Link>
         <Link
           to="/register"
           className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-ai-600 hover:bg-ai-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ai-500 transition-all duration-200"
+          onClick={() => handleNavigation(false)}
         >
           Register
         </Link>
@@ -361,6 +402,7 @@ export default function NavigationMenu() {
   // Add a handler for menu item clicks
   const handleMenuItemClick = () => {
     setIsProfileDropdownOpen(false);
+    scrollToTop();
   };
 
   useEffect(() => {
@@ -390,7 +432,7 @@ export default function NavigationMenu() {
               <div className="flex items-center flex-shrink-0">
                 <div className="transition-transform duration-300 hover:scale-105" 
                      style={{ animation: 'float 3s ease-in-out infinite' }}>
-                  <Link to="/" className="flex items-center space-x-2">
+                  <Link to="/" className="flex items-center space-x-2" onClick={() => handleNavigation(false)}>
                     <span style={{
                       backgroundImage: 'linear-gradient(to right, #818CF8, #C084FC, #818CF8)',
                       backgroundSize: '200% auto',
@@ -420,6 +462,7 @@ export default function NavigationMenu() {
                       className={`relative text-indigo-100 hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 group hover:bg-white/10 ${
                         item.className || ''
                       }`}
+                      onClick={() => handleNavigation(false)}
                     >
                       <span className="relative z-10">{item.name}</span>
                       <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-indigo-400/10 to-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></span>
@@ -458,7 +501,7 @@ export default function NavigationMenu() {
                         <MobileMenuItem
                           key={item.name}
                           to={item.path}
-                          onClick={() => setIsMenuOpen(false)}
+                          onClick={() => handleNavigation()}
                           className={item.className}
                         >
                           {item.name}
@@ -469,13 +512,13 @@ export default function NavigationMenu() {
                         <div className="px-3 pt-2 pb-3 space-y-3 mt-2 border-t border-indigo-700/50">
                           <MobileMenuItem
                             to="/login"
-                            onClick={() => setIsMenuOpen(false)}
+                            onClick={() => handleNavigation()}
                           >
                             Sign In
                           </MobileMenuItem>
                           <Link
                             to="/register"
-                            onClick={() => setIsMenuOpen(false)}
+                            onClick={() => handleNavigation()}
                             className="block w-full text-center px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg text-[15px] font-medium transition-all duration-200"
                           >
                             Register
@@ -513,13 +556,13 @@ export default function NavigationMenu() {
                           <div className="px-3 py-2 space-y-1.5">
                             <MobileMenuItem
                               to="/profile"
-                              onClick={() => setIsMenuOpen(false)}
+                              onClick={() => handleNavigation()}
                             >
                               Your Profile
                             </MobileMenuItem>
                             <MobileMenuItem
                               to="/manage-bookings"
-                              onClick={() => setIsMenuOpen(false)}
+                              onClick={() => handleNavigation()}
                             >
                               Manage Bookings
                             </MobileMenuItem>
@@ -527,7 +570,7 @@ export default function NavigationMenu() {
                             {!adminLoading && isAdmin && (
                               <MobileMenuItem
                                 to="/admin/dashboard"
-                                onClick={() => setIsMenuOpen(false)}
+                                onClick={() => handleNavigation()}
                               >
                                 Admin Dashboard
                               </MobileMenuItem>
@@ -538,7 +581,7 @@ export default function NavigationMenu() {
                                 {driverStatus === 'pending' && (
                                   <MobileMenuItem
                                     to="/driver/pending"
-                                    onClick={() => setIsMenuOpen(false)}
+                                    onClick={() => handleNavigation()}
                                   >
                                     <span className="flex items-center text-amber-300">
                                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -556,6 +599,7 @@ export default function NavigationMenu() {
                                       setIsMenuOpen(false);
                                       toggleSidebar();
                                       navigate('/driver/dashboard');
+                                      scrollToTop();
                                     }}
                                   >
                                     Driver Dashboard
@@ -651,15 +695,7 @@ export default function NavigationMenu() {
                             {!adminLoading && isAdmin && (
                               <Link
                                 to="/admin/dashboard"
-                                onClick={() => {
-                                  setIsProfileDropdownOpen(false);
-                                  // Scroll to top with smooth animation
-                                  window.scrollTo({
-                                    top: 0,
-                                    left: 0,
-                                    behavior: 'smooth'
-                                  });
-                                }}
+                                onClick={handleMenuItemClick}
                                 className="block px-4 py-2 text-sm text-indigo-200 hover:bg-white/10 hover:text-white transition-colors duration-150"
                               >
                                 Admin Dashboard
@@ -700,6 +736,7 @@ export default function NavigationMenu() {
                                         setTimeout(() => {
                                           toggleSidebar();
                                           navigate('/driver/dashboard');
+                                          scrollToTop();
                                           
                                           // Fade back in after a short delay
                                           setTimeout(() => {
@@ -710,6 +747,7 @@ export default function NavigationMenu() {
                                         // Fallback if main content not found
                                         toggleSidebar();
                                         navigate('/driver/dashboard');
+                                        scrollToTop();
                                       }
                                     }}
                                     className="block px-4 py-2 text-sm text-indigo-200 hover:bg-white/10 hover:text-white transition-colors duration-150"
@@ -739,12 +777,14 @@ export default function NavigationMenu() {
                       <Link
                         to="/login"
                         className="text-indigo-200 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:bg-white/10"
+                        onClick={() => handleNavigation(false)}
                       >
                         Sign In
                       </Link>
                       <Link
                         to="/register"
                         className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 shadow-lg shadow-indigo-500/20 hover:shadow-purple-500/20 transform hover:-translate-y-0.5"
+                        onClick={() => handleNavigation(false)}
                       >
                         Register
                       </Link>
