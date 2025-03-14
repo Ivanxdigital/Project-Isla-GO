@@ -17,66 +17,105 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [debugInfo, setDebugInfo] = useState('Initializing...');
+  const [searchValue, setSearchValue] = useState(defaultValue || '');
 
+  // Function to set up autocomplete
+  const setupAutocomplete = () => {
+    if (!window.google?.maps?.places || !inputRef.current) {
+      setDebugInfo('Google Maps Places API not available yet');
+      return false;
+    }
+
+    try {
+      // Clean up any existing instance
+      if (autocompleteRef.current && window.google?.maps?.event) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
+      }
+
+      // Create a more flexible search that includes many types of places
+      const options = {
+        // Include many types of places, not just lodging
+        types: ['establishment'],
+        // Restrict to Philippines
+        componentRestrictions: { country: 'PH' },
+        // All needed fields
+        fields: ['name', 'formatted_address', 'geometry', 'place_id'],
+      };
+
+      // Create new autocomplete
+      const autocomplete = new window.google.maps.places.Autocomplete(
+        inputRef.current,
+        options
+      );
+
+      // Store the instance
+      autocompleteRef.current = autocomplete;
+
+      // Add listener for place selection
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        console.log('Selected place:', place);
+        
+        if (place && place.place_id) {
+          setDebugInfo(`Selected: ${place.name}`);
+          onSelect({
+            name: place.name,
+            address: place.formatted_address || '',
+            location: place.geometry?.location ? {
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng()
+            } : null,
+            place_id: place.place_id
+          });
+        } else {
+          setDebugInfo('No place details available');
+        }
+      });
+      
+      setDebugInfo('Autocomplete setup complete');
+      return true;
+    } catch (error) {
+      console.error('Error setting up autocomplete:', error);
+      setDebugInfo(`Setup error: ${error.message}`);
+      return false;
+    }
+  };
+
+  // On component mount
   useEffect(() => {
-    // SIMPLIFIED APPROACH: Focus only on the core functionality
-    const initializeAutocomplete = async () => {
+    const initGoogleMaps = async () => {
       try {
-        setDebugInfo('Waiting for Google Maps to load...');
-        // Wait for Google Maps to load
+        setDebugInfo('Waiting for Google Maps...');
         await waitForGoogleMaps();
         
-        // Check if Google Maps loaded properly
         if (!window.google?.maps?.places) {
           console.error('Google Maps Places API not available');
-          setDebugInfo('Error: Google Maps Places API not available');
           setError('Google Maps Places API could not be loaded');
           setIsLoading(false);
           return;
         }
         
-        setDebugInfo('Google Maps loaded, setting up autocomplete...');
-        console.log('Google Maps loaded, setting up autocomplete...');
+        setDebugInfo('Google Maps loaded');
+        const success = setupAutocomplete();
         
-        // Create the autocomplete instance directly
-        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-          types: ['lodging'],
-          componentRestrictions: { country: 'PH' }
-        });
+        if (success) {
+          setDebugInfo('Ready for hotel search');
+        } else {
+          setDebugInfo('Could not initialize search, try clicking the reinitialize button');
+        }
         
-        // Simplify by not setting bounds initially
-        autocompleteRef.current = autocomplete;
-        
-        // Add the place_changed listener
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          console.log('Selected place:', place);
-          setDebugInfo(`Selected: ${place.name}`);
-          
-          if (place && place.name) {
-            onSelect({
-              name: place.name,
-              address: place.formatted_address || '',
-              location: place.geometry ? {
-                lat: place.geometry.location.lat(),
-                lng: place.geometry.location.lng()
-              } : null
-            });
-          }
-        });
-        
-        setDebugInfo('Autocomplete setup complete');
         setIsLoading(false);
       } catch (error) {
-        console.error('Error initializing autocomplete:', error);
-        setDebugInfo(`Error: ${error.message}`);
-        setError(`Error: ${error.message}`);
+        console.error('Error initializing Google Maps:', error);
+        setError(`Could not load Google Maps: ${error.message}`);
         setIsLoading(false);
       }
     };
 
-    initializeAutocomplete();
+    initGoogleMaps();
 
+    // Cleanup
     return () => {
       if (autocompleteRef.current && window.google?.maps?.event) {
         window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
@@ -84,49 +123,42 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
     };
   }, [onSelect]);
 
-  // Manual trigger function for debugging
+  // Handle input changes - useful for forcing updates
+  const handleInputChange = (e) => {
+    setSearchValue(e.target.value);
+  };
+
+  // Manual initialization function that users can trigger
   const manuallyInitialize = () => {
-    if (!window.google?.maps?.places) {
-      setDebugInfo('Google Maps not available yet');
+    setDebugInfo('Attempting manual initialization...');
+    
+    // Try to load the script directly if window.google doesn't exist
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        setDebugInfo('Google Maps script loaded manually');
+        setTimeout(() => {
+          const success = setupAutocomplete();
+          if (success) {
+            setDebugInfo('Manual initialization successful!');
+          } else {
+            setDebugInfo('Manual initialization failed');
+          }
+        }, 1000);
+      };
+      document.head.appendChild(script);
       return;
     }
     
-    try {
-      setDebugInfo('Manually initializing autocomplete...');
-      
-      // Remove any existing autocomplete
-      if (autocompleteRef.current && window.google?.maps?.event) {
-        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
-      }
-      
-      // Create new autocomplete
-      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-        types: ['lodging'],
-        componentRestrictions: { country: 'PH' }
-      });
-      
-      autocompleteRef.current = autocomplete;
-      
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        setDebugInfo(`Selected: ${place.name}`);
-        
-        if (place && place.name) {
-          onSelect({
-            name: place.name,
-            address: place.formatted_address || '',
-            location: place.geometry ? {
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng()
-            } : null
-          });
-        }
-      });
-      
-      setDebugInfo('Manual initialization complete');
-    } catch (error) {
-      console.error('Manual initialization error:', error);
-      setDebugInfo(`Manual init error: ${error.message}`);
+    // If Google is already loaded, just try to set up autocomplete
+    const success = setupAutocomplete();
+    if (success) {
+      setDebugInfo('Reinitialized successfully');
+    } else {
+      setDebugInfo('Reinitialization failed, Google Maps not ready');
     }
   };
 
@@ -141,20 +173,24 @@ export default function HotelAutocomplete({ onSelect, defaultValue }) {
         <input
           ref={inputRef}
           type="text"
-          defaultValue={defaultValue}
+          value={searchValue}
+          onChange={handleInputChange}
           disabled={isLoading}
           placeholder={isLoading ? 'Loading...' : t('form.hotelPlaceholder', 'Enter hotel name')}
           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm text-base transition-colors duration-200"
         />
       </div>
+      
       {isLoading && (
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
         </div>
       )}
+      
       {error && (
         <div className="mt-1.5 text-xs text-red-500">{error}</div>
       )}
+      
       <div className="mt-1.5 text-xs text-gray-600">
         {!error && <div>Start typing to search hotels in Palawan</div>}
         <div className="mt-1 text-xs text-gray-400">{debugInfo}</div>
