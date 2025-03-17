@@ -90,7 +90,7 @@ export default function WhyIslaGO() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
-              className="p-6 bg-gray-50 rounded-xl hover:shadow-lg transition-shadow duration-300"
+              className="p-6 bg-gray-50 rounded-xl hover:shadow-lg transition-shadow duration-300 flex flex-col items-center text-center"
             >
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 mb-4">
                 {benefit.icon}
