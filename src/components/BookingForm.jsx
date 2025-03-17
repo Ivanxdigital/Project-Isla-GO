@@ -1049,20 +1049,20 @@ export default function BookingForm() {
     <div className="bg-gray-50 pb-0">
       {showAuthModal && renderAuthModal()}
       <div className="max-w-3xl mx-auto py-8 sm:py-12 px-4 sm:px-6 pb-0 booking-form-container">
-        <div className="flex justify-end items-center mb-6">
-          <LanguageSelector />
-        </div>
-        
-        <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-            <span className="inline-block animate-gradient bg-gradient-to-r from-teal-300 via-purple-400 to-orange-300 text-transparent bg-clip-text bg-size-200 bg-pos-0">
-              IslaGo
-            </span>
-          </h1>
-          <p className="text-base sm:text-lg text-gray-600">{t('subtitle')}</p>
-        </div>
-
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-8">
+          <div className="flex justify-end items-center mb-4">
+            <LanguageSelector />
+          </div>
+          
+          <div className="text-center mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
+              <span className="inline-block animate-gradient bg-gradient-to-r from-teal-300 via-purple-400 to-orange-300 text-transparent bg-clip-text bg-size-200 bg-pos-0">
+                IslaGo
+              </span>
+            </h1>
+            <p className="text-base sm:text-lg text-gray-600">{t('subtitle')}</p>
+          </div>
+
           <ProgressSteps currentStep={currentStep} />
           
           <AnimatePresence mode="wait" initial={false}>
