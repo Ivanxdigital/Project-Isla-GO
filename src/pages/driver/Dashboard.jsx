@@ -617,18 +617,32 @@ export default function DriverDashboard() {
             
             // Log the response for rejection
             try {
-              await supabase.from('driver_notification_logs').insert({
+              const rejectLogEntry = {
                 booking_id: bookingId,
                 driver_id: user.id,
                 notification_id: notificationId,
                 status_code: 200,
                 response: JSON.stringify({ status: 'SUCCESS', action: 'reject' }),
                 created_at: new Date().toISOString()
-              });
+              };
+              
+              // Validate fields before inserting
+              if (!bookingId || !user.id || !notificationId) {
+                console.warn('Missing required fields for rejection log, skipping');
+              } else {
+                const { error: logError } = await supabase.from('driver_notification_logs').insert(rejectLogEntry);
+                if (logError) {
+                  console.error('Error logging rejection:', logError);
+                  // Silent fail - don't affect the user experience
+                }
+              }
             } catch (logError) {
               console.error('Error logging rejection:', logError);
               // Don't return here, continue with the flow
             }
+            
+            // Add additional logging for debugging
+            console.log('Rejection flow completed successfully');
             
             toast.dismiss(loadingToast);
             toast.success('Booking rejected successfully');
@@ -710,14 +724,26 @@ export default function DriverDashboard() {
     
           // Log the response - only if not already logged by a fallback mechanism
           try {
-            await supabase.from('driver_notification_logs').insert({
+            // Ensure all fields are properly formatted and valid
+            const logEntry = {
               booking_id: bookingId,
               driver_id: user.id,
               notification_id: notificationId,
               status_code: rpcResponse === 'SUCCESS' ? 200 : 400,
               response: JSON.stringify({ status: rpcResponse || 'FALLBACK_SUCCESS', action: 'accept' }),
               created_at: new Date().toISOString()
-            });
+            };
+            
+            // Validate fields before inserting
+            if (!bookingId || !user.id || !notificationId) {
+              console.warn('Missing required fields for notification log, skipping');
+            } else {
+              const { error: logError } = await supabase.from('driver_notification_logs').insert(logEntry);
+              if (logError) {
+                console.error('Error logging response:', logError);
+                // Silent fail - don't affect the user experience
+              }
+            }
           } catch (logError) {
             console.error('Error logging response:', logError);
             // Don't return here, continue with the flow
@@ -748,14 +774,26 @@ export default function DriverDashboard() {
           
           // Log the error
           try {
-            await supabase.from('driver_notification_logs').insert({
+            // Ensure all fields are properly formatted and valid
+            const errorLogEntry = {
               booking_id: bookingId,
               driver_id: user.id,
               notification_id: notificationId,
               status_code: 500,
               response: JSON.stringify({ error: error.message }),
               created_at: new Date().toISOString()
-            });
+            };
+            
+            // Validate fields before inserting
+            if (!bookingId || !user.id || !notificationId) {
+              console.warn('Missing required fields for error notification log, skipping');
+            } else {
+              const { error: logError } = await supabase.from('driver_notification_logs').insert(errorLogEntry);
+              if (logError) {
+                console.error('Error logging response:', logError);
+                // Silent fail - don't affect the user experience
+              }
+            }
           } catch (logError) {
             console.error('Error logging error response:', logError);
           }
@@ -833,7 +871,16 @@ export default function DriverDashboard() {
       }
       
       if (bookingData && bookingData.departure_time) {
-        tripAssignmentData.departure_time = bookingData.departure_time;
+        // Make sure departure_time is properly formatted as a valid ISO string
+        try {
+          // Check if departure_time is already a valid date string
+          const departureDate = new Date(bookingData.departure_time);
+          // If valid, store as ISO string
+          tripAssignmentData.departure_time = departureDate.toISOString();
+        } catch (dateError) {
+          console.log('Error formatting departure time, skipping field:', dateError);
+          // Skip adding the field if it's not a valid date
+        }
       }
       
       console.log('Creating trip assignment with data:', tripAssignmentData);
@@ -853,9 +900,29 @@ export default function DriverDashboard() {
         
         // Don't stop the process due to this error
         // Instead, show a warning to the user
-        toast.warning('Booking was accepted but trip details may not be complete. Please contact support if you don\'t see this trip in your list.', {
-          duration: 6000
-        });
+        toast.custom((t) => (
+          <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} 
+                  max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto 
+                  flex ring-1 ring-black ring-opacity-5 border-l-4 border-yellow-400`}>
+            <div className="flex-1 w-0 p-4">
+              <div className="flex items-start">
+                <div className="ml-3 flex-1">
+                  <p className="text-sm font-medium text-gray-900">
+                    Booking was accepted but trip details may not be complete. Please contact support if you don't see this trip in your list.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex border-l border-gray-200">
+              <button
+                onClick={() => toast.dismiss(t.id)}
+                className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ), { duration: 6000 });
       }
       
       // 3. Mark other notifications for this booking as expired
