@@ -233,14 +233,11 @@ export default function BookingForm() {
     'Bill Tourist Inn',
     'Angel Nido',
     'El Nido Sands Inn',
-    // Add more El Nido Town Proper hotels as needed
   ], []);
 
   // Check if a hotel is in El Nido Town Proper
   const isHotelInElNidoTownProper = useCallback((hotelName) => {
     if (!hotelName) return false;
-    
-    // Check if the hotel name includes any of the El Nido Town Proper hotels
     return elNidoTownProperHotels.some(hotel => 
       hotelName.toLowerCase().includes(hotel.toLowerCase())
     );
@@ -264,18 +261,7 @@ export default function BookingForm() {
     'Jambalaya Homestay',
     'Mary\'s Beach Cottages',
     'White Beach Annex',
-    // Add more Port Barton Town Proper hotels as needed
   ], []);
-
-  // Check if a hotel is in El Nido Town Proper
-  const isHotelInElNidoTownProper = useCallback((hotelName) => {
-    if (!hotelName) return false;
-    
-    // Check if the hotel name includes any of the El Nido Town Proper hotels
-    return elNidoTownProperHotels.some(hotel => 
-      hotelName.toLowerCase().includes(hotel.toLowerCase())
-    );
-  }, [elNidoTownProperHotels]);
 
   // New state for validation errors
   const [validationErrors, setValidationErrors] = useState({
