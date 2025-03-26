@@ -236,6 +236,16 @@ export default function BookingForm() {
     // Add more El Nido Town Proper hotels as needed
   ], []);
 
+  // Check if a hotel is in El Nido Town Proper
+  const isHotelInElNidoTownProper = useCallback((hotelName) => {
+    if (!hotelName) return false;
+    
+    // Check if the hotel name includes any of the El Nido Town Proper hotels
+    return elNidoTownProperHotels.some(hotel => 
+      hotelName.toLowerCase().includes(hotel.toLowerCase())
+    );
+  }, [elNidoTownProperHotels]);
+
   // Port Barton Town Proper hotels list
   const portBartonTownProperHotels = useMemo(() => [
     'Port Barton Beach Resort',
@@ -267,16 +277,6 @@ export default function BookingForm() {
     );
   }, [elNidoTownProperHotels]);
 
-  // Check if a hotel is in Port Barton Town Proper
-  const isHotelInPortBartonTownProper = useCallback((hotelName) => {
-    if (!hotelName) return false;
-    
-    // Check if the hotel name includes any of the Port Barton Town Proper hotels
-    return portBartonTownProperHotels.some(hotel => 
-      hotelName.toLowerCase().includes(hotel.toLowerCase())
-    );
-  }, [portBartonTownProperHotels]);
-
   // New state for validation errors
   const [validationErrors, setValidationErrors] = useState({
     email: '',
@@ -284,10 +284,9 @@ export default function BookingForm() {
     messenger: ''
   });
 
-  const locations = ['Puerto Princesa', 'El Nido', 'San Vicente', 'Port Barton'];
+  const locations = ['Puerto Princesa', 'El Nido'];
   const basePrice = {
-    'El Nido': 700,
-    'San Vicente': 500
+    'El Nido': 700
   };
 
   const isPeakHour = (time) => {
@@ -295,6 +294,15 @@ export default function BookingForm() {
     const hour = parseInt(time.split(':')[0], 10);
     return (hour >= 6 && hour <= 10) || (hour >= 15 && hour <= 19);
   };
+
+  const getAvailableDestinations = useCallback((from) => {
+    // If starting from Puerto Princesa, only allow travel to El Nido
+    if (from === 'Puerto Princesa') {
+      return ['El Nido'];
+    }
+    // From El Nido, only allow travel to Puerto Princesa
+    return ['Puerto Princesa'];
+  }, []);
 
   const generateTimeSlots = () => {
     // For Puerto Princesa to El Nido shared van, show specific time slots
@@ -321,52 +329,6 @@ export default function BookingForm() {
         };
       });
     }
-    // For Puerto Princesa to San Vicente shared van, show specific time slots
-    else if (fromLocation === 'Puerto Princesa' && toLocation === 'San Vicente' && serviceType === 'shared') {
-      const sanVicenteTimeSlots = [
-        '07:00', // 7:00 AM
-        '09:00', // 9:00 AM
-        '11:00'  // 11:00 AM
-      ];
-      
-      return sanVicenteTimeSlots.map(time => {
-        const [hours] = time.split(':');
-        const hour = parseInt(hours);
-        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
-        
-        // Format the time for display (convert to 12-hour format with AM/PM)
-        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
-        
-        return {
-          time,
-          isPeak,
-          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
-        };
-      });
-    }
-    // For Puerto Princesa to Port Barton shared van, show specific time slots
-    else if (fromLocation === 'Puerto Princesa' && toLocation === 'Port Barton' && serviceType === 'shared') {
-      const portBartonTimeSlots = [
-        '07:30', // 7:30 AM
-        '09:00', // 9:00 AM
-        '11:00'  // 11:00 AM
-      ];
-      
-      return portBartonTimeSlots.map(time => {
-        const [hours] = time.split(':');
-        const hour = parseInt(hours);
-        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
-        
-        // Format the time for display (convert to 12-hour format with AM/PM)
-        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
-        
-        return {
-          time,
-          isPeak,
-          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
-        };
-      });
-    }
     // For El Nido to Puerto Princesa shared van, show specific time slots
     else if (fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && serviceType === 'shared') {
       const elNidoToPPTimeSlots = [
@@ -377,55 +339,6 @@ export default function BookingForm() {
       ];
       
       return elNidoToPPTimeSlots.map(time => {
-        const [hours] = time.split(':');
-        const hour = parseInt(hours);
-        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
-        
-        // Format the time for display (convert to 12-hour format with AM/PM)
-        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
-        
-        return {
-          time,
-          isPeak,
-          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
-        };
-      });
-    }
-    // For San Vicente to Puerto Princesa shared van, show specific time slots
-    else if (fromLocation === 'San Vicente' && toLocation === 'Puerto Princesa' && serviceType === 'shared') {
-      const sanVicenteToPPTimeSlots = [
-        '07:00', // 7:00 AM
-        '09:00', // 9:00 AM
-        '11:00', // 11:00 AM
-        '13:00'  // 1:00 PM
-      ];
-      
-      return sanVicenteToPPTimeSlots.map(time => {
-        const [hours] = time.split(':');
-        const hour = parseInt(hours);
-        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
-        
-        // Format the time for display (convert to 12-hour format with AM/PM)
-        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
-        
-        return {
-          time,
-          isPeak,
-          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
-        };
-      });
-    }
-    // For Port Barton to Puerto Princesa shared van, show specific time slots
-    else if (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa' && serviceType === 'shared') {
-      const portBartonToPPTimeSlots = [
-        '08:00', // 8:00 AM
-        '10:00', // 10:00 AM
-        '13:00', // 1:00 PM
-        '15:00', // 3:00 PM
-        '17:00'  // 5:00 PM
-      ];
-      
-      return portBartonToPPTimeSlots.map(time => {
         const [hours] = time.split(':');
         const hour = parseInt(hours);
         const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
@@ -468,33 +381,9 @@ export default function BookingForm() {
         };
       });
     }
-    // Default time slots for other routes
-    else {
-      const defaultTimeSlots = [
-        '05:00', // Early Morning
-        '07:30', // Morning
-        '10:30', // Morning
-        '13:30', // Afternoon
-        '15:30', // Afternoon
-        '17:30', // Evening
-        '19:30'  // Evening
-      ];
-
-      return defaultTimeSlots.map(time => {
-        const [hours] = time.split(':');
-        const hour = parseInt(hours);
-        const isPeak = (hour >= 7 && hour <= 11) || (hour >= 15 && hour <= 19);
-        
-        // Format the time for display (convert to 12-hour format with AM/PM)
-        const formattedTime = format(new Date(`2023-01-01T${time}:00`), 'hh:mm a');
-        
-        return {
-          time,
-          isPeak,
-          label: `${formattedTime} (${isPeak ? t('booking.peakHours') : t('booking.offPeakHours')})`
-        };
-      });
-    }
+    
+    // Default time slots for other cases (shouldn't be reached in this simplified version)
+    return [];
   };
 
   // Recalculate time slots when route or service type changes
@@ -934,15 +823,6 @@ export default function BookingForm() {
     </div>
   );
 
-  const getAvailableDestinations = useCallback((from) => {
-    // If starting from Puerto Princesa, allow travel to El Nido, San Vicente, and Port Barton
-    if (from === 'Puerto Princesa') {
-      return ['El Nido', 'San Vicente', 'Port Barton'];
-    }
-    // From any other location, only allow travel to Puerto Princesa
-    return ['Puerto Princesa'];
-  }, []);
-
   const handleFromLocationChange = useCallback((newFrom) => {
     setFromLocation(newFrom);
     setToLocation('');  // Reset the destination when changing origin
@@ -961,7 +841,7 @@ export default function BookingForm() {
 
   const _availableDestinations = useMemo(() => {
     return fromLocation === 'Puerto Princesa'
-      ? ['El Nido', 'San Vicente', 'Port Barton']
+      ? ['El Nido']
       : ['Puerto Princesa'];
   }, [fromLocation]);
 
@@ -1021,20 +901,9 @@ export default function BookingForm() {
 
   // Monitor from/to location changes to set appropriate pickup option
   useEffect(() => {
-    // For San Vicente to Puerto Princesa, automatically set to hotel pickup
-    if (fromLocation === 'San Vicente' && toLocation === 'Puerto Princesa') {
-      setPickupOption('hotel');
-    }
     // For El Nido to Puerto Princesa routes
-    else if (fromLocation === 'El Nido' && toLocation === 'Puerto Princesa') {
+    if (fromLocation === 'El Nido' && toLocation === 'Puerto Princesa') {
       // Default to terminal pickup for El Nido to PP
-      if (pickupOption === 'airport') {
-        setPickupOption('terminal');
-      }
-    }
-    // For Port Barton to Puerto Princesa routes
-    else if (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa') {
-      // Default to terminal pickup for Port Barton to PP if airport was selected
       if (pickupOption === 'airport') {
         setPickupOption('terminal');
       }
@@ -1145,7 +1014,7 @@ export default function BookingForm() {
                             leaveTo="opacity-0"
                           >
                             <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                              {getAvailableDestinations(fromLocation).map((location) => (
+                              {_availableDestinations.map((location) => (
                                 <Listbox.Option
                                   key={location}
                                   value={location}
@@ -1474,11 +1343,9 @@ export default function BookingForm() {
                       </div>
                     )}
                     
-                    <div className={`grid grid-cols-1 ${(fromLocation === 'El Nido' || fromLocation === 'Port Barton') && toLocation === 'Puerto Princesa' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
-                      {/* Airport Pickup option - only show for routes not originating from El Nido, San Vicente, or Port Barton */}
-                      {!(fromLocation === 'El Nido' || 
-                         (fromLocation === 'San Vicente' && toLocation === 'Puerto Princesa') ||
-                         (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa')) && (
+                    <div className={`grid grid-cols-1 ${fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-4`}>
+                      {/* Airport Pickup option - only show for routes not originating from El Nido */}
+                      {!(fromLocation === 'El Nido' && toLocation === 'Puerto Princesa') && (
                         <motion.div
                           whileHover={{ scale: 1.02 }}
                           className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
@@ -1519,15 +1386,12 @@ export default function BookingForm() {
                         <p className="text-sm text-gray-600">
                           {fromLocation === 'El Nido' && toLocation === 'Puerto Princesa'
                             ? "We'll pick you up from your hotel in El Nido Town Proper."
-                            : fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa' && serviceType === 'shared'
-                            ? "We'll pick you up from your hotel in Port Barton Town Proper." 
                             : "We'll pick you up from your hotel."}
                         </p>
                       </motion.div>
 
-                      {/* Terminal Pickup option - for El Nido to PP and Port Barton to PP routes */}
-                      {((fromLocation === 'El Nido' && toLocation === 'Puerto Princesa') || 
-                        (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa')) && (
+                      {/* Terminal Pickup option - for El Nido to PP route */}
+                      {fromLocation === 'El Nido' && toLocation === 'Puerto Princesa' && (
                         <motion.div
                           whileHover={{ scale: 1.02 }}
                           className={`p-5 rounded-lg border-2 cursor-pointer shadow-sm transition-all ${
@@ -1542,14 +1406,10 @@ export default function BookingForm() {
                               <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
                               <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
                             </svg>
-                            <h4 className="font-semibold text-lg">
-                              {fromLocation === 'El Nido' ? 'Corong Terminal Pickup' : 'Terminal Pickup'}
-                            </h4>
+                            <h4 className="font-semibold text-lg">Corong Terminal Pickup</h4>
                           </div>
                           <p className="text-sm text-gray-600">
-                            {fromLocation === 'El Nido' 
-                              ? "Meet at Corong Terminal in El Nido for pickup."
-                              : "Meet at the main terminal in Port Barton for pickup."}
+                            Meet at Corong Terminal in El Nido for pickup.
                           </p>
                         </motion.div>
                       )}
@@ -1569,16 +1429,6 @@ export default function BookingForm() {
                                 hotel && !isHotelInElNidoTownProper(hotel.name)) {
                               toast.error(
                                 "This hotel appears to be outside El Nido Town Proper. Please consider choosing 'Corong Terminal Pickup' instead.",
-                                { duration: 6000 }
-                              );
-                            }
-                            
-                            // Check if we're on Port Barton to Puerto Princesa route with shared van
-                            // and show warning if hotel is outside Port Barton Town Proper
-                            if (fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa' && 
-                                serviceType === 'shared' && hotel && !isHotelInPortBartonTownProper(hotel.name)) {
-                              toast.error(
-                                "This hotel appears to be outside Port Barton Town Proper. For shared vans, please consider choosing 'Terminal Pickup' instead.",
                                 { duration: 6000 }
                               );
                             }
@@ -1602,21 +1452,6 @@ export default function BookingForm() {
                                   </svg>
                                   <span>
                                     This hotel appears to be outside El Nido Town Proper. We recommend selecting "Corong Terminal Pickup" instead.
-                                  </span>
-                                </p>
-                              </div>
-                            )}
-                            
-                            {/* Warning for hotels outside Port Barton Town Proper (only for shared vans) */}
-                            {fromLocation === 'Port Barton' && toLocation === 'Puerto Princesa' && 
-                             serviceType === 'shared' && selectedHotel && !isHotelInPortBartonTownProper(selectedHotel.name) && (
-                              <div className="mt-3 p-2 bg-red-50 rounded border border-red-200">
-                                <p className="text-xs text-red-600 flex items-start">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500 mr-1 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                  </svg>
-                                  <span>
-                                    For shared vans, this hotel appears to be outside Port Barton Town Proper. We recommend selecting "Terminal Pickup" instead. (Private vans can pick up from this location.)
                                   </span>
                                 </p>
                               </div>
